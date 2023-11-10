@@ -12,7 +12,7 @@ import copy
 logger = logging.child_logger(__name__)
 
 def syst_transform_map(base_hist, hist_name):
-    pdfInfo = theory_tools.pdfMapExtended 
+    pdfInfo = theory_tools.pdfMap
     pdfNames = [pdfInfo[k]["name"] for k in pdfInfo.keys()]
 
     def pdfUnc(h, pdfName, axis_name="pdfVar"):
@@ -278,11 +278,13 @@ def add_massweights_hist(results, df, axes, cols, base_name="nominal", proc="", 
                                    storage=hist.storage.Double())
     results.append(massWeight)
 
-def massWeightNames(matches=None, proc=""):
+def massWeightNames(matches=None, proc="", exclude=[]):
+    if isinstance(exclude, (int, float)):
+        exclude = [exclude, ]
     central=10
     nweights=21
-    names = [f"massShift{proc[0] if len(proc) else proc}{int(abs(central-i)*10)}MeV{'' if i == central else ('Down' if i < central else 'Up')}" for i in range(nweights)]
-    if proc and proc in common.zprocs_all:
+    names = [f"massShift{proc[0] if len(proc) else proc}{int(abs(central-i)*10)}MeV{'' if i == central else ('Down' if i < central else 'Up')}" for i in range(nweights) if int(abs(central-i)*10) not in exclude]
+    if proc and (proc in common.zprocs_all or proc=="Z") and 2.1 not in exclude:
         # This is the PDG uncertainty (turned off for now since it doesn't seem to have been read into the nano)
         names.extend(["massShiftZ2p1MeVDown", "massShiftZ2p1MeVUp"])
 
@@ -322,7 +324,7 @@ def widthWeightNames(matches=None, proc=""):
 
     return [x if not matches or any(y in x for y in matches) else "" for x in names]
 
-def add_pdf_hists(results, df, dataset, axes, cols, pdfs, base_name="nominal", addhelicity=False):
+def add_pdf_hists(results, df, dataset, axes, cols, pdfs, base_name="nominal", addhelicity=False, propagateToHelicity=False):
     # Remove duplicates but preserve the order of the first set
     for pdf in pdfs:
         try:
@@ -344,21 +346,32 @@ def add_pdf_hists(results, df, dataset, axes, cols, pdfs, base_name="nominal", a
 
         if pdfInfo["alphasRange"] == "001":
             alphaSHistName = Datagroups.histName(base_name, syst=f"{pdfName}alphaS001")
-            as_ax = hist.axis.StrCategory(["as0117", "as0119"], name="alphasVar")
+            as_ax = hist.axis.StrCategory(["as0118", "as0117", "as0119"], name="alphasVar")
         else:
             alphaSHistName = Datagroups.histName(base_name, syst=f"{pdfName}alphaS002")
-            as_ax = hist.axis.StrCategory(["as0116", "as0120"], name="alphasVar")
+            as_ax = hist.axis.StrCategory(["as0118", "as0116", "as0120"], name="alphasVar")
 
         if addhelicity:
             pdfHeltensor, pdfHeltensor_axes =  make_pdfweight_helper_helicity(npdf, pdf_ax)
             df = df.Define(f'{tensorName}_helicity', pdfHeltensor, [tensorName, "helWeight_tensor"])
             pdfHist = df.HistoBoost(pdfHistName, axes, [*cols, f'{tensorName}_helicity'], tensor_axes=pdfHeltensor_axes, storage=hist.storage.Double())
-            alphaSHeltensor, alphaSHeltensor_axes =  make_pdfweight_helper_helicity(2, as_ax)
+            alphaSHeltensor, alphaSHeltensor_axes =  make_pdfweight_helper_helicity(3, as_ax)
             df = df.Define(f'{tensorASName}_helicity', alphaSHeltensor, [tensorASName, "helWeight_tensor"])
             alphaSHist = df.HistoBoost(alphaSHistName, axes, [*cols, f'{tensorASName}_helicity'], tensor_axes=alphaSHeltensor_axes, storage=hist.storage.Double())
         else:
             pdfHist = df.HistoBoost(pdfHistName, axes, [*cols, tensorName], tensor_axes=[pdf_ax], storage=hist.storage.Double())
             alphaSHist = df.HistoBoost(alphaSHistName, axes, [*cols, tensorASName], tensor_axes=[as_ax], storage=hist.storage.Double())
+
+            if propagateToHelicity:
+                df=df.Define("unity","1.")
+                pdfhelper = ROOT.wrem.makeHelicityMomentPdfTensor[npdf]()
+                df = df.Define(f"helicity_moments_{tensorName}_tensor", pdfhelper, ["csSineCosThetaPhi", f"{tensorName}", "unity"])
+                alphahelper = ROOT.wrem.makeHelicityMomentPdfTensor[2]()
+                df = df.Define(f"helicity_moments_{tensorASName}_tensor", alphahelper, ["csSineCosThetaPhi", f"{tensorASName}", "unity"])
+                pdfHist_hel = df.HistoBoost(f"helicity_{pdfHistName}", axes, [*cols, f"helicity_moments_{tensorName}_tensor"], tensor_axes=[wremnants.axis_helicity,pdf_ax], storage=hist.storage.Double())
+                alphaSHist_hel = df.HistoBoost(f"helicity_{alphaSHistName}", axes, [*cols, f"helicity_moments_{tensorASName}_tensor"], tensor_axes=[wremnants.axis_helicity,as_ax], storage=hist.storage.Double())
+                results.extend([pdfHist_hel, alphaSHist_hel])
+
         results.extend([pdfHist, alphaSHist])
     return df
 

@@ -38,8 +38,8 @@ def broadcastSystHist(h1, h2, flow=True, by_ax_name=True):
     new_vals = np.moveaxis(new_vals, np.arange(len(moves)), list(moves.keys()))
 
     if new_vals.shape != h2.values(flow=flow).shape:
-        raise ValueError(f"Broadcast shape {new_vals.shape} (from h1.shape={h1.view(flow=flow).shape}) " \
-                            "does not match desired shape {h2.view(flow=flow).shape}")
+        raise ValueError(f"Broadcast shape {new_vals.shape} (from h1.shape={h1.values(flow=flow).shape}, axes={h1.axes.name}) " \
+                            f"does not match desired shape {h2.view(flow=flow).shape} (axes={h2.axes.name})")
 
     if h1.storage_type == hist.storage.Weight:
         new_vars = np.broadcast_to(h1.variances(flow=flow), broadcast_shape)
@@ -270,9 +270,17 @@ def compatibleBins(edges1, edges2):
     comparef = np.vectorize(lambda x: np.isclose(x, edges1).any())
     return np.all(comparef(edges2))
 
+def rebinHistMultiAx(h, axis_map):
+    for ax, binning in axis_map.items():
+        if ax not in h.axes.name:
+            logger.debug(f"Did not find axis {ax} in hist. Skipping rebin.")
+            continue
+        h = rebinHist(h, ax, binning)
+
+    return h
+
 def rebinHist(h, axis_name, edges):
     if type(edges) == int:
-        print("Edges are", edges)
         return h[{axis_name : hist.rebin(edges)}]
 
     ax = h.axes[axis_name]
@@ -291,10 +299,17 @@ def rebinHist(h, axis_name, edges):
     
     hnew = hist.Hist(*axes, name=h.name, storage=h.storage_type())
 
-    # Offset from bin edge to avoid numeric issues
-    offset = 0.5*np.min(ax.edges[1:]-ax.edges[:-1])
-    edges_eval = edges+offset
-    edge_idx = ax.index(edges_eval)
+    if type(ax) == hist.axis.StrCategory:
+        if type(edges) == str:
+            edge_idx = ax.index(edges)
+        else:
+            edge_idx = np.array(edges, dtype=int)
+    else:
+        # Offset from bin edge to avoid numeric issues
+        offset = 0.5*np.min(ax.edges[1:]-ax.edges[:-1])
+        edges_eval = edges+offset
+        edge_idx = ax.index(edges_eval)
+
     # Avoid going outside the range, reduceat will add the last index anyway
     if edge_idx[-1] == ax.size+ax.traits.overflow:
         edge_idx = edge_idx[:-1]
@@ -308,11 +323,12 @@ def rebinHist(h, axis_name, edges):
     # Take is used because reduceat sums i:len(array) for the last entry, in the case
     # where the final bin isn't the same between the initial and rebinned histogram, you
     # want to drop this value. Add tolerance of 1/2 min bin width to avoid numeric issues
+    flow_add = (underflow+overflow)*flow
     hnew.values(flow=flow)[...] = np.add.reduceat(h.values(flow=flow), edge_idx, 
-            axis=ax_idx).take(indices=range(new_ax.size+underflow+overflow), axis=ax_idx)
+            axis=ax_idx).take(indices=range(new_ax.size+flow_add), axis=ax_idx)
     if hnew.storage_type == hist.storage.Weight:
         hnew.variances(flow=flow)[...] = np.add.reduceat(h.variances(flow=flow), edge_idx, 
-                axis=ax_idx).take(indices=range(new_ax.size+underflow+overflow), axis=ax_idx)
+                axis=ax_idx).take(indices=range(new_ax.size+flow_add), axis=ax_idx)
     return hnew
 
 def mergeAxes(ax1, ax2):
@@ -384,7 +400,7 @@ def rebinHistsToCommon(hists, axis_idx, keep_full_range=False):
             axes[axis_idx] = new_ax
             newh = hist.Hist(*axes, name=rebinh.name, storage=h.storage_type())
             merge_idx = new_ax.index(rebinh.axes[axis_idx].edges[-1])
-            # TODO: true the overflow/underflow properly
+            # TODO: treat the overflow/underflow properly
             low_vals = rebinh.view()
             max_idx = min(h.axes[axis_idx].size, h.axes[axis_idx].index(newh.axes[axis_idx].edges[-1]))
             vals = np.append(low_vals, np.take(h.view(), range(merge_idx, max_idx), axis_idx))
@@ -509,3 +525,47 @@ def set_flow(h, val="nearest"):
             nearest_vals = np.take(h.values(flow=True), -2, i) 
             np.take(h.values(flow=True), -1, i)[...] = nearest_vals if val == "nearest" else np.full_like(nearest_vals, val)
     return h
+
+def swap_histogram_bins(histo, axis1, axis1_bin1, axis1_bin2, axis2=None, axis2_slice=None, flow=False, axis1_replace=None):
+    # swap content from axis1: axis1_bin1 with axis1: axis1_bin2 
+    # optionally for a subset of the histogram defined by axis2: axis2_slice
+    # optionally the selected bin content can be replaced by axis1_replace (example use case: setting up and down variations to nominal)
+    if axis2 is not None and axis2_slice is None:
+        raise ValueError(f"Requested to flip bins for axis {axis2} but the corresponding slices 'axis2_slice' are not set")
+    if isinstance(axis2_slice, slice):
+        # for some reason complex slicing didn't work, convert to bin number
+        tmp_slice = []
+        for x in ("start", "stop", "step"):
+            s = getattr(axis2_slice,x)
+            if isinstance(s, complex):
+                tmp_slice.append(histo.axes[axis2].index(s.imag))
+            else:
+                tmp_slice.append(s)
+        axis2_slice = slice(*tmp_slice)
+
+    slices1 = []
+    slices2 = []
+    slicesR = []
+    for a in histo.axes.name:
+        if a == axis1:
+            slices1.append(histo.axes[a].index(axis1_bin1))
+            slices2.append(histo.axes[a].index(axis1_bin2))
+            if axis1_replace:
+                slicesR.append(histo.axes[a].index(axis1_replace))
+        elif axis2 is not None and a == axis2:                  
+            slices1.append(axis2_slice)
+            slices2.append(axis2_slice)
+            if axis1_replace:
+                slicesR.append(axis2_slice)
+        else:
+            slices1.append(slice(None))
+            slices2.append(slice(None))
+            if axis1_replace:
+                slicesR.append(slice(None))
+
+    # swap bins in specified slices
+    data = histo.view(flow=flow)
+    new_histo = histo.copy()
+    new_histo.view(flow=flow)[*slices2] = data[*slices1] if axis1_replace is None else data[*slicesR]
+    new_histo.view(flow=flow)[*slices1] = data[*slices2] if axis1_replace is None else data[*slicesR]
+    return new_histo
