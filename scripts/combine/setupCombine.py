@@ -375,7 +375,7 @@ def setup(args, inputFile, fitvar, xnorm=False):
         )
 
 
-
+    '''
     for ewUnc in args.ewUnc:
         if ewUnc=="winhacnloew" and (not wmass or datagroups.flavor == "e"):
             logger.warning("Winhac is not implemented for any other process than W, proceed w/o winhac EW uncertainty")
@@ -390,7 +390,7 @@ def setup(args, inputFile, fitvar, xnorm=False):
             skipEntries=[(0, -1), (1, -1)],
             passToFakes=passSystToFakes,
         )
-
+    '''
     to_fakes = passSystToFakes and not args.noQCDscaleFakes and not xnorm
     
     theory_helper = combine_theory_helper.TheoryHelper(cardTool)
@@ -537,11 +537,11 @@ def setup(args, inputFile, fitvar, xnorm=False):
                     labelsByAxis = [""], 
                 )
 
-    # if (wmass or wlike) and not input_tools.args_from_metadata(cardTool, "noRecoil"):
-    #     combine_helpers.add_recoil_uncertainty(cardTool, ["signal_samples"], 
-    #         passSystToFakes=passSystToFakes, 
-    #         flavor=datagroups.flavor if datagroups.flavor else "mu",
-    #         pu_type="lowPU" if lowPU else "highPU")
+    if (wmass or wlike) and not input_tools.args_from_metadata(cardTool, "noRecoil"):
+        combine_helpers.add_recoil_uncertainty(cardTool, ["signal_samples"], 
+            passSystToFakes=passSystToFakes, 
+            flavor=datagroups.flavor if datagroups.flavor else "mu",
+            pu_type="lowPU" if lowPU else "highPU")
 
     if lowPU:
         if datagroups.flavor in ["e", "ee"]:

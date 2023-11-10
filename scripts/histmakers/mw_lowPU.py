@@ -47,7 +47,6 @@ ROOT.gInterpreter.Declare('#include "lowpu_utils.h"')
 ROOT.gInterpreter.Declare('#include "lowpu_efficiencies.h"')
 ROOT.gInterpreter.Declare('#include "lowpu_prefire.h"')
 ROOT.gInterpreter.Declare('#include "lowpu_rochester.h"')
-ROOT.gInterpreter.Declare('#include "lowpu_recoil.h"')
 ROOT.gInterpreter.Declare('#include "electron_selections.h"')
 
 # axes used in fakerate calculation
@@ -114,6 +113,8 @@ corr_helpers = theory_corrections.load_corr_helpers([d.name for d in datasets if
 
 # recoil initialization
 if not args.noRecoil:
+    args.noRecoil = True
+    logger.info("No recoil calibration yet for lowPU")
     from wremnants import recoil_tools
     recoilHelper = recoil_tools.Recoil("lowPU", args, flavor)
 
