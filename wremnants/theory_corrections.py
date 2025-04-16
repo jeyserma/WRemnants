@@ -312,27 +312,29 @@ def rebin_corr_hists(hists, ndim=-1, binning=None):
 
 # Apply an iterative smoothing in 2D (effectively assumed to be Y, the qT)
 def smooth_theory_corr(corrh, minnloh, numh):
-    if corrh.ndim != 4:
+    if corrh.ndim != 5:
         raise NotImplementedError(
-            "Currently only dimension 4 hists are supported for smoothing"
+            f"Currently only dimension 5 hists are supported for smoothing. Found ndim={corrh.ndim} ({corrh.axes.name})"
         )
 
     nc = corrh.axes["charge"].size
 
     # First smooth in 1D (should be rapidity)
-    corrh1D = hh.divideHists(minnloh.project(0), numh[{"vars": 0}].project(0))
-    ax0 = corrh.axes[0]
-    spl = make_smoothing_spline(ax0.centers, corrh1D.values())
-    smoothh = hist.Hist(ax0, data=spl(ax0.centers))
-    corrh = hh.multiplyHists(corrh, hh.divideHists(smoothh.project(0), corrh1D))
+    corrh1D = hh.divideHists(numh[{"vars": 0}].project(1), minnloh.project(1))
+    ax1 = corrh.axes[1]
+    spl = make_smoothing_spline(ax1.centers, corrh1D.values())
+    smooth = spl(ax1.centers) / corrh1D.values()
+    corrh.values()[...] = corrh.values() * smooth[np.newaxis, :]
 
     # This should be qT
-    ax1 = corrh.axes[1]
-    for iv in range(corrh.axes["vars"].size):
+    ax2 = corrh.axes[2]
+    for i1 in range(ax1.size):
         for ic in range(corrh.axes["charge"].size):
-            for i0 in range(ax0.size):
-                spl = make_smoothing_spline(ax1.centers, corrh[i0, :, ic, iv].values())
-                corrh.values()[i0, :, ic, iv] = spl(ax1.centers)
+            for iv in range(corrh.axes["vars"].size):
+                spl = make_smoothing_spline(
+                    ax2.centers, corrh[0, i1, :, ic, iv].values()
+                )
+                corrh.values()[0, i1, :, ic, iv] = spl(ax2.centers)
 
     return corrh
 
@@ -361,12 +363,13 @@ def set_corr_ratio_flow(corrh):
     return corrh
 
 
-def make_corr_from_ratio(denom_hist, num_hist, rebin=False, smooth=False):
+def make_corr_from_ratio(denom_hist, num_hist, rebin=None, smooth=False):
     denom_hist, num_hist = rebin_corr_hists([denom_hist, num_hist], binning=rebin)
 
     corrh = hh.divideHists(num_hist, denom_hist, flow=False, by_ax_name=False)
 
     if smooth:
+        logger.info("Applying spline-based smoothing to correction hist")
         corrh = smooth_theory_corr(corrh, denom_hist, num_hist)
 
     return set_corr_ratio_flow(corrh), denom_hist, num_hist

@@ -264,7 +264,7 @@ def main():
         numh = hist.Hist(*axes, storage=numh.storage_type(), data=data)
 
     corrh_unc, minnloh, numh = theory_corrections.make_corr_from_ratio(
-        minnloh, numh, args.smooth
+        minnloh, numh, smooth=args.smooth
     )
 
     nom_sum = lambda x: x.sum() if "vars" not in x.axes.name else x[{"vars": 0}].sum()
