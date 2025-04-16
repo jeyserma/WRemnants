@@ -9,6 +9,7 @@ import hist
 import lz4.frame
 import numpy as np
 import ROOT
+from scipy.interpolate import make_smoothing_spline
 
 from utilities import common
 from utilities.io_tools import input_tools
@@ -309,6 +310,33 @@ def rebin_corr_hists(hists, ndim=-1, binning=None):
     return hists
 
 
+# Apply an iterative smoothing in 2D (effectively assumed to be Y, the qT)
+def smooth_theory_corr(corrh, minnloh, numh):
+    if corrh.ndim != 4:
+        raise NotImplementedError(
+            "Currently only dimension 4 hists are supported for smoothing"
+        )
+
+    nc = corrh.axes["charge"].size
+
+    # First smooth in 1D (should be rapidity)
+    corrh1D = hh.divideHists(minnloh.project(0), numh[{"vars": 0}].project(0))
+    ax0 = corrh.axes[0]
+    spl = make_smoothing_spline(ax0.centers, corrh1D.values())
+    smoothh = hist.Hist(ax0, data=spl(ax0.centers))
+    corrh = hh.multiplyHists(corrh, hh.divideHists(smoothh.project(0), corrh1D))
+
+    # This should be qT
+    ax1 = corrh.axes[1]
+    for iv in range(corrh.axes["vars"].size):
+        for ic in range(corrh.axes["charge"].size):
+            for i0 in range(ax0.size):
+                spl = make_smoothing_spline(ax1.centers, corrh[i0, :, ic, iv].values())
+                corrh.values()[i0, :, ic, iv] = spl(ax1.centers)
+
+    return corrh
+
+
 # Assuming the 3 physics variable dimensions are first
 def set_corr_ratio_flow(corrh):
     # Probably there's a better way to do this...
@@ -333,10 +361,14 @@ def set_corr_ratio_flow(corrh):
     return corrh
 
 
-def make_corr_from_ratio(denom_hist, num_hist, rebin=False):
+def make_corr_from_ratio(denom_hist, num_hist, rebin=False, smooth=False):
     denom_hist, num_hist = rebin_corr_hists([denom_hist, num_hist], binning=rebin)
 
     corrh = hh.divideHists(num_hist, denom_hist, flow=False, by_ax_name=False)
+
+    if smooth:
+        corrh = smooth_theory_corr(corrh, denom_hist, num_hist)
+
     return set_corr_ratio_flow(corrh), denom_hist, num_hist
 
 

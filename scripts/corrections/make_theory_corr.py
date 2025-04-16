@@ -99,6 +99,11 @@ def parse_args():
         action="store_true",
         help="Copy folder to eos with xrdcp rather than using the mount",
     )
+    parser.add_argument(
+        "--smooth",
+        action="store_true",
+        help="Apply spline-based smoothing to correction",
+    )
 
     args = parser.parse_args()
 
@@ -163,6 +168,7 @@ def read_corr(procName, generator, corr_files, axes):
         # Leave off the overflow, we won't use it anyway
         hnD[...] = np.reshape(h.values(), hnD.shape)
         numh = hnD
+
     return numh
 
 
@@ -257,7 +263,9 @@ def main():
 
         numh = hist.Hist(*axes, storage=numh.storage_type(), data=data)
 
-    corrh_unc, minnloh, numh = theory_corrections.make_corr_from_ratio(minnloh, numh)
+    corrh_unc, minnloh, numh = theory_corrections.make_corr_from_ratio(
+        minnloh, numh, args.smooth
+    )
 
     nom_sum = lambda x: x.sum() if "vars" not in x.axes.name else x[{"vars": 0}].sum()
     logger.info(
