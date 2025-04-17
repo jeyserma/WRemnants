@@ -138,7 +138,17 @@ def read_corr(procName, generator, corr_files, axes):
 
             fo_func = getattr(input_tools, f"read_matched_scetlib_{fo_generator}_hist")
 
-            numh = fo_func(resumf, nnlo_singf, fo_files[0], axes, charge=charge)
+            zero_nons_bins = (
+                0 if "nnlojet" not in fo_generator else hist.tag.Slicer()[0:3]
+            )
+            numh = fo_func(
+                resumf,
+                nnlo_singf,
+                fo_files[0],
+                axes,
+                charge=charge,
+                zero_nons_bins=zero_nons_bins,
+            )
         else:
             nons = "auto"
             if not os.path.isfile(corr_file.replace(".", "_nons.")):

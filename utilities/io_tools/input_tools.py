@@ -534,7 +534,7 @@ def read_matched_scetlib_dyturbo_hist(
     dyturbo_fo,
     axes=None,
     charge=None,
-    fix_nons_bin0=True,
+    zero_nons_bins=0,
     coeff=None,
 ):
 
@@ -562,7 +562,7 @@ def read_matched_scetlib_dyturbo_hist(
             [dyturbo_fo], axes=dyturbo_axes, charge=charge, coeff=coeff
         )
 
-    return read_matched_scetlib_hist(hresum, hfo_sing, hfo, fix_nons_bin0)
+    return read_matched_scetlib_hist(hresum, hfo_sing, hfo, zero_nons_bins)
 
 
 def read_matched_scetlib_nnlojet_hist(
@@ -571,7 +571,7 @@ def read_matched_scetlib_nnlojet_hist(
     nnlojet_fo,
     axes=None,
     charge=None,
-    fix_nons_bin0=True,
+    zero_nons_bins=0,
     coeff=None,
 ):
     hresum, hfo_sing = read_scetlib_resum_and_fosing(
@@ -592,14 +592,14 @@ def read_matched_scetlib_nnlojet_hist(
     else:
         nnlojeth = read_nnlojet_file(nnlojet_fo, charge=charge)
 
-    return read_matched_scetlib_hist(hresum, hfo_sing, nnlojeth, fix_nons_bin0)
+    return read_matched_scetlib_hist(hresum, hfo_sing, nnlojeth, zero_nons_bins)
 
 
 def read_matched_scetlib_hist(
     hresum,
     hfo_sing,
     hfo,
-    fix_nons_bin0=True,
+    zero_nons_bins=0,
 ):
     for ax in ["Y", "Q"]:
         if ax in set(hfo.axes.name).intersection(set(hfo_sing.axes.name)).intersection(
@@ -616,9 +616,11 @@ def read_matched_scetlib_hist(
 
     hnonsing = hh.addHists(-1 * hfo_sing, hfo, flow=False, by_ax_name=False)
 
-    if fix_nons_bin0:
-        slices = tuple(0 if ax == "qT" else slice(None) for ax in hnonsing.axes.name)
-        hnonsing.view()[slices] = np.zeros_like(hnonsing[{"qT": 0}])
+    if zero_nons_bins:
+        slices = tuple(
+            zero_nons_bins if ax == "qT" else slice(None) for ax in hnonsing.axes.name
+        )
+        hnonsing.view()[slices] = np.zeros_like(hnonsing[{"qT": zero_nons_bins}])
 
     # variations are driven by resummed result, collect common variations from nonsingular piece
     # if needed
