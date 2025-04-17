@@ -6,6 +6,7 @@ import re
 import lz4.frame
 
 from utilities import common
+from wremnants import theory_corrections
 from wums import boostHistHelpers as hh
 from wums import logging, output_tools
 
@@ -54,6 +55,11 @@ def parse_args():
         default=f"{common.data_dir}/TheoryCorrections",
         help="Output path",
     )
+    parser.add_argument(
+        "--smooth",
+        action="store_true",
+        help="Apply spline-based smoothing to correction",
+    )
 
     return parser.parse_args()
 
@@ -77,6 +83,10 @@ def main():
     ratio = hh.divideHists(rescale_hist[{"vars": 0}], ref_hist[{"vars": 0}], flow=False)
 
     new_corr = hh.multiplyHists(refcorr, ratio, flow=False)
+    if args.smooth:
+        new_corr = theory_corrections.smooth_theory_corr(
+            new_corr, ref[proc]["minnlo_ref_hist"], rescale_hist
+        )
 
     output_dict = {
         args.new_corr_name + "_minnlo_ratio": new_corr,
