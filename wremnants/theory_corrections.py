@@ -324,7 +324,7 @@ def smooth_theory_corr(corrh, minnloh, numh):
     ax1 = corrh.axes[1]
     spl = make_smoothing_spline(ax1.centers, corrh1D.values())
     smooth = spl(ax1.centers) / corrh1D.values()
-    corrh.values()[...] = corrh.values() * smooth[np.newaxis, :]
+    corrh.values()[...] = (corrh.values().T * smooth[:, np.newaxis]).T
 
     # This should be qT
     ax2 = corrh.axes[2]
