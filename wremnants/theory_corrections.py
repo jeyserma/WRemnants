@@ -311,7 +311,7 @@ def rebin_corr_hists(hists, ndim=-1, binning=None):
 
 
 # Apply an iterative smoothing in 2D (effectively assumed to be Y, the qT)
-def smooth_theory_corr(corrh, minnloh, numh, ax1_start=0):
+def smooth_theory_corr(corrh, minnloh, numh, ax2_start=5):
     if corrh.ndim != 5:
         raise NotImplementedError(
             f"Currently only dimension 5 hists are supported for smoothing. Found ndim={corrh.ndim} ({corrh.axes.name})"
@@ -332,9 +332,9 @@ def smooth_theory_corr(corrh, minnloh, numh, ax1_start=0):
         for ic in range(corrh.axes["charge"].size):
             for iv in range(corrh.axes["vars"].size):
                 spl = make_smoothing_spline(
-                    ax2.centers[ax1_start:], corrh[0, i1, ax1_start:, ic, iv].values()
+                    ax2.centers[ax2_start:], corrh[0, i1, ax2_start:, ic, iv].values()
                 )
-                corrh.values()[0, i1, ax1_start:, ic, iv] = spl(ax2.centers[ax1_start:])
+                corrh.values()[0, i1, ax2_start:, ic, iv] = spl(ax2.centers[ax2_start:])
 
     return corrh
 
@@ -370,7 +370,7 @@ def make_corr_from_ratio(denom_hist, num_hist, rebin=None, smooth=False):
 
     if smooth:
         logger.info("Applying spline-based smoothing to correction hist")
-        corrh = smooth_theory_corr(corrh, denom_hist, num_hist, ax1_start=5)
+        corrh = smooth_theory_corr(corrh, denom_hist, num_hist)
 
     return set_corr_ratio_flow(corrh), denom_hist, num_hist
 
