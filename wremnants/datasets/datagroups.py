@@ -108,6 +108,8 @@ class Datagroups(object):
         self.channel = "ch0"
         self.excludeSyst = None
         self.keepSyst = None
+        self.absorbSyst = None
+        self.explicitSyst = None
         self.customSystMapping = {}
 
         self.writer = None
@@ -1103,8 +1105,11 @@ class Datagroups(object):
         )
 
     ## Functions to customize systs to be added in card, mainly for tests
-    def setCustomSystForCard(self, exclude=None, keep=None):
-        for regex, name in zip((keep, exclude), ("keepSyst", "excludeSyst")):
+    def setCustomSystForCard(self, exclude=None, keep=None, absorb=None, explicit=None):
+        for regex, name in zip(
+            (keep, exclude, absorb, explicit),
+            ("keepSyst", "excludeSyst", "absorbSyst", "explicitSyst"),
+        ):
             if regex in self.customSystMapping:
                 regex = self.customSystMapping[regex]
             if regex:
@@ -1121,6 +1126,18 @@ class Datagroups(object):
                 return False
             else:
                 logger.info(f"   Excluding nuisance: {name}")
+                return True
+        else:
+            return False
+
+    def isAbsorbedNuisance(self, name):
+        # note, re.match search for a match from the beginning, so if x="test" x.match("mytestPDF1") will NOT match
+        # might use re.search instead to be able to match from anywhere inside the name
+        if self.absorbSyst != None and self.absorbSyst.match(name):
+            if self.explicitSyst != None and self.explicitSyst.match(name):
+                return False
+            else:
+                logger.info(f"   Absorbing nuisance in covariance: {name}")
                 return True
         else:
             return False
@@ -1144,6 +1161,7 @@ class Datagroups(object):
         exclude_bin_by_bin_stat=None,
         bin_by_bin_stat_scale=1.0,
         fitresult_data=None,
+        masked=False,
     ):
         if self.writer is None:
             raise RuntimeError("Writer must be defined to add nominal histograms")
@@ -1157,7 +1175,7 @@ class Datagroups(object):
             sumFakesPartial=True,
         )
 
-        for proc in self.predictedProcesses():
+        for i, proc in enumerate(self.predictedProcesses()):
             logger.info(f"Add process {proc} in channel {self.channel}")
 
             # nominal histograms of prediction
@@ -1176,12 +1194,30 @@ class Datagroups(object):
                     norm_proc_hist.variances(flow=True) * bin_by_bin_stat_scale**2
                 )
 
+            if self.channel not in self.writer.channels:
+                self.writer.add_channel(
+                    axes=norm_proc_hist.axes, name=self.channel, masked=masked
+                )
+
             self.writer.add_process(
                 norm_proc_hist,
                 proc,
                 self.channel,
                 signal=proc in self.unconstrainedProcesses,
             )
+
+        # add metadata to channel info
+        self.writer.channels[self.channel].update(
+            {
+                "era": self.era,
+                "flavor": self.flavor,
+                "lumi": self.lumi,
+            }
+        )
+
+        if masked:
+            # no data histogram for masked channel
+            return
 
         if fitresult_data is not None:
             fitresult_axes = [n for n in fitresult_data.axes.name]
@@ -1205,15 +1241,6 @@ class Datagroups(object):
         if data_obs_hist.axes.name != self.fit_axes:
             data_obs_hist = data_obs_hist.project(*self.fit_axes)
         self.writer.add_data(data_obs_hist, self.channel)
-
-        # add metadata to channel info
-        self.writer.channels[self.channel].update(
-            {
-                "era": self.era,
-                "flavor": self.flavor,
-                "lumi": self.lumi,
-            }
-        )
 
     def addNormSystematic(self, norm, **kwargs):
         self.addSystematic(
@@ -1353,6 +1380,7 @@ class Datagroups(object):
                         ]
                     )
 
+                logger.debug(f"Add systematic {var_name}")
                 self.writer.add_systematic(
                     hists,
                     var_name,
@@ -1364,6 +1392,7 @@ class Datagroups(object):
                     kfactor=scale,
                     noi=noi,
                     constrained=not noConstraint,
+                    add_to_data_covariance=self.isAbsorbedNuisance(name),
                 )
 
     def systHists(
@@ -1954,12 +1983,20 @@ class Datagroups(object):
                     h = hdata[{pseudoDataAxes[idx]: idx}]
                     if h.axes.name != self.fit_axes:
                         h = h.project(*self.fit_axes)
+
+                    if self.channel not in self.writer.channels:
+                        self.writer.add_channel(axes=h.axes, name=self.channel)
+
                     self.writer.add_pseudodata(h, name, self.channel)
             else:
                 # pseudodata from alternative histogram that has no syst axis
                 logger.info(f"Write pseudodata {p}")
                 if hdata.axes.name != self.fit_axes:
                     hdata = hdata.project(*self.fit_axes)
+
+                if self.channel not in self.writer.channels:
+                    self.writer.add_channel(axes=hdata.axes, name=self.channel)
+
                 self.writer.add_pseudodata(hdata, p, self.channel)
 
     def addPseudodataHistogramsFitInput(
