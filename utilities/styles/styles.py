@@ -131,8 +131,18 @@ axis_labels = {
     "ewMlly": {"label": r"$\mathit{m}^{\mathrm{EW}}_{\mu\mu\gamma}$", "unit": "GeV"},
     "costhetastarll": r"$\cos{\mathit{\theta}^{\star}_{\mu\mu}}$",
     "cosThetaStarll": r"$\cos{\mathit{\theta}^{\star}_{\mu\mu}}$",
+    "cosThetaStarll_quantile": {
+        "label": r"$\cos{\mathit{\theta}^{\star}_{\mu\mu}}$",
+        "unit": "quantile",
+    },
+    "absCosThetaStarll": r"$|\cos{\mathit{\theta}^{\star}_{\mu\mu}}|$",
     "phistarll": r"$\mathit{\phi}^{\star}_{\mu\mu}$",
     "phiStarll": r"$\mathit{\phi}^{\star}_{\mu\mu}$",
+    "phiStarll_quantile": {
+        "label": r"$\mathit{\phi}^{\star}_{\mu\mu}$",
+        "unit": "quantile",
+    },
+    "absPhiStarll": r"$|\mathit{\phi}^{\star}_{\mu\mu}|$",
     "MET_pt": {"label": r"$\mathit{p}_{\mathrm{T}}^{miss}$", "unit": "GeV"},
     "MET": {"label": r"$\mathit{p}_{\mathrm{T}}^{miss}$", "unit": "GeV"},
     "met": {"label": r"$\mathit{p}_{\mathrm{T}}^{miss}$", "unit": "GeV"},
@@ -382,6 +392,13 @@ poi_types = {
     "helmetapois": "Ai",
 }
 
+translate_selection = {
+    "charge": lambda x: rf"$\mathit{{q}}^\mu = {int(x)}$",
+    "qGen": lambda x: rf"$\mathit{{q}}^\mu = {int(x)}$",
+    "absYVGen": lambda l, h: rf"${round(l,3)} < |Y| < {round(h,3)}$",
+    "helicitySig": lambda x: rf"$\sigma_{{{'UL' if x==-1 else int(x)}}}$",
+}
+
 impact_labels = {
     "angularCoeffs": "Angular coefficients",
     "QCDscale": "<i>μ</i><sub>R </sub> <i>μ</i><sub>F </sub> scale",
@@ -394,7 +411,7 @@ impact_labels = {
     "QCDscaleWPtHelicityMiNNLO": "<i>μ</i><sub>R </sub> <i>μ</i><sub>F </sub> scale (W)",
     "QCDscaleZPtChargeHelicityMiNNLO": "<i>μ</i><sub>R </sub> <i>μ</i><sub>F </sub> scale (Z)",
     "QCDscaleWPtChargeHelicityMiNNLO": "<i>μ</i><sub>R </sub> <i>μ</i><sub>F </sub> scale (W)",
-    "binByBinStat": "Simulated samples stat.",
+    "binByBinStat": "Bin-by-bin stat.",
     "binByBinStatW": "Bin-by-bin stat. (W)",
     "binByBinStatZ": "Bin-by-bin stat. (Z)",
     "recoil": "recoil",
