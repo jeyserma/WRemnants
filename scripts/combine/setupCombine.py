@@ -2342,21 +2342,25 @@ if __name__ == "__main__":
         )
 
         if len(args.fitresult) > 1:
-            channels = args.fitresult[1:]
-            fitresult_lumi = [
-                fitresult_meta["meta_info_input"]["channel_info"][c]["lumi"]
-                for c in channels
-            ]
+            physics_model = args.fitresult[1]
+        else:
+            physics_model = "Basemodel"
+
+        if len(args.fitresult) > 2:
+            channels = args.fitresult[2:]
         else:
             channels = None
-            fitresult_lumi = [
-                c["lumi"]
-                for c in fitresult_meta["meta_info_input"]["channel_info"].values()
-            ]
 
-        fitresult_hist, fitresult_cov = combinetf2.io_tools.get_postfit_hist_cov(
-            fitresult, physics_model=args.fitresultPhysicsModel, channels=channels
+        fitresult_hist, fitresult_cov, fitresult_channels = (
+            combinetf2.io_tools.get_postfit_hist_cov(
+                fitresult, physics_model=physics_model, channels=channels
+            )
         )
+
+        fitresult_lumi = [
+            fitresult_meta["meta_info_input"]["channel_info"][c]["lumi"]
+            for c in fitresult_channels
+        ]
 
         writer.add_data_covariance(fitresult_cov)
 
