@@ -331,12 +331,6 @@ def make_parser(parser=None):
         """,
     )
     parser.add_argument(
-        "--fitresultPhysicsModel",
-        type=str,
-        default="Basemodel",
-        help="Physics model to use for the fitresult (default is Basemodel)",
-    )
-    parser.add_argument(
         "--fakerateAxes",
         nargs="+",
         help="Axes for the fakerate binning",
@@ -2338,7 +2332,7 @@ if __name__ == "__main__":
                 "Theoryfit for more than one channels is currently experimental"
             )
         fitresult, fitresult_meta = combinetf2.io_tools.get_fitresult(
-            args.fitresult[0], meta=True
+            args.fitresult[0], meta=True, result=None if args.realData else "asimov"
         )
 
         if len(args.fitresult) > 1:
