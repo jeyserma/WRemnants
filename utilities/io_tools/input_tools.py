@@ -616,7 +616,7 @@ def read_matched_scetlib_hist(
 
     hnonsing = hh.addHists(-1 * hfo_sing, hfo, flow=False, by_ax_name=False)
 
-    if zero_nons_bins:
+    if zero_nons_bins is not None:
         slices = tuple(
             zero_nons_bins if ax == "qT" else slice(None) for ax in hnonsing.axes.name
         )

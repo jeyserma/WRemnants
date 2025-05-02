@@ -101,7 +101,8 @@ def parse_args():
     )
     parser.add_argument(
         "--smooth",
-        action="store_true",
+        default=None,
+        choices=["ratio", "numerator"],
         help="Apply spline-based smoothing to correction",
     )
 
