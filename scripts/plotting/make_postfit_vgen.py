@@ -1,11 +1,11 @@
 import pickle
 
-import combinetf2.io_tools
 import hist
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
+import combinetf2.io_tools
 import narf
 from utilities import parsing
 from utilities.io_tools import input_tools, output_tools

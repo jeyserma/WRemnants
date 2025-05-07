@@ -1,8 +1,8 @@
-import combinetf2.io_tools
 import matplotlib.pyplot as plt
 import pandas as pd
 from matplotlib import ticker
 
+import combinetf2.io_tools
 from utilities import parsing
 from wremnants import plot_tools
 from wums import output_tools
