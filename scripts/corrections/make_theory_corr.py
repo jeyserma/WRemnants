@@ -298,7 +298,7 @@ def main():
     generator = args.generator
     if args.postfix:
         generator += args.postfix
-    outfile = f"{args.outpath}/{generator}"
+    outfile = f"{args.outpath}/{generator}Corr{args.proc}.pkl.lz4"
 
     meta_dict = {}
     for f in [args.minnlo_file] + args.corr_files:
@@ -317,7 +317,7 @@ def main():
         "minnlo_ref_hist": minnloh,
     }
 
-    output_tools.write_theory_corr_hist(
+    output_tools.write_lz4_pkl_output(
         outfile, args.proc.upper(), output_dict, common.base_dir, args, meta_dict
     )
 

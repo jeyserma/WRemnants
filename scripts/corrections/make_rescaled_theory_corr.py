@@ -97,9 +97,9 @@ def main():
         "ref_file": ref["file_meta_data"],
         "rescale_file": rescale["file_meta_data"],
     }
-    outfile = f"{args.outpath}/{args.new_corr_name}"
+    outfile = f"{args.outpath}/{args.new_corr_name}Corr{proc}.pkl.lz4"
 
-    output_tools.write_theory_corr_hist(
+    output_tools.write_lz4_pkl_output(
         outfile, proc, output_dict, common.base_dir, args, meta_dict
     )
 
