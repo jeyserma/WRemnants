@@ -102,7 +102,7 @@ def parse_args():
     parser.add_argument(
         "--smooth",
         default=None,
-        choices=["ratio", "numerator"],
+        choices=["ratio", "numerator", "fo_sing"],
         help="Apply spline-based smoothing to correction",
     )
 
@@ -111,7 +111,7 @@ def parse_args():
     return args
 
 
-def read_corr(procName, generator, corr_files, axes):
+def read_corr(procName, generator, corr_files, axes, smooth=None):
     logger = logging.child_logger("read_corr")
     charge = 0 if procName[0] == "Z" else (1 if "Wplus" in procName else -1)
     corr_file = corr_files[0]
@@ -140,8 +140,12 @@ def read_corr(procName, generator, corr_files, axes):
             fo_func = getattr(input_tools, f"read_matched_scetlib_{fo_generator}_hist")
 
             zero_nons_bins = (
-                0 if "nnlojet" not in fo_generator else hist.tag.Slicer()[0:3]
+                0 if "nnlojet" not in fo_generator else hist.tag.Slicer()[0:2]
             )
+            # TODO: Should probably be more general...
+            smooth_args = {}
+            if smooth == "fo_sing":
+                smooth_args = {"smooth_nnlojet": True}
             numh = fo_func(
                 resumf,
                 nnlo_singf,
@@ -149,6 +153,7 @@ def read_corr(procName, generator, corr_files, axes):
                 axes,
                 charge=charge,
                 zero_nons_bins=zero_nons_bins,
+                **smooth_args,
             )
         else:
             nons = "auto"
@@ -232,7 +237,7 @@ def main():
 
     numh = hh.sumHists(
         [
-            read_corr(procName, args.generator, corr_file, args.axes)
+            read_corr(procName, args.generator, corr_file, args.axes, args.smooth)
             for procName, corr_file in filesByProc.items()
         ]
     )

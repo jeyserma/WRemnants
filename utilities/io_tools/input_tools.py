@@ -573,6 +573,7 @@ def read_matched_scetlib_nnlojet_hist(
     charge=None,
     zero_nons_bins=0,
     coeff=None,
+    smooth_nnlojet=False,
 ):
     hresum, hfo_sing = read_scetlib_resum_and_fosing(
         scetlib_resum,
@@ -591,6 +592,12 @@ def read_matched_scetlib_nnlojet_hist(
         )
     else:
         nnlojeth = read_nnlojet_file(nnlojet_fo, charge=charge)
+
+    if smooth_nnlojet:
+        if "qT" in axes:
+            nnlojeth = hh.smooth_hist(nnlojeth, "qT", start_bin=4)
+        if "Y" in axes:
+            nnlojeth = hh.smooth_hist(nnlojeth, "Y", exclude_axes=["qT"])
 
     return read_matched_scetlib_hist(hresum, hfo_sing, nnlojeth, zero_nons_bins)
 

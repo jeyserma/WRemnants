@@ -339,40 +339,6 @@ def smooth_theory_corr(corrh, minnloh, numh, ax2_start=5):
     return corrh
 
 
-def smooth_hist(h, ax1name=None, ax2name=None, ax2start=0):
-
-    hnew = h.copy()
-
-    ax1 = h.axes[ax1name]
-    smooth1D = hist.Hist(ax1, h.axes["vars"])
-
-    for var in h.axes["vars"]:
-        h1D = h[{"vars": var}].project(ax1name)
-        spl = make_smoothing_spline(ax1.centers, h1D.values())
-        smooth1D[:, var] = spl(ax1.centers)
-
-    indices = tuple(
-        slice(None) if ax in [ax1name, "vars"] else None for ax in h.axes.name
-    )
-    hnew.values()[...] = h.values() * hh.divideHists(smooth1D, h1D).values()[indices]
-
-    if ax2name is not None:
-        if hnew.ndim != 5:
-            raise NotImplementedError(
-                "Currently only dimension 5 hists are supported for smoothing"
-            )
-        ax2 = hnew.axes[ax2name]
-        for iv in range(hnew.axes["vars"].size):
-            for ic in range(hnew.axes["charge"].size):
-                for j in range(ax1.size):
-                    spl = make_smoothing_spline(
-                        ax2.centers[ax2start:], hnew[0, j, ax2start:, ic, iv].values()
-                    )
-                    hnew.values()[0, j, ax2start:, ic, iv] = spl(ax2.centers[ax2start:])
-
-    return hnew
-
-
 # Assuming the 3 physics variable dimensions are first
 def set_corr_ratio_flow(corrh):
     # Probably there's a better way to do this...
@@ -404,7 +370,9 @@ def make_corr_from_ratio(denom_hist, num_hist, rebin=None, smooth="numerator"):
         logger.info(
             "Applying spline-based smoothing to numerator before making correction hist"
         )
-        num_hist = smooth_hist(num_hist, "absY", "qT")
+        num_hist = hh.smooth_hist(
+            hh.smooth_hist(num_hist, "absY", exclude_axes=["qT"]), "qT", start_bin=4
+        )
 
     corrh = hh.divideHists(num_hist, denom_hist, flow=False, by_ax_name=False)
 
