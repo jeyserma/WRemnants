@@ -595,10 +595,8 @@ def read_matched_scetlib_nnlojet_hist(
 
     if smooth_nnlojet:
         if "qT" in axes:
-            print("To smooth!")
             nnlojeth = hh.smooth_hist(nnlojeth, "qT", start_bin=4)
         if "Y" in axes:
-            print("To smooth Y!", nnlojeth.axes.name)
             nnlojeth = hh.smooth_hist(nnlojeth, "Y", exclude_axes=["qT"])
 
     return read_matched_scetlib_hist(hresum, hfo_sing, nnlojeth, zero_nons_bins)
