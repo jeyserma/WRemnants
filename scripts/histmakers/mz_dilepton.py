@@ -88,7 +88,6 @@ parser.add_argument(
     help="Make hists with fine binned CS variables for producing quantiles",
 )
 
-
 parser = parsing.set_parser_default(
     parser, "aggregateGroups", ["Diboson", "Top", "Wtaunu", "Wmunu"]
 )
@@ -116,6 +115,7 @@ datasets = getDatasets(
     nanoVersion="v9",
     base_path=args.dataPath,
     extended="msht20an3lo" not in args.pdfs,
+    oneMCfileEveryN=args.oneMCfileEveryN,
     era=era,
 )
 
@@ -460,12 +460,27 @@ bias_helper = muon_calibration.make_muon_bias_helpers(args)
     reverse_variations=args.reweightPixelMultiplicity
 )
 
+seed_data = 2 * args.randomSeedForToys
+seed_mc = 2 * args.randomSeedForToys + 1
+
+if args.nToysMC > 0:
+    toy_helper_data = ROOT.wrem.ToyHelper(
+        args.nToysMC, seed_data, 1, ROOT.ROOT.GetThreadPoolSize()
+    )
+    toy_helper_mc = ROOT.wrem.ToyHelper(
+        args.nToysMC,
+        seed_mc,
+        args.varianceScalingForToys,
+        ROOT.ROOT.GetThreadPoolSize(),
+    )
+    axis_toys = hist.axis.Integer(
+        0, args.nToysMC, underflow=False, overflow=False, name="toys"
+    )
 
 theory_corrs = [*args.theoryCorr, *args.ewTheoryCorr]
 corr_helpers = theory_corrections.load_corr_helpers(
     [d.name for d in datasets if d.name in common.vprocs], theory_corrs
 )
-
 
 def build_graph(df, dataset):
     logger.info(f"build graph for dataset: {dataset.name}")
@@ -485,6 +500,12 @@ def build_graph(df, dataset):
     df = df.Define(
         "isEvenEvent", f"event % 2 {'!=' if args.flipEventNumberSplitting else '=='} 0"
     )
+
+    if args.nToysMC > 0:
+        if dataset.is_data:
+            df = df.Define("toyIdxs", toy_helper_data, ["rdfslot_"])
+        else:
+            df = df.Define("toyIdxs", toy_helper_mc, ["rdfslot_"])
 
     weightsum = df.SumAndCount("weight")
 
@@ -778,6 +799,9 @@ def build_graph(df, dataset):
     logger.debug(f"Define weights and store nominal histograms")
 
     if dataset.is_data:
+        if args.nToysMC > 0:
+            axes = [*axes, axis_toys]
+            cols = [*cols, "toyIdxs"]
         results.append(df.HistoBoost("nominal", axes, cols))
     else:
         df = df.Define("weight_pu", pileup_helper, ["Pileup_nTrueInt"])
@@ -906,6 +930,10 @@ def build_graph(df, dataset):
                 storage=hist.storage.Double(),
             )
         )
+        results.append(df.HistoBoost("nominal_asimov", axes, [*cols, "nominal_weight"]))
+        if args.nToysMC > 0:
+            axes = [*axes, axis_toys]
+            cols = [*cols, "toyIdxs"]
         results.append(df.HistoBoost("nominal", axes, [*cols, "nominal_weight"]))
 
         if isZ:

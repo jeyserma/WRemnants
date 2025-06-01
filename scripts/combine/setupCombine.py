@@ -331,6 +331,12 @@ def make_parser(parser=None):
         """,
     )
     parser.add_argument(
+        "--fitresultResult",
+        type=str,
+        default="asimov",
+        help="Use fit result from this file (e.g. for making a theory fit).",
+    )
+    parser.add_argument(
         "--fakerateAxes",
         nargs="+",
         help="Axes for the fakerate binning",
@@ -748,6 +754,14 @@ def make_parser(parser=None):
         default="log_normal",
         help="probability density for systematic variations",
     )
+    parser.add_argument(
+        "--select",
+        nargs="+",
+        dest="selection",
+        type=str,
+        default=None,
+        help="Apply a selection to the histograms, if the axis exists. This option can be applied to any of the axis, not necessarily one of the fitaxes, unlike --axlim. e.g. '--select 'ptll 0 10'"
+    )
     parser = make_subparsers(parser)
 
     return parser
@@ -802,6 +816,15 @@ def setup(
 
     datagroups.fit_axes = fitvar
     datagroups.channel = channel
+
+    if args.selection:
+        for sel in args.selection:
+            sel_ax, sel_lb, sel_ub = sel.split()
+            sel_lb = complex(sel_lb)
+            sel_ub = complex(sel_ub)
+            datagroups.setGlobalAction(
+                lambda h: h[{sel_ax: slice(sel_lb, sel_ub,hist.sum)}] if sel_ax in h.axes.name else h,
+            )
 
     if args.angularCoeffs:
         datagroups.setGlobalAction(
@@ -1164,7 +1187,7 @@ def setup(
             pseudodataGroups.fakerate_axes = args.fakerateAxes
 
         datagroups.addPseudodataHistogramFakes(pseudodata, pseudodataGroups)
-    if args.pseudoData:
+    if args.pseudoData and not xnorm:
         if args.pseudoDataFitInputFile:
             indata = combinetf2.debugdata.FitInputData(args.pseudoDataFitInputFile)
             debugdata = combinetf2.debugdata.FitDebugData(indata)
@@ -1555,9 +1578,10 @@ def setup(
                 if args.lumiUncertainty is None
                 else args.lumiUncertainty
             ),
+            noConstraint=True,
         )
 
-    if not lowPU:  # lowPU does not include PhotonInduced as a process. skip it:
+    if not lowPU and 'PhotonInduced' in datagroups.groups:  # lowPU does not include PhotonInduced as a process. skip it:
         datagroups.addNormSystematic(
             name="CMS_PhotonInduced",
             processes=["PhotonInduced"],
@@ -1616,7 +1640,7 @@ def setup(
             passToFakes=args.passNormUncToFakes,
             norm=1.16,
         )
-    else:
+    elif 'Other' in datagroups.groups:
         datagroups.addNormSystematic(
             name="CMS_background",
             processes=["Other"],
@@ -2332,7 +2356,7 @@ if __name__ == "__main__":
                 "Theoryfit for more than one channels is currently experimental"
             )
         fitresult, fitresult_meta = combinetf2.io_tools.get_fitresult(
-            args.fitresult[0], meta=True, result=None if args.realData else "asimov"
+            args.fitresult[0], meta=True, result=None if args.realData else args.fitresultResult
         )
 
         if len(args.fitresult) > 1:
