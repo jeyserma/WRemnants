@@ -1578,7 +1578,6 @@ def setup(
                 if args.lumiUncertainty is None
                 else args.lumiUncertainty
             ),
-            noConstraint=True,
         )
 
     if not lowPU and 'PhotonInduced' in datagroups.groups:  # lowPU does not include PhotonInduced as a process. skip it:

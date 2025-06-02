@@ -477,6 +477,12 @@ def common_parser(analysis_label=""):
             type=float,
             help="Lower threshold for muon pt in the veto definition",
         )
+        parser.add_argument(
+            "--oneMCfileEveryN",
+            type=int,
+            default=None,
+            help="Use 1 MC file every N, where N is given by this option. Mainly for tests",
+        )
 
     commonargs, _ = parser.parse_known_args()
 
