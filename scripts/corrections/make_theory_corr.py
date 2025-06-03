@@ -77,6 +77,12 @@ def parse_args():
         help="Use only specified axes in hist",
     )
     parser.add_argument(
+        "--integrate-axis",
+        type=str,
+        default=None,
+        help="Integrate over this axis after reading hist",
+    )
+    parser.add_argument(
         "--axlim",
         type=float,
         default=[],
@@ -279,6 +285,23 @@ def main():
 
         numh = hist.Hist(*axes, storage=numh.storage_type(), data=data)
 
+    if args.integrate_axis:
+        if args.integrate_axis not in minnloh.axes.name:
+            raise ValueError(
+                f"Did not find axis {args.integrate_axis} in hist! Valid choices are {minnloh.axes.name}"
+            )
+
+        minnloh = hh.rebinHist(
+            minnloh,
+            args.integrate_axis,
+            minnloh.axes[args.integrate_axis].edges[np.array((0, -1))],
+        )
+        numh = hh.rebinHist(
+            numh,
+            args.integrate_axis,
+            numh.axes[args.integrate_axis].edges[np.array((0, -1))],
+        )
+
     corrh_unc, minnloh, numh = theory_corrections.make_corr_from_ratio(
         minnloh, numh, smooth=args.smooth
     )
@@ -298,7 +321,7 @@ def main():
     generator = args.generator
     if args.postfix:
         generator += args.postfix
-    outfile = f"{args.outpath}/{generator}Corr{args.proc}.pkl.lz4"
+    outfile = f"{args.outpath}/{generator}Corr{args.proc.upper()}.pkl.lz4"
 
     meta_dict = {}
     for f in [args.minnlo_file] + args.corr_files:
@@ -395,7 +418,7 @@ def main():
                     binwnorm=1.0,
                     baseline=True,
                 )
-                plot_name = f"{varm}_{generator}_MiNNLO_{proc}"
+                plot_name = f"{varm}_{generator}_MiNNLO_{proc.upper()}"
                 plot_tools.save_pdf_and_png(outdir, plot_name)
                 output_tools.write_index_and_log(
                     outdir, plot_name, args=args, analysis_meta_info=meta_dict

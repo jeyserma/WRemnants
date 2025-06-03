@@ -424,7 +424,7 @@ def make_parser(parser=None):
         "--resumUnc",
         default="tnp",
         type=str,
-        choices=["scale", "tnp", "tnp_minnlo", "minnlo", "none"],
+        choices=["scale", "binned_scale", "tnp", "tnp_minnlo", "minnlo", "none"],
         help="Include SCETlib uncertainties",
     )
     parser.add_argument(

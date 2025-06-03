@@ -80,6 +80,11 @@ def main():
     ref_hist = ref[proc][corr_name(args.ref_corr) + "_hist"]
     rescale_hist = rescale[proc][corr_name(args.rescale_corr) + "_hist"]
 
+    if ref_hist.shape[:-1] != rescale_hist.shape[:-1]:
+        raise ValueError(
+            f"Histograms {ref_hist.shape} and {rescale_hist.shape} have different shapes"
+        )
+
     ratio = hh.divideHists(rescale_hist[{"vars": 0}], ref_hist[{"vars": 0}], flow=False)
 
     new_corr = hh.multiplyHists(refcorr, ratio, flow=False)

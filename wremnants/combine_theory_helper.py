@@ -187,19 +187,20 @@ class TheoryHelper(object):
                             scale=self.minnlo_scale,
                             symmetrize=self.minnlo_symmetrize,
                         )
-        elif self.resumUnc == "scale":
-            # two sets of nuisances, one binned in ~10% quantiles, and one inclusive in pt
-            # to avoid underestimating the correlated part of the uncertainty
-            self.add_scetlib_dyturbo_scale_uncertainty(
-                extra_name="fine",
-                rebin_pt=common.ptV_binning[::2],
-                transition=self.transitionUnc,
-            )
+        elif "scale" in self.resumUnc:
             self.add_scetlib_dyturbo_scale_uncertainty(
                 extra_name="inclusive",
                 rebin_pt=[common.ptV_binning[0], common.ptV_binning[-1]],
                 transition=self.transitionUnc,
             )
+            if "binned" in self.resumUnc:
+                # Add unc binned in ~10% quantiles, but keep one inclusive in pt
+                # to avoid underestimating the correlated part of the uncertainty
+                self.add_scetlib_dyturbo_scale_uncertainty(
+                    extra_name="fine",
+                    rebin_pt=common.ptV_binning[::2],
+                    transition=self.transitionUnc,
+                )
 
         if self.minnlo_unc and self.minnlo_unc not in ["none", None]:
             # sigma_-1 uncertainty is covered by scetlib-dyturbo uncertainties if they are used
