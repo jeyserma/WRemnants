@@ -106,6 +106,11 @@ def parse_args():
         help="Copy folder to eos with xrdcp rather than using the mount",
     )
     parser.add_argument(
+        "--duplicateWminus",
+        action="store_true",
+        help="Use W- corr for W+ as well",
+    )
+    parser.add_argument(
         "--smooth",
         default=None,
         choices=["ratio", "numerator", "fo_sing"],
@@ -137,6 +142,7 @@ def read_corr(procName, generator, corr_files, axes, smooth=None):
             resumf = scetlib_files[~nnlo_sing_idx]
             nnlo_singf = scetlib_files[nnlo_sing_idx]
 
+            print("Corrfiles are", corr_files)
             fo_files = [x for x in corr_files if pathlib.Path(x).suffix != ".pkl"]
             if len(fo_files) != 1:
                 raise ValueError(
@@ -215,16 +221,34 @@ def main():
         filesByProc = {"ZmumuPostVFP": args.corr_files}
     elif args.proc == "w":
         wpfiles = list(
-            filter(lambda x: "wp" in os.path.basename(x).lower(), args.corr_files)
+            filter(
+                lambda x: "wp" in os.path.basename(x).lower() or "Wp" in x,
+                args.corr_files,
+            )
         )
         wmfiles = list(
-            filter(lambda x: "wm" in os.path.basename(x).lower(), args.corr_files)
-        )
-        if len(wpfiles) != len(wmfiles):
-            raise ValueError(
-                f"Expected equal number of files for W+ and W-, found {len(wpfiles)} (Wp) and {len(wmfiles)} (Wm)"
+            filter(
+                lambda x: "wm" in os.path.basename(x).lower() or "Wm" in x,
+                args.corr_files,
             )
-        filesByProc = {"WplusmunuPostVFP": wpfiles, "WminusmunuPostVFP": wmfiles}
+        )
+        if len(wmfiles + wpfiles) != len(args.corr_files):
+            raise ValueError("Did not consistently match all files to W+ or W-")
+        print("Corr", args.corr_files)
+        print(wmfiles)
+        if len(wpfiles) != len(wmfiles):
+            if args.duplicateWminus:
+                logger.warning("Using W- correction as a proxy for W+!")
+                filesByProc = {
+                    "WplusmunuPostVFP": wmfiles,
+                    "WminusmunuPostVFP": wmfiles,
+                }
+            else:
+                raise ValueError(
+                    f"Expected equal number of files for W+ and W-, found {len(wpfiles)} (Wp) and {len(wmfiles)} (Wm)"
+                )
+        else:
+            filesByProc = {"WplusmunuPostVFP": wpfiles, "WminusmunuPostVFP": wmfiles}
 
     minnloh = hh.sumHists(
         [
@@ -306,6 +330,9 @@ def main():
         minnloh, numh, smooth=args.smooth
     )
 
+    if args.duplicateWminus:
+        corrh_unc.view()[..., 0, :] = corrh_unc.view()[..., 1, :]
+
     nom_sum = lambda x: x.sum() if "vars" not in x.axes.name else x[{"vars": 0}].sum()
     logger.info(
         f"Minnlo norm in corr region is {nom_sum(minnloh)}, corrh norm is {nom_sum(numh)}"
@@ -373,6 +400,8 @@ def main():
         }
 
         for charge in minnloh.axes["charge"].centers:
+            if args.duplicateWminus and charge == 1:
+                continue
             charge = complex(0, charge)
             proc = "Z" if args.proc == "z" else ("Wp" if charge.imag > 0 else "Wm")
 
@@ -418,7 +447,7 @@ def main():
                     binwnorm=1.0,
                     baseline=True,
                 )
-                plot_name = f"{varm}_{generator}_MiNNLO_{proc.upper()}"
+                plot_name = f"{varm}_{generator}_MiNNLO_{proc}"
                 plot_tools.save_pdf_and_png(outdir, plot_name)
                 output_tools.write_index_and_log(
                     outdir, plot_name, args=args, analysis_meta_info=meta_dict
