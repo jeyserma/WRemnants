@@ -854,6 +854,35 @@ private:
   std::vector<std::mt19937> rng_;
 };
 
+
+class RandomUniformHelper {
+
+public:
+  RandomUniformHelper(const std::size_t nsplits, const std::size_t seed = 0,
+                      const unsigned int nslots = 1)
+      : nsplits_(nsplits) {
+    const unsigned int nslotsactual = std::max(nslots, 1U);
+    rng_.reserve(nslotsactual);
+    auto const hash = std::hash<std::string>()("RandomUniformHelper");
+    for (std::size_t islot = 0; islot < nslotsactual; ++islot) {
+      std::seed_seq seq{hash, seed, islot};
+      rng_.emplace_back(seq);
+    }
+  }
+
+  int operator()(const unsigned int slot) {
+    std::uniform_int_distribution<int> dist(0, nsplits_ - 1);
+    int res;
+    auto &rngslot = rng_[slot];
+    res = dist(rngslot);
+    return res;
+  }
+
+private:
+  std::size_t nsplits_;
+  std::vector<std::mt19937> rng_;
+};
+
 } // namespace wrem
 
 #endif
