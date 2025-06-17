@@ -166,10 +166,11 @@ def postprocess_corr_hist(corrh):
 
     additional_var_hists = {}
 
-    renorm_scale_vars = ["pdf0", "kappaFO0.5-kappaf2.", "kappaFO2.-kappaf0.5"]
+    central_var = corrh.axes["vars"][0]
+    renorm_scale_vars = [central_var, "kappaFO0.5-kappaf2.", "kappaFO2.-kappaf0.5"]
 
     renorm_fact_scale_vars = [
-        "pdf0",
+        central_var,
         "kappaFO0.5-kappaf2.",
         "kappaFO2.-kappaf0.5",
         "mufdown",
@@ -184,7 +185,7 @@ def postprocess_corr_hist(corrh):
         for var in corrh.axes["vars"]
         if any(resum_scale in var for resum_scale in resum_scales)
     ]
-    resum_scale_vars = ["pdf0"] + resum_scale_vars_exclusive
+    resum_scale_vars = [central_var] + resum_scale_vars_exclusive
 
     if len(renorm_fact_scale_vars) == 1:
         return corrh

@@ -331,7 +331,7 @@ def main():
     )
 
     if args.duplicateWminus:
-        corrh_unc.view()[..., 0, :] = corrh_unc.view()[..., 1, :]
+        corrh_unc.view()[..., 1, :] = corrh_unc.view()[..., 0, :]
 
     nom_sum = lambda x: x.sum() if "vars" not in x.axes.name else x[{"vars": 0}].sum()
     logger.info(
@@ -375,10 +375,13 @@ def main():
     for ax in corrh.axes:
         logger.info(f"Axis {ax.name}: {ax.edges}")
 
-    num_yield = numh[{"vars": 0}].sum()
-    denom_yield = (
-        minnloh.sum() if minnloh.axes.name[-1] != "vars" else minnloh[..., 0].sum()
-    )
+    index = {"charge": -1j} if args.duplicateWminus else {"charge": 0}
+    if "vars" in minnloh.axes.name:
+        index["vars"] = 0
+
+    denom_yield = minnloh[index].sum()
+    index["vars"] = 0
+    num_yield = numh[index].sum()
     to_val = lambda x: x.value if hasattr(x, "value") else x
     norm_ratio = to_val(num_yield) / to_val(denom_yield)
 

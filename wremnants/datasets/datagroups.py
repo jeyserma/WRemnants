@@ -1310,6 +1310,12 @@ class Datagroups(object):
         ]
         procs_to_add = self.expandProcesses(procs_to_add)
 
+        if all(x not in self.groups.keys() for x in procs_to_add):
+            logger.warning(
+                f"Did not find processes {procs_to_add}! Skipping systematic {name}"
+            )
+            return
+
         if preOp:
             preOpMap = {
                 n: preOp
@@ -1449,6 +1455,8 @@ class Datagroups(object):
 
         def skipEntryDictToArray(h, skipEntry, axes):
             naxes = len(axes)
+
+            logger.debug(f"SkipEntry is {skipEntry}")
 
             if type(skipEntry) == dict:
                 skipEntryArr = np.full(naxes, -1, dtype=object)
