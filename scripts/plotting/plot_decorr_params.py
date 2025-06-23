@@ -357,6 +357,12 @@ if __name__ == "__main__":
             df_p["yticks"] = (
                 df_p["run"].apply(lambda x: str(axis_ranges[x])).astype(str)
             )
+        elif "phi" in axes:
+            nPhiBins = df.shape[0]
+            axis_ranges = {i: rf"$\phi^{{\mu}}$ bin {i}" for i in range(nPhiBins)}
+            df_p["yticks"] = (
+                df_p["phi"].apply(lambda x: str(axis_ranges[x])).astype(str)
+            )
         else:
             # otherwise just take noi name
             df_p["yticks"] = df_p["Names"]
