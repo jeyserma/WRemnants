@@ -32,6 +32,7 @@ axis_helicity_multidim = hist.axis.Integer(
 def make_helicity_weight_helper(
     is_z=False,
     filename=f"{common.data_dir}/angularCoefficients/w_z_helicity_xsecs_theoryAgnosticBinning_scetlib_dyturboCorr_maxFiles_m1.hdf5",
+    rebi_ptVgen=False,
 ):
 
     with h5py.File(filename, "r") as ff:
@@ -67,6 +68,8 @@ def make_helicity_weight_helper(
     # histogram has to be without errors to load the tensor directly
     corrh_noerrs = hist.Hist(*corrh.axes, storage=hist.storage.Double())
     corrh_noerrs.values(flow=True)[...] = corrh.values(flow=True)
+    if rebi_ptVgen:
+        corrh_noerrs = corrh_noerrs[{"ptVgen": hist.rebin(2)}]
 
     return makeCorrectionsTensor(
         corrh_noerrs, ROOT.wrem.WeightByHelicityHelper, tensor_rank=1

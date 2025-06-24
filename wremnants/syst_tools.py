@@ -1,7 +1,9 @@
 import collections.abc
+import pickle
 import re
 
 import hist
+import lz4.frame
 import numpy as np
 import ROOT
 
@@ -1910,6 +1912,8 @@ def add_muon_efficiency_unc_hists(
             "tnpUT0",
             "tnpCharge0",
         ]  # passIso0 required only for iso stat variations, added later
+        if not smooth3D:
+            muvars_stat.remove("tnpUT0")
         muon_columns_stat_trig = [f"trigMuons_{v}" for v in muvars_stat]
         muon_columns_stat_nonTrig = [f"nonTrigMuons_{v}" for v in muvars_stat]
 
@@ -1922,6 +1926,8 @@ def add_muon_efficiency_unc_hists(
             "tnpCharge0",
             "passIso0",
         ]
+        if not smooth3D:
+            muvars_syst.remove("tnpUT0")
         muon_columns_syst_trig = [f"trigMuons_{v}" for v in muvars_syst]
         muon_columns_syst_nonTrig = [f"nonTrigMuons_{v}" for v in muvars_syst]
 
@@ -2511,76 +2517,20 @@ def add_helicity_hists(
     # below logic only valid for specific columns
     if cols == ["massVgen", "absYVgen", "ptVgen", "chargeVgen"]:
 
-        df = df.Define(
-            "helicity_xsecs_scale_lhe_tensor",
-            "wrem::makeHelicityMomentScaleTensor(csSineCosThetaPhilhe, scaleWeights_tensor, nominal_weight)",
-        )
-        lhe_cols = ["massVlhe", "absYVlhe", "ptVlhe", "chargeVlhe"]
-        helicity_xsecs_scale_lhe = df.HistoBoost(
-            f"{base_name}_helicity_xsecs_scale_lhe",
-            axes,
-            [*lhe_cols, "helicity_xsecs_scale_lhe_tensor"],
-            tensor_axes=[axis_helicity, *theory_tools.scale_tensor_axes],
-            storage=storage,
-        )
-        results.append(helicity_xsecs_scale_lhe)
-
-        df = df.Define(
-            "helicity_xsecs_scale_hardProcess_tensor",
-            "wrem::makeHelicityMomentScaleTensor(csSineCosThetaPhihardProcess, scaleWeights_tensor, nominal_weight)",
-        )
-        hardProcess_cols = [
-            "massVhardProcess",
-            "absYVhardProcess",
-            "ptVhardProcess",
-            "chargeVhardProcess",
-        ]
-        helicity_xsecs_scale_hardProcess = df.HistoBoost(
-            f"{base_name}_helicity_xsecs_scale_hardProcess",
-            axes,
-            [*hardProcess_cols, "helicity_xsecs_scale_hardProcess_tensor"],
-            tensor_axes=[axis_helicity, *theory_tools.scale_tensor_axes],
-            storage=storage,
-        )
-        results.append(helicity_xsecs_scale_hardProcess)
-
-        df = df.Define(
-            "helicity_xsecs_scale_postShower_tensor",
-            "wrem::makeHelicityMomentScaleTensor(csSineCosThetaPhipostShower, scaleWeights_tensor, nominal_weight)",
-        )
-        postShower_cols = [
-            "massVpostShower",
-            "absYVpostShower",
-            "ptVpostShower",
-            "chargeVpostShower",
-        ]
-        helicity_xsecs_scale_postShower = df.HistoBoost(
-            f"{base_name}_helicity_xsecs_scale_postShower",
-            axes,
-            [*postShower_cols, "helicity_xsecs_scale_postShower_tensor"],
-            tensor_axes=[axis_helicity, *theory_tools.scale_tensor_axes],
-            storage=storage,
-        )
-        results.append(helicity_xsecs_scale_postShower)
-
-        df = df.Define(
-            "helicity_xsecs_scale_postBeamRemnants_tensor",
-            "wrem::makeHelicityMomentScaleTensor(csSineCosThetaPhipostBeamRemnants, scaleWeights_tensor, nominal_weight)",
-        )
-        postBeamRemnants_cols = [
-            "massVpostBeamRemnants",
-            "absYVpostBeamRemnants",
-            "ptVpostBeamRemnants",
-            "chargeVpostBeamRemnants",
-        ]
-        helicity_xsecs_scale_postBeamRemnants = df.HistoBoost(
-            f"{base_name}_helicity_xsecs_scale_postBeamRemnants",
-            axes,
-            [*postBeamRemnants_cols, "helicity_xsecs_scale_postBeamRemnants_tensor"],
-            tensor_axes=[axis_helicity, *theory_tools.scale_tensor_axes],
-            storage=storage,
-        )
-        results.append(helicity_xsecs_scale_postBeamRemnants)
+        for var in ["lhe", "hardProcess", "postShower", "postBeamRemnants"]:
+            df_var = df.Define(
+                f"helicity_xsecs_scale_{var}_tensor",
+                f"wrem::makeHelicityMomentScaleTensor(csSineCosThetaPhi{var}, scaleWeights_tensor, nominal_weight)",
+            )
+            var_cols = [f"massV{var}", f"absYV{var}", f"ptV{var}", f"chargeV{var}"]
+            helicity_xsecs_scale_var = df_var.HistoBoost(
+                f"{base_name}_helicity_xsecs_scale_{var}",
+                axes,
+                [*var_cols, f"helicity_xsecs_scale_{var}_tensor"],
+                tensor_axes=[axis_helicity, *theory_tools.scale_tensor_axes],
+                storage=storage,
+            )
+            results.append(helicity_xsecs_scale_var)
 
         # these are for theory agnostic gen fit
 
@@ -2623,3 +2573,44 @@ def add_helicity_hists(
         results.append(gen_theoryAgnostic)
 
     return df
+
+
+def scale_hist_up_down(h, scale):
+    hUp = hh.scaleHist(h, scale)
+    hDown = hh.scaleHist(h, 1 / scale)
+
+    hVar = hist.Hist(
+        *[a for a in h.axes],
+        common.down_up_axis,
+        storage=hist.storage.Weight(),
+    )
+    hVar.values(flow=True)[...] = np.stack(
+        [hDown.values(flow=True), hUp.values(flow=True)], axis=-1
+    )
+    hVar.variances(flow=True)[...] = np.stack(
+        [hDown.variances(flow=True), hUp.variances(flow=True)], axis=-1
+    )
+    return hVar
+
+
+def scale_hist_up_down_corr_from_file(h, corr_file=None, corr_hist=None):
+    # FIXME: this might not be thread safe, but it is a test for now
+    with lz4.frame.open(corr_file) as f:
+        corrs = pickle.load(f)
+    boost_corr = corrs[corr_hist]
+
+    hUp = hh.multiplyHists(h, boost_corr)
+    hDown = hh.divideHists(h, boost_corr)
+
+    hVar = hist.Hist(
+        *[a for a in h.axes],
+        common.down_up_axis,
+        storage=hist.storage.Weight(),
+    )
+    hVar.values(flow=True)[...] = np.stack(
+        [hDown.values(flow=True), hUp.values(flow=True)], axis=-1
+    )
+    hVar.variances(flow=True)[...] = np.stack(
+        [hDown.variances(flow=True), hUp.variances(flow=True)], axis=-1
+    )
+    return hVar

@@ -68,11 +68,6 @@ parser.add_argument(
     help="Apply isolation cut to triggering and not-triggering muon (in this order): -1/1 for failing/passing isolation, 0 for skipping it. If using --useDileptonTriggerSelection, then the sorting is based on the muon charge as -/+",
 )
 parser.add_argument(
-    "--addRunAxis",
-    action="store_true",
-    help="Add axis with slices of luminosity based on run numbers (for data only)",
-)
-parser.add_argument(
     "--flipEventNumberSplitting",
     action="store_true",
     help="Flip even with odd event numbers to consider the positive or negative muon as the W-like muon",
@@ -132,6 +127,15 @@ if args.useTheoryAgnosticBinning:
     axis_ptV_thag = theoryAgnostic_axes[0]
     dilepton_ptV_binning = axis_ptV_thag.edges
 
+if "yll" in args.axes:
+    # use 10 quantiles in case "yll" is used as nominal axis
+    edges_yll = common.yll_10quantiles_binning
+    edges_absYll = edges_yll[len(edges_yll) // 2 :]
+    axis_yll = hist.axis.Variable(edges_yll, name="yll")
+    axis_absYll = hist.axis.Variable(edges_absYll, name="absYll", underflow=False)
+else:
+    axis_yll = hist.axis.Regular(20, -2.5, 2.5, name="yll")
+    axis_absYll = hist.axis.Regular(10, 0.0, 2.5, name="absYll", underflow=False)
 
 # available axes for dilepton validation plots
 all_axes = {
@@ -166,8 +170,8 @@ all_axes = {
         ],
         name="mll",
     ),
-    "yll": hist.axis.Regular(20, -2.5, 2.5, name="yll"),
-    "absYll": hist.axis.Regular(10, 0.0, 2.5, name="absYll", underflow=False),
+    "yll": axis_yll,
+    "absYll": axis_absYll,
     "ptll": hist.axis.Variable(dilepton_ptV_binning, name="ptll", underflow=False),
     "etaPlus": hist.axis.Variable([-2.4, -1.2, -0.3, 0.3, 1.2, 2.4], name="etaPlus"),
     "etaMinus": hist.axis.Variable([-2.4, -1.2, -0.3, 0.3, 1.2, 2.4], name="etaMinus"),
@@ -276,8 +280,6 @@ if args.csVarsHist:
         underflow=False,
         overflow=False,
     )
-    # 10 quantiles
-    all_axes["yll"] = hist.axis.Variable(common.yll_10quantiles_binning, name="yll")
 
     quantile_file = f"{common.data_dir}/angularCoefficients/mz_dilepton_scetlib_dyturboCorr_maxFiles_m1_csQuantiles.hdf5"
     quantile_helper_csVars = make_quantile_helper(
@@ -302,6 +304,7 @@ if args.unfolding:
         weightsByHelicity_helper_unfolding = helicity_utils.make_helicity_weight_helper(
             is_z=True,
             filename=f"{common.data_dir}/angularCoefficients/w_z_helicity_xsecs_scetlib_dyturboCorr_maxFiles_m1_unfoldingBinning.hdf5",
+            rebi_ptVgen=True,
         )
 
     unfolding_axes = {}
@@ -351,9 +354,17 @@ muon_prefiring_helper, muon_prefiring_helper_stat, muon_prefiring_helper_syst = 
     muon_prefiring.make_muon_prefiring_helpers(era=era)
 )
 
-qcdScaleByHelicity_helper = theory_corrections.make_qcd_uncertainty_helper_by_helicity(
-    is_z=True
-)
+
+if args.unfolding and add_helicity_axis:
+    qcdScaleByHelicity_helper = theory_corrections.make_qcd_uncertainty_helper_by_helicity(
+        is_z=True,
+        filename=f"{common.data_dir}/angularCoefficients/w_z_helicity_xsecs_scetlib_dyturboCorr_maxFiles_m1_unfoldingBinning.hdf5",
+        rebi_ptVgen=False,
+    )
+else:
+    qcdScaleByHelicity_helper = (
+        theory_corrections.make_qcd_uncertainty_helper_by_helicity(is_z=True)
+    )
 
 # extra axes which can be used to label tensor_axes
 if args.binnedScaleFactors:

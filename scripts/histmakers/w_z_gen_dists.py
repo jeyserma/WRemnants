@@ -896,12 +896,8 @@ write_analysis_output(
 # of these histograms, so skip them in that case
 if not args.addHelicityAxis and not args.skipHelicityXsecs:
     logger.info("Writing out helicity cross sections")
-    z_helicity_xsecs = None
-    w_helicity_xsecs = None
 
-    z_helicity_xsecs_lhe = None
-    w_helicity_xsecs_lhe = None
-
+    helicity_xsecs_out = {}
     for dataset in datasets:
         name = dataset.name
         if "nominal_gen_helicity_xsecs_scale" not in resultdict[name]["output"]:
@@ -909,42 +905,70 @@ if not args.addHelicityAxis and not args.skipHelicityXsecs:
                 f"Failed to find nominal_gen_helicity_xsecs_scale hist for proc {name}. Skipping!"
             )
             continue
-        helicity_xsecs = resultdict[name]["output"][
-            "nominal_gen_helicity_xsecs_scale"
-        ].get()
-        helicity_xsecs_lhe = resultdict[name]["output"][
-            "nominal_gen_helicity_xsecs_scale_lhe"
-        ].get()
-        if name in ["ZmumuPostVFP", "Zee_MiNNLO", "Zmumu_MiNNLO"]:
-            if z_helicity_xsecs is None:
-                z_helicity_xsecs = helicity_xsecs
-                z_helicity_xsecs_lhe = helicity_xsecs_lhe
+        for var in ["", "lhe", "hardProcess", "postShower", "postBeamRemnants"]:
+            if name not in [
+                "ZmumuPostVFP",
+                "Zee_MiNNLO",
+                "Zmumu_MiNNLO",
+                "WplusmunuPostVFP",
+                "WminusmunuPostVFP",
+            ]:
+                continue
+
+            if var == "":
+                suffix = ""
             else:
-                z_helicity_xsecs = hh.addHists(
-                    z_helicity_xsecs, helicity_xsecs, createNew=False
-                )
-                z_helicity_xsecs_lhe = hh.addHists(
-                    z_helicity_xsecs_lhe, helicity_xsecs_lhe, createNew=False
-                )
-        elif name in ["WplusmunuPostVFP", "WminusmunuPostVFP"]:
-            if w_helicity_xsecs is None:
-                w_helicity_xsecs = helicity_xsecs
-                w_helicity_xsecs_lhe = helicity_xsecs_lhe
+                suffix = f"_{var}"
+
+            helicity_xsecs = resultdict[name]["output"][
+                f"nominal_gen_helicity_xsecs_scale{suffix}"
+            ].get()
+
+            key = f"{name[0]}{suffix}"
+
+            if key not in helicity_xsecs_out.keys():
+                helicity_xsecs_out[key] = helicity_xsecs
             else:
-                w_helicity_xsecs = hh.addHists(
-                    w_helicity_xsecs, helicity_xsecs, createNew=False
-                )
-                w_helicity_xsecs_lhe = hh.addHists(
-                    w_helicity_xsecs_lhe, helicity_xsecs_lhe, createNew=False
+                helicity_xsecs_out[key] = hh.addHists(
+                    helicity_xsecs_out[key], helicity_xsecs, createNew=False
                 )
 
-    helicity_xsecs_out = {}
-    if z_helicity_xsecs:
-        helicity_xsecs_out["Z"] = z_helicity_xsecs
-        helicity_xsecs_out["Z_lhe"] = z_helicity_xsecs_lhe
-    if w_helicity_xsecs:
-        helicity_xsecs_out["W"] = w_helicity_xsecs
-        helicity_xsecs_out["W_lhe"] = w_helicity_xsecs_lhe
+        # Different PDF set predictions with alphaS variations
+        for var in [
+            "CT18ZalphaS002",
+            "MSHT20alphaS002",
+            "NNPDF31alphaS002",
+            "HERAPDF20extalphaS002",
+            "MSHT20an3loalphaS002",
+            "PDF4LHC21alphaS001",
+            "HERAPDF20alphaS002",
+            "CT18alphaS002",
+            "NNPDF40alphaS001",
+        ]:
+            if name not in [
+                "ZmumuPostVFP",
+                "Zee_MiNNLO",
+                "Zmumu_MiNNLO",
+                "WplusmunuPostVFP",
+                "WminusmunuPostVFP",
+            ]:
+                continue
+
+            histname = f"nominal_gen_helicity_nominal_gen_pdf{var}"
+            if histname not in resultdict[name]["output"].keys():
+                continue
+
+            helicity_xsecs = resultdict[name]["output"][histname].get()
+
+            key = f"{name[0]}_{var}"
+
+            if key not in helicity_xsecs_out.keys():
+                helicity_xsecs_out[key] = helicity_xsecs
+            else:
+                helicity_xsecs_out[key] = hh.addHists(
+                    helicity_xsecs_out[key], helicity_xsecs, createNew=False
+                )
+
     if helicity_xsecs_out:
         outfname = "w_z_helicity_xsecs"
         if args.signedY:

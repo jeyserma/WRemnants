@@ -160,6 +160,7 @@ axis_labels = {
     "dxy": r"$\mathit{d}_\mathrm{xy}$ (cm)",
     "iso": {"label": r"$I$", "unit": "GeV"},
     "relIso": r"$I_\mathrm{rel}$",
+    "run": r"Run range",
     # "ewPTll": r"$\mathrm{Post\ FSR}\ p_\mathrm{T}^{\mu\mu}$",
     # "ewMll": r"$\mathrm{Post\ FSR}\ m^{\mu\mu}$",
     # "ewYll": r"$\mathrm{Post\ FSR}\ Y^{\mu\mu}$",
@@ -397,6 +398,7 @@ translate_selection = {
     "qGen": lambda x: rf"$\mathit{{q}}^\mu = {int(x)}$",
     "absYVGen": lambda l, h: rf"${round(l,3)} < |Y| < {round(h,3)}$",
     "helicitySig": lambda x: rf"$\sigma_{{{'UL' if x==-1 else int(x)}}}$",
+    "ai": lambda x: rf"$A_{int(x)}$",
 }
 
 impact_labels = {
