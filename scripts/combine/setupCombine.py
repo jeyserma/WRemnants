@@ -4,10 +4,10 @@ import math
 
 import hist
 import numpy as np
+import rabbit.debugdata
+import rabbit.io_tools
+from rabbit import tensorwriter
 
-import combinetf2.debugdata
-import combinetf2.io_tools
-from combinetf2 import tensorwriter
 from utilities import common, parsing
 from wremnants import (
     combine_helpers,
@@ -1166,8 +1166,8 @@ def setup(
         datagroups.addPseudodataHistogramFakes(pseudodata, pseudodataGroups)
     if args.pseudoData:
         if args.pseudoDataFitInputFile:
-            indata = combinetf2.debugdata.FitInputData(args.pseudoDataFitInputFile)
-            debugdata = combinetf2.debugdata.FitDebugData(indata)
+            indata = rabbit.debugdata.FitInputData(args.pseudoDataFitInputFile)
+            debugdata = rabbit.debugdata.FitDebugData(indata)
             datagroups.addPseudodataHistogramsFitInput(
                 debugdata,
                 args.pseudoData,
@@ -1211,7 +1211,7 @@ def setup(
 
     if args.doStatOnly and isUnfolding and not isPoiAsNoi:
         # At least one nuisance parameter is needed to run combine impacts (e.g. needed for unfolding postprocessing chain)
-        # TODO: fix combineTF2 to run w/o nuisances
+        # TODO: fix rabbit to run w/o nuisances
         datagroups.addNormSystematic(
             name="dummy",
             processes=["MCnoQCD"],
@@ -2331,7 +2331,7 @@ if __name__ == "__main__":
             logger.warning(
                 "Theoryfit for more than one channels is currently experimental"
             )
-        fitresult, fitresult_meta = combinetf2.io_tools.get_fitresult(
+        fitresult, fitresult_meta = rabbit.io_tools.get_fitresult(
             args.fitresult[0], meta=True
         )
 
@@ -2348,7 +2348,7 @@ if __name__ == "__main__":
                 for c in fitresult_meta["meta_info_input"]["channel_info"].values()
             ]
 
-        fitresult_hist, fitresult_cov = combinetf2.io_tools.get_postfit_hist_cov(
+        fitresult_hist, fitresult_cov = rabbit.io_tools.get_postfit_hist_cov(
             fitresult, channels=channels
         )
 

@@ -331,7 +331,7 @@ def main():
     )
 
     if args.duplicateWminus:
-        corrh_unc.view()[..., 1, :] = corrh_unc.view()[..., 0, :]
+        corrh_unc.view()[..., 1, 0] = corrh_unc.view()[..., 0, 0]
 
     nom_sum = lambda x: x.sum() if "vars" not in x.axes.name else x[{"vars": 0}].sum()
     logger.info(
