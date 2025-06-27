@@ -1,11 +1,11 @@
 import argparse
 import hist
 import numpy as np
-from combinetf2 import tensorwriter
+from rabbit import tensorwriter
 import pickle
 import lz4.frame
-import combinetf2
-import combinetf2.io_tools
+import rabbit
+import rabbit.io_tools
 from wremnants import theory_corrections
 from wums import boostHistHelpers as hh
 from utilities import common
@@ -17,16 +17,12 @@ parser.add_argument(
     help="Input unfolded fit result",
 )
 parser.add_argument(
-    "--predFile",
-    type=str,
-    default=f"{common.data_dir}/TheoryCorrections/scetlib_dyturboCorrZ.pkl.lz4",
-    help="File containing theory predictions for the Z ptVgen and absYVgen",
-)
-parser.add_argument(
     "--predGenerator",
     type=str,
     default=f"scetlib_dyturbo",
-    help="Generator used for the predictions. Expect the prediction histogram to be named as <generator>_hist",
+    help="Generator used for the predictions. "
+    "Expect the prediction file to be named as <generator>CorrZ.pkl.lz4. "
+    "Expect the prediction histogram to be named as <generator>_hist",
 )
 parser.add_argument("-o", "--output", default="./", help="output directory")
 parser.add_argument("--outname", default="carrot", help="output file name")
@@ -64,21 +60,18 @@ parser.add_argument(
 args = parser.parse_args()
 
 
-# load in data histogram and covariance matrix
-# TODO: test difference between files
-fitresult, meta = combinetf2.io_tools.get_fitresult(
-    args.infile, result='asimov', meta=True
-)
-h_data = fitresult['physics_models']['Select helicitySig:slice(0,1)']['channels']['ch0_masked']['hist_postfit_inclusive'].get()[:,:,0] # helicity UL
-h_data_cov = fitresult['physics_models']['Select helicitySig:slice(0,1)']['hist_postfit_inclusive_cov'].get()
-
 # Build tensor
 writer = tensorwriter.TensorWriter(
     sparse=args.sparse,
     systematic_type=args.systematicType,
 )
 
-# add data
+# load in data histogram and covariance matrix
+fitresult, meta = rabbit.io_tools.get_fitresult(
+    args.infile, result='asimov', meta=True
+)
+h_data = fitresult['physics_models']['Select helicitySig:slice(0,1)']['channels']['ch0_masked']['hist_postfit_inclusive'].get()[:,:,0] # grabbing the unpolarized term
+h_data_cov = fitresult['physics_models']['Select helicitySig:slice(0,1)']['hist_postfit_inclusive_cov'].get()
 writer.add_channel(h_data.axes, "ch0")
 writer.add_data(h_data, "ch0")
 writer.add_data_covariance(h_data_cov) # run with --externalCovariance
@@ -88,7 +81,11 @@ lumi = 16800
 scale = lumi
 
 # add background
-h_sig = theory_corrections.load_corr_hist(args.predFile, "Z", f"{args.predGenerator}_hist")[{'vars': 'pdf0'}].project("qT", "absY")
+h_sig = theory_corrections.load_corr_hist(
+    f"{common.data_dir}/TheoryCorrections/{args.predGenerator}CorrZ.pkl.lz4",
+    "Z",
+    f"{args.predGenerator}_hist"
+)[{'vars': 'pdf0'}].project("qT", "absY")
 h_sig = hh.rebinHist(h_sig, 'qT', h_data.axes[0].edges)
 h_sig = hh.rebinHist(h_sig, 'absY', h_data.axes[1].edges)
 h_sig = h_sig * scale
@@ -119,14 +116,70 @@ writer.add_process(h_sig, "Zmumu", "ch0", signal=False)
 #     groups=["helicity_shower_kt", "angularCoeffs", "theory"],
 # )
 
-print("Now at scetlib_dyturbo")
+# alphaS variation
+if args.predGenerator == "scetlib_dyturbo" or True:
+    theory_corrs = [
+        "scetlib_dyturboCT18Z_pdfas",
+    ]
+    corr_helpers = theory_corrections.load_corr_helpers(
+        "Z", theory_corrs, make_tensor=False, minnlo_ratio=False
+    )
+    h = corr_helpers['Z']['scetlib_dyturboCT18Z_pdfas']*scale
+    h = h.project("qT", "absY", "vars")
+    h = hh.rebinHist(h, 'qT', h_data.axes[0].edges)
+    h = hh.rebinHist(h, 'absY', h_data.axes[1].edges)
+    h_syst_up = h[{'vars': 2}]
+    h_syst_down = h[{'vars': 1}]
+    writer.add_systematic(
+        [h_syst_up, h_syst_down],
+        'pdfAlphaS',
+        "Zmumu",
+        "ch0",
+        noi=True,
+        constrained=False,
+        symmetrize='average',
+        kfactor=1.5/2.0
+    )
+elif args.predGenerator == "scetlib_nnlojetN4p0LLN3LO":
+    # alphaS variation N4p0LLN3LO
+    fname = f"{common.data_dir}/TheoryCorrections//{args.predGenerator}_pdfasCorrZ.pkl.lz4"
+    corrh = theory_corrections.load_corr_hist(
+        fname,
+        "Z",
+        f"{args.predGenerator}_pdfas_minnlo_ratio"
+    ).project("qT", "absY", "vars")
+    minnlo_ref = theory_corrections.load_corr_hist(
+        fname,
+        "Z",
+        "minnlo_ref_hist"
+    ).project("qT", "absY")
+    print(corrh)
+    print(minnlo_ref)
+    vals = np.einsum('ijk,ij->ijk', corrh.values(), minnlo_ref.values())
+    corrh[...] = vals * scale
+    corrh = hh.rebinHist(corrh, 'qT', h_data.axes[0].edges)
+    corrh = hh.rebinHist(corrh, 'absY', h_data.axes[1].edges)
+    h_syst_up = corrh[{'vars': 2}]
+    h_syst_down = corrh[{'vars': 1}]
+    writer.add_systematic(
+        [h_syst_up, h_syst_down],
+        'pdfAlphaS',
+        "Zmumu",
+        "ch0",
+        noi=True,
+        constrained=False,
+        symmetrize='average',
+        #kfactor=1.5/2.0
+    )
+
+print(f"Now at {args.predGenerator}")
 theory_corrs = [
-    "scetlib_dyturbo",
+    args.predGenerator,
 ]
 corr_helpers = theory_corrections.load_corr_helpers(
     "Z", theory_corrs, make_tensor=False, minnlo_ratio=False
 )
-h = corr_helpers['Z']['scetlib_dyturbo']*scale
+h = corr_helpers['Z'][args.predGenerator]*scale
 h = h.project("qT", "absY", "vars")
 h = hh.rebinHist(h, 'qT', h_data.axes[0].edges)
 h = hh.rebinHist(h, 'absY', h_data.axes[1].edges)
@@ -207,6 +260,7 @@ for var in transition_FO_uncs:
         groups=["resumTransitionFOScale", "resum", "pTModeling", "theory"],
     )
 
+# PDF uncertainties
 print("Now at scetlib_dyturboCT18ZVars")
 theory_corrs = [
     "scetlib_dyturboCT18ZVars",
@@ -232,30 +286,7 @@ for ivar in range(1, len(h.axes[-1]), 2):
         groups=["pdfCT18Z", f"pdfCT18ZNoAlphaS", "theory"],
     )
 
-print("Now at scetlib_dyturboCT18Z_pdfas")
-theory_corrs = [
-    "scetlib_dyturboCT18Z_pdfas",
-]
-corr_helpers = theory_corrections.load_corr_helpers(
-    "Z", theory_corrs, make_tensor=False, minnlo_ratio=False
-)
-h = corr_helpers['Z']['scetlib_dyturboCT18Z_pdfas']*scale
-h = h.project("qT", "absY", "vars")
-h = hh.rebinHist(h, 'qT', h_data.axes[0].edges)
-h = hh.rebinHist(h, 'absY', h_data.axes[1].edges)
-h_syst_up = h[{'vars': 2}]
-h_syst_down = h[{'vars': 1}]
-writer.add_systematic(
-    [h_syst_up, h_syst_down],
-    'pdfAlphaS',
-    "Zmumu",
-    "ch0",
-    noi=True,
-    constrained=False,
-    symmetrize='average',
-    kfactor=1.5/2.0
-)
-
+# quark mass effects
 print("Now at MSHT20mcrangeCorrZ")
 theory_corrs = [
     "scetlib_dyturboMSHT20mcrange",
@@ -289,72 +320,61 @@ writer.add_systematic(
     groups=["bcQuarkMass", "pTModeling", "theory"],
 )
 
-# TODO fix this
-print("Now at powhegFOEW")
-theory_corrs = [
-    "powhegFOEW",
-]
-corr_helpers = theory_corrections.load_corr_helpers(
-    "Z", theory_corrs, make_tensor=False
-)
-h = corr_helpers['Z']['powhegFOEW']
-print(h[{'weak': 'weak_default'}])
-print(h_data)
-h = h.project("absYVlhe", "weak")[{'weak': 'weak_ps'}]
-print(h)
-h = hh.rebinHist(h, 'absYVlhe', [0, 0.5, 1, 1.5, 2.5])
-print(h_sig.project("absY"))
-denom = h_sig.project("absY")
-denom = hh.rebinHist(denom, 'absY', [0, 0.5, 1, 1.5, 2.5])
-print(denom.values()/h.values())
-exit()
+# EW corrections
+# TODO unclear how to handle these
+# print("Now at powhegFOEW")
+# theory_corrs = [
+#     "powhegFOEW",
+# ]
+# corr_helpers = theory_corrections.load_corr_helpers(
+#     "Z", theory_corrs, make_tensor=False
+# )
+# h = corr_helpers['Z']['powhegFOEW'].project("massVlhe", "absYVlhe", "weak")
+# h = h[{'massVlhe': slice(60j, 120j)}]
+# h_sig_Q_absY_qT = theory_corrections.load_corr_hist(args.predFile, "Z", f"{args.predGenerator}_hist")[{'vars': 'pdf0'}].project("Q", "absY", "qT")
+# var_qT_absY_Q = np.einsum('ijk,ijm->ijkm', h.values(), h_sig_Q_absY_qT.values())
+# h_var = hist.Hist(
+#     h_sig_Q_absY_qT.axes[0], # mass
+#     h_sig_Q_absY_qT.axes[1], # absY
+#     h.axes[2],               # EW variations
+#     h_sig_Q_absY_qT.axes[2], # qT
+# )
+# h_var[...] = var_qT_absY_Q
+# h_var = h_var.project("qT", "absY", "weak") # now integrate over mass
+# h_var = hh.rebinHist(h_var, 'qT', h_data.axes[0].edges)
+# h_var = hh.rebinHist(h_var, 'absY', h_data.axes[1].edges)
+# writer.add_systematic(
+#     h[{'weak': 'weak_ps'}],
+#     'weak_ps',
+#     "Zmumu",
+#     "ch0",
+#     mirror=True,
+#     groups=[f"theory_ew_virtZ_scheme", "theory_ew", "theory"],
+# )
+# writer.add_systematic(
+#     h[{'weak': 'weak_aem'}],
+#     'weak_aem',
+#     "Zmumu",
+#     "ch0",
+#     mirror=True,
+#     groups=[f"theory_ew_virtZ_scheme", "theory_ew", "theory"],
+# )
+# writer.add_systematic(
+#     h[{'weak': 'weak_default'}],
+#     'weak_default',
+#     "Zmumu",
+#     "ch0",
+#     mirror=True,
+#     groups=[f"theory_ew_virtZ_corr", "theory_ew", "theory"],
+# )
 
-vals = h.values()
-vals = np.vstack([vals[0, :], vals])
-vals = np.broadcast_to(vals, (len(h_data.axes[0]), vals.shape[0], vals.shape[1]))
-denom = np.broadcast_to(denom, vals.shape[0:2])
-vals = np.array([vals[:,:,i]/denom for i in range(vals.shape[2])])
-print(vals)
-# vals = (1+vals) * h_data.values().reshape(*h_data.values().shape, 1)
-h = hist.Hist(
-    h.axes[1],      # vars
-    h_data.axes[0], # pT
-    h_data.axes[1], # absY
-)
-h[...] = vals
-
-writer.add_systematic(
-    h[{'weak': 'weak_ps'}],
-    'weak_ps',
-    "Zmumu",
-    "ch0",
-    mirror=True,
-    groups=[f"theory_ew_virtZ_scheme", "theory_ew", "theory"],
-)
-writer.add_systematic(
-    h[{'weak': 'weak_aem'}],
-    'weak_aem',
-    "Zmumu",
-    "ch0",
-    mirror=True,
-    groups=[f"theory_ew_virtZ_scheme", "theory_ew", "theory"],
-)
-
-writer.add_systematic(
-    h[{'weak': 'weak_default'}],
-    'weak_default',
-    "Zmumu",
-    "ch0",
-    mirror=True,
-    groups=[f"theory_ew_virtZ_corr", "theory_ew", "theory"],
-)
-
+# ISR corrections
 print("Now at pythiaew_ISR")
 theory_corrs = [
     "pythiaew_ISR",
 ]
-fname = f"{common.data_dir}/TheoryCorrections/pythiaew_ISRCorr{proc[0]}.pkl.lz4"
-h = theory_corrections.load_corr_hist(fname, proc[0], f"{theory_corrs[0]}_minnlo_ratio") # not actually minnlo ratio
+fname = f"{common.data_dir}/TheoryCorrections/pythiaew_ISRCorrZ.pkl.lz4"
+h = theory_corrections.load_corr_hist(fname, "Z", f"{theory_corrs[0]}_minnlo_ratio") # not actually minnlo ratio
 h = h.project("ptVgen", "absYVgen", "systIdx")
 h = h[{'systIdx': 1}] 
 h = hh.rebinHist(h, 'ptVgen', h_data.axes[0].edges)
@@ -370,9 +390,7 @@ writer.add_systematic(
     groups=[f"theory_ew_pythiaew_ISR", "theory_ew", "theory"],
 )
 
-
-
-
+# write output
 directory = args.output
 if directory == "":
     directory = "./"
