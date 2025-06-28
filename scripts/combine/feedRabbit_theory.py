@@ -9,6 +9,55 @@ import rabbit.io_tools
 from wremnants import theory_corrections
 from wums import boostHistHelpers as hh
 from utilities import common
+import h5py
+from utilities.io_tools import input_tools
+import hist
+import copy
+
+def calculate_ais_from_helicities_hist(h_hels):
+    """
+    Calculate A_i histogram from helicities histogram.
+    Assuming as input a histogram with the helicities as the last dimension,
+    with the first element being the sigma_UL.
+    Returns a the A_i's histogram.
+    """
+
+    h_hels = copy.deepcopy(h_hels) # pass by value
+    vals = copy.copy(h_hels.values())
+    vars = copy.copy(h_hels.variances()) # need to copy in case the storage is hist.storage.Double
+
+    # A_i = sigma_i/sigma_UL
+    num = vals[..., 1:]
+    den = vals[..., 0][..., np.newaxis]
+    vals[..., 1:] = np.where(
+        den == 0,
+        0.0,
+        num / den
+    )
+
+    # treat these as poisson uncorrelated rv's
+    if np.any(vars):
+
+        print(np.max(vars[..., 0][..., np.newaxis]**0.5/den))
+        print(np.max(vars[..., 1:]**0.5/num))
+
+        vars[...,1:] = np.where(
+            vals[...,0][..., np.newaxis] == 0,
+            0.0,
+            den**-2 * vars[..., 1:] + \
+            num**2 * den**-4 * vars[..., 0][..., np.newaxis]
+        )
+        
+    h_out = hist.Hist(
+        *h_hels.axes[:-1],
+        hist.axis.Integer(0,8,name="ais"),
+        storage=hist.storage.Weight() if np.any(vars) else hist.storage.Double()
+    )
+    h_out.values()[...] = vals[...,1:]
+    if np.any(vars): h_out.variances()[...] = vars[...,1:]
+
+    return h_out
+
 
 parser = argparse.ArgumentParser()
 parser.add_argument(
@@ -17,12 +66,32 @@ parser.add_argument(
     help="Input unfolded fit result",
 )
 parser.add_argument(
+    "--fitresultModel",
+    type=str,
+    default='Select helicitySig:slice(0,1)'
+)
+parser.add_argument(
     "--predGenerator",
     type=str,
     default=f"scetlib_dyturbo",
-    help="Generator used for the predictions. "
+    help="Generator used for the sigmaUL predictions. "
     "Expect the prediction file to be named as <generator>CorrZ.pkl.lz4. "
     "Expect the prediction histogram to be named as <generator>_hist",
+)
+parser.add_argument(
+    "--predAiFile",
+    type=str,
+    default=f"/ceph/submit/data/group/cms/store/user/lavezzo/alphaS//250627_angularCoefficients/w_z_helicity_xsecs_scetlib_dyturboCorr_maxFiles_m1_alphaSunfoldingBinning.hdf5",
+    help="Gen file used for the Ai predictions."
+    "Will be stitched with the --predGenerator file."
+)
+parser.add_argument(
+    "--angularCoeffs",
+    action="store_true",
+    default=False,
+    help="Fit the angular coefficients."
+    "Predictions of the Ai's from --predAiFile."
+    "Predictions of the sigma_UL from infile."
 )
 parser.add_argument("-o", "--output", default="./", help="output directory")
 parser.add_argument("--outname", default="carrot", help="output file name")
@@ -63,17 +132,32 @@ args = parser.parse_args()
 # Build tensor
 writer = tensorwriter.TensorWriter(
     sparse=args.sparse,
-    systematic_type=args.systematicType,
+    systematic_type='normal' if args.angularCoeffs else args.systematicType,
+    allow_negative_expectation=args.angularCoeffs
 )
 
 # load in data histogram and covariance matrix
 fitresult, meta = rabbit.io_tools.get_fitresult(
     args.infile, result='asimov', meta=True
 )
-h_data = fitresult['physics_models']['Select helicitySig:slice(0,1)']['channels']['ch0_masked']['hist_postfit_inclusive'].get()[:,:,0] # grabbing the unpolarized term
-h_data_cov = fitresult['physics_models']['Select helicitySig:slice(0,1)']['hist_postfit_inclusive_cov'].get()
-writer.add_channel(h_data.axes, "ch0")
-writer.add_data(h_data, "ch0")
+
+if args.angularCoeffs:
+    try:
+        h_data_ai = fitresult['physics_models'][args.fitresultModel]['channels']['AngularCoefficients ch0_masked ptVGen:rebin(0,3,6,9,12,16,20,24,28,33,44)_ch0_masked']['hist_postfit_inclusive'].get()
+        h_data = fitresult['physics_models'][args.fitresultModel]['channels']['Select helicitySig:slice(0,1)_ch0_masked']['hist_postfit_inclusive'].get()[:,:,0]
+        h_data_cov = fitresult['physics_models'][args.fitresultModel]['hist_postfit_inclusive_cov'].get()
+    except KeyError:
+        raise KeyError(f"Couldn't find {args.fitresultModel}. Available physics models are: {",".join(fitresult['physics_models'].keys())}")
+    writer.add_channel(h_data_ai.axes, "chAis")
+    writer.add_data(h_data_ai, "chAis")
+    writer.add_channel(h_data.axes, "chSigmaUL")
+    writer.add_data(h_data, "chSigmaUL")
+else:
+    print( fitresult['physics_models'].keys())
+    h_data = fitresult['physics_models'][args.fitresultModel]['channels']['ch0_masked']['hist_postfit_inclusive'].get()[:,:,0] # grabbing the unpolarized term
+    h_data_cov = fitresult['physics_models'][args.fitresultModel]['hist_postfit_inclusive_cov'].get()
+    writer.add_channel(h_data.axes, "chSigmaUL")
+    writer.add_data(h_data, "chSigmaUL")
 writer.add_data_covariance(h_data_cov) # run with --externalCovariance
 
 # scaling for background and variations
@@ -89,32 +173,21 @@ h_sig = theory_corrections.load_corr_hist(
 h_sig = hh.rebinHist(h_sig, 'qT', h_data.axes[0].edges)
 h_sig = hh.rebinHist(h_sig, 'absY', h_data.axes[1].edges)
 h_sig = h_sig * scale
-writer.add_process(h_sig, "Zmumu", "ch0", signal=False)
+writer.add_process(h_sig, "Zmumu", "chSigmaUL", signal=False)
+
+# if set, load in the helicity cross sections predictions from MINNLO
+if args.angularCoeffs:
+    with h5py.File(args.predAiFile, "r") as ff:
+        inputs = input_tools.load_results_h5py(ff)
+        h_sig_hels = inputs['Z']
+    h_sig_hels = h_sig_hels[{'muRfact': 1.0j}][{'muFfact': 1.0j}][{'chargeVgen': 0.0j}][{'massVgen': 90j}]
+    h_sig_hels = h_sig_hels.project("ptVgen", "absYVgen", "helicity") # re-order the axes
+    h_sig_hels *= scale
+    h_sig_hels = hh.rebinHist(h_sig_hels, "ptVgen", h_data_ai.axes[0].edges)
+    h_sig_ais = calculate_ais_from_helicities_hist(h_sig_hels)
+    writer.add_process(h_sig_ais, "Zmumu", "chAis", signal=False)
 
 # add systematic variations
-
-# TODO the corrections (in theory_corections.py) are implemented as a ratio to the UL. Does that mean that there is no uncert for UL?
-# corr_coeffs = theory_corrections.make_qcd_uncertainty_helper_by_helicity(
-#     is_z=True,
-#     filename=f"/ceph/submit/data/group/cms/store/user/lavezzo/alphaS//250617_gen/w_z_helicity_xsecs_scetlib_dyturboCorr_maxFiles_m1.hdf5",
-#     rebi_ptVgen=False,
-#     return_tensor=False,
-# )
-# corr_coeffs = corr_coeffs*scale
-# corr_coeffs = corr_coeffs.project("ptVgen", "absYVgen", "vars", "helicity", "corr")
-# corr_coeffs = corr_coeffs[{'corr': 1}]
-# corr_coeffs = corr_coeffs[{'helicity': -1.0j}]
-# corr_coeffs = corr_coeffs[{'vars': 'pythia_shower_kt'}]
-# corr_coeffs = hh.rebinHist(corr_coeffs, 'ptVgen', h_data.axes[0].edges)
-# corr_coeffs = hh.rebinHist(corr_coeffs, 'absYVgen', h_data.axes[1].edges)
-# writer.add_systematic(
-#     corr_coeffs,
-#     "pythia_shower_kt",
-#     "Zmumu",
-#     "ch0",
-#     mirror=True, 
-#     groups=["helicity_shower_kt", "angularCoeffs", "theory"],
-# )
 
 # alphaS variation
 if args.predGenerator == "scetlib_dyturbo" or True:
@@ -128,18 +201,40 @@ if args.predGenerator == "scetlib_dyturbo" or True:
     h = h.project("qT", "absY", "vars")
     h = hh.rebinHist(h, 'qT', h_data.axes[0].edges)
     h = hh.rebinHist(h, 'absY', h_data.axes[1].edges)
-    h_syst_up = h[{'vars': 2}]
-    h_syst_down = h[{'vars': 1}]
+    h_syst_down = h[{'vars': 2}]
+    h_syst_up = h[{'vars': 1}]
+
+    if args.angularCoeffs:
+        with h5py.File(args.predAiFile.replace("w_z_helicity_xsecs", "w_z_gen_dists"), "r") as ff:
+            inputs = input_tools.load_results_h5py(ff)
+            h_hels = inputs['ZmumuPostVFP']['output']['nominal_gen_helicity_nominal_gen_pdfCT18ZalphaS002'].get()
+        h_hels = h_hels.project("ptVgen", "absYVgen","alphasVar", "helicity")*scale
+        h_hels = hh.rebinHist(h_hels, "ptVgen", h_data_ai.axes[0].edges)
+        h_ais = calculate_ais_from_helicities_hist(h_hels)
+        h_syst_up_ais = h_ais[{'alphasVar': 'as0120'}]
+        h_syst_down_ais = h_ais[{'alphasVar': 'as0116'}] 
+        writer.add_systematic(
+            [h_syst_up_ais, h_syst_down_ais],
+            'pdfAlphaS',
+            "Zmumu",
+            "chAis",
+            noi=True,
+            constrained=False,
+            symmetrize='average',
+            kfactor=1.5/2.0
+        )
+
     writer.add_systematic(
         [h_syst_up, h_syst_down],
         'pdfAlphaS',
         "Zmumu",
-        "ch0",
+        "chSigmaUL",
         noi=True,
         constrained=False,
         symmetrize='average',
         kfactor=1.5/2.0
     )
+# TODO need to check this with Kenneth
 elif args.predGenerator == "scetlib_nnlojetN4p0LLN3LO":
     # alphaS variation N4p0LLN3LO
     fname = f"{common.data_dir}/TheoryCorrections//{args.predGenerator}_pdfasCorrZ.pkl.lz4"
@@ -165,11 +260,38 @@ elif args.predGenerator == "scetlib_nnlojetN4p0LLN3LO":
         [h_syst_up, h_syst_down],
         'pdfAlphaS',
         "Zmumu",
-        "ch0",
+        "chSigmaUL",
         noi=True,
         constrained=False,
         symmetrize='average',
         #kfactor=1.5/2.0
+    )
+else:
+    raise Exception("No valid configuration found for alphaS variation.")
+
+# pythia showering uncertainties
+if args.angularCoeffs:
+    print("Now at pythia_shower_kt")
+    corr_coeffs = theory_corrections.make_qcd_uncertainty_helper_by_helicity(
+        is_z=True,
+        filename=args.predAiFile,
+        rebi_ptVgen=False,
+        return_tensor=False,
+    )
+    corr_coeffs = corr_coeffs[{'vars': 'pythia_shower_kt'}]*scale
+    corr_coeffs = corr_coeffs.project("ptVgen", "absYVgen", "corr", "helicity")
+    corr_coeffs = hh.rebinHist(corr_coeffs, 'ptVgen', h_data_ai.axes[0].edges)
+    corr_coeffs = hh.rebinHist(corr_coeffs, 'absYVgen', h_data_ai.axes[1].edges)
+    corr_coeffs = hh.divideHists(corr_coeffs[{'corr': 1}],corr_coeffs[{'corr': 0}])
+    corr_coeffs = hh.multiplyHists(corr_coeffs, h_sig_hels)
+    corr_coeffs_ais = calculate_ais_from_helicities_hist(corr_coeffs)
+    writer.add_systematic(
+        corr_coeffs_ais,
+        "pythia_shower_kt",
+        "Zmumu",
+        "chAis",
+        mirror=True, 
+        groups=["helicity_shower_kt", "angularCoeffs", "theory"],
     )
 
 print(f"Now at {args.predGenerator}")
@@ -197,7 +319,7 @@ for var in corr_NP_uncs:
         [h[{'vars': var[1]}],  h[{'vars': var[0]}]],
         var[2],
         "Zmumu",
-        "ch0",
+        "chSigmaUL",
         symmetrize='average', 
         groups=["resumTNP", "resum", "pTModeling", "theory"]
     )
@@ -213,7 +335,7 @@ for var in gamma_NP_uncs:
         [h[{'vars': var[1]}],  h[{'vars': var[0]}]],
         var[2],
         "Zmumu",
-        "ch0",
+        "chSigmaUL",
         symmetrize='average', 
         groups=["resumTNP", "resum", "pTModeling", "theory"]
     )
@@ -238,7 +360,7 @@ for var in TNP_uncs:
         [h[{'vars': var[1]}],  h[{'vars': var[0]}]],
         "resumTNP_" + var[0].split('-')[0],
         "Zmumu",
-        "ch0",
+        "chSigmaUL",
         symmetrize='average', 
         groups=["resumTNP", "resum", "pTModeling", "theory"]
     )
@@ -255,7 +377,7 @@ for var in transition_FO_uncs:
         [h[{'vars': var[1]}],  h[{'vars': var[0]}]],
         var[2],
         "Zmumu",
-        "ch0",
+        "chSigmaUL",
         symmetrize='quadratic',
         groups=["resumTransitionFOScale", "resum", "pTModeling", "theory"],
     )
@@ -280,7 +402,7 @@ for ivar in range(1, len(h.axes[-1]), 2):
         [h_syst_up, h_syst_down],
         f"pdf{int((ivar+1)/2)}CT18Z",
         "Zmumu",
-        "ch0",
+        "chSigmaUL",
         symmetrize='quadratic',
         kfactor=1/1.645,
         groups=["pdfCT18Z", f"pdfCT18ZNoAlphaS", "theory"],
@@ -303,7 +425,7 @@ writer.add_systematic(
     [h[{'vars': 1}], h[{'vars': -1}]],
     "pdfMSHT20mbrange",
     "Zmumu",
-    "ch0",
+    "chSigmaUL",
     symmetrize='quadratic',
     groups=["bcQuarkMass", "pTModeling", "theory"],
 )
@@ -315,7 +437,7 @@ writer.add_systematic(
     [h[{'vars': 1}], h[{'vars': -1}]],
     "pdfMSHT20mcrange",
     "Zmumu",
-    "ch0",
+    "chSigmaUL",
     symmetrize='quadratic',
     groups=["bcQuarkMass", "pTModeling", "theory"],
 )
@@ -347,7 +469,7 @@ writer.add_systematic(
 #     h[{'weak': 'weak_ps'}],
 #     'weak_ps',
 #     "Zmumu",
-#     "ch0",
+#     "chSigmaUL",
 #     mirror=True,
 #     groups=[f"theory_ew_virtZ_scheme", "theory_ew", "theory"],
 # )
@@ -355,7 +477,7 @@ writer.add_systematic(
 #     h[{'weak': 'weak_aem'}],
 #     'weak_aem',
 #     "Zmumu",
-#     "ch0",
+#     "chSigmaUL",
 #     mirror=True,
 #     groups=[f"theory_ew_virtZ_scheme", "theory_ew", "theory"],
 # )
@@ -363,7 +485,7 @@ writer.add_systematic(
 #     h[{'weak': 'weak_default'}],
 #     'weak_default',
 #     "Zmumu",
-#     "ch0",
+#     "chSigmaUL",
 #     mirror=True,
 #     groups=[f"theory_ew_virtZ_corr", "theory_ew", "theory"],
 # )
@@ -384,7 +506,7 @@ writer.add_systematic(
     h,
     "pythiaew_ISRCorr0",
     "Zmumu",
-    "ch0",
+    "chSigmaUL",
     mirror=True,
     kfactor=2.0,
     groups=[f"theory_ew_pythiaew_ISR", "theory_ew", "theory"],
@@ -398,4 +520,4 @@ filename = args.outname
 if args.postfix:
     filename += f"_{args.postfix}"
 writer.write(outfolder=directory, outfilename=filename)
-print(f"Written to {directory}{filename}.hdf5")
+print(f"Written to {directory}/{filename}.hdf5")
