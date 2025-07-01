@@ -43,7 +43,7 @@ def load_corr_helpers(
     generators,
     make_tensor=True,
     base_dir=f"{common.data_dir}/TheoryCorrections/",
-    minnlo_ratio=True
+    minnlo_ratio=True,
 ):
     corr_helpers = {}
     for proc in procs:
@@ -56,7 +56,9 @@ def load_corr_helpers(
                 )
                 continue
             logger.debug(f"Make theory correction helper for file: {fname}")
-            corrh = load_corr_hist(fname, proc[0], get_corr_name(generator, minnlo_ratio=minnlo_ratio))
+            corrh = load_corr_hist(
+                fname, proc[0], get_corr_name(generator, minnlo_ratio=minnlo_ratio)
+            )
             corrh = postprocess_corr_hist(corrh)
             if not make_tensor:
                 corr_helpers[proc][generator] = corrh
@@ -409,7 +411,7 @@ def make_corr_by_helicity(
 
 
 def make_qcd_uncertainty_helper_by_helicity(
-    is_z=False, filename=None, rebi_ptVgen=True, return_tensor=True
+    is_z=False, filename=None, rebi_ptVgen=True, rebi_absYVgen=None, return_tensor=True
 ):
     if filename is None:
         filename = f"{common.data_dir}/angularCoefficients/w_z_moments.hdf5"
@@ -418,21 +420,33 @@ def make_qcd_uncertainty_helper_by_helicity(
     with h5py.File(filename, "r") as h5file:
         results = input_tools.load_results_h5py(h5file)
 
-    def get_helicity_xsecs(suffix="", rebin=True):
+    def get_helicity_xsecs(suffix="", rebin_ptVgen=True, rebin_absYVgen=None):
         h = results[f"Z{suffix}"] if is_z else results[f"W{suffix}"]
-        if not rebin:
-            return h
 
-        # Common.ptV_binning is the approximate 5% quantiles, rounded to integers
-        h = hh.rebinHist(h, "ptVgen", common.ptV_binning)
+        if rebin_ptVgen is not None:
 
-        if is_z:
-            axis_massVgen = h.axes["massVgen"]
-            h = hh.rebinHist(h, "massVgen", axis_massVgen.edges[::2])
+            # Common.ptV_binning is the approximate 5% quantiles, rounded to integers
+            if rebin_ptVgen is bool:
+                h = hh.rebinHist(h, "ptVgen", common.ptV_binning)
+            elif type(rebin_ptVgen) in (list, np.ndarray):
+                h = hh.rebinHist(h, "ptVgen", rebin_ptVgen)
+
+            if is_z:
+                axis_massVgen = h.axes["massVgen"]
+                if len(axis_massVgen.edges) > 2:
+                    h = hh.rebinHist(h, "massVgen", axis_massVgen.edges[::2])
+
+        if rebin_absYVgen is not None:
+            h = hh.rebinHist(h, "absYVgen", rebin_absYVgen)
+
         return h
 
-    helicity_xsecs = get_helicity_xsecs(rebin=rebi_ptVgen)
-    helicity_xsecs_lhe = get_helicity_xsecs("_lhe", rebin=rebi_ptVgen)
+    helicity_xsecs = get_helicity_xsecs(
+        rebin_ptVgen=rebi_ptVgen, rebin_absYVgen=rebi_absYVgen
+    )
+    helicity_xsecs_lhe = get_helicity_xsecs(
+        "_lhe", rebin_ptVgen=rebi_ptVgen, rebin_absYVgen=rebi_absYVgen
+    )
 
     helicity_xsecs_nom = helicity_xsecs[{"muRfact": 1.0j, "muFfact": 1.0j}].values()
 
@@ -507,6 +521,7 @@ def make_qcd_uncertainty_helper_by_helicity(
         return helper
     else:
         return corr_coeffs
+
 
 def make_helicity_test_corrector(is_z=False, filename=None):
 
