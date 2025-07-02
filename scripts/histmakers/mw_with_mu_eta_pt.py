@@ -458,7 +458,9 @@ muon_prefiring_helper, muon_prefiring_helper_stat, muon_prefiring_helper_syst = 
     muon_prefiring.make_muon_prefiring_helpers(era=era)
 )
 
-qcdScaleByHelicity_helper = theory_corrections.make_qcd_uncertainty_helper_by_helicity()
+qcdScaleByHelicity_helpers = (
+    theory_corrections.make_qcd_uncertainty_helpers_by_helicity()
+)
 
 if args.noScaleFactors:
     logger.info("Running with no scale factors")
@@ -684,7 +686,7 @@ def setTheoryAgnosticGraph(
             args,
             dataset.name,
             corr_helpers,
-            qcdScaleByHelicity_helper,
+            qcdScaleByHelicity_helpers[dataset.name[0]],
             nominal_axes_thAgn,
             nominal_cols_thAgn,
             for_wmass=True,
@@ -724,6 +726,9 @@ def build_graph(df, dataset):
     storage_type = (
         hist.storage.Double()
     )  # turn off sum weight square for systematic histograms
+
+    if isWorZ:
+        qcdScaleByHelicity_helper = qcdScaleByHelicity_helpers[dataset.name[0]]
 
     # disable auxiliary histograms when unfolding to reduce memory consumptions, or when doing the original theory agnostic without --poiAsNoi
     auxiliary_histograms = True
