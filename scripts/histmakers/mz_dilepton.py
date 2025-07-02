@@ -122,7 +122,9 @@ mass_min, mass_max = common.get_default_mz_window()
 
 ewMassBins = theory_tools.make_ew_binning(mass=91.1535, width=2.4932, initialStep=0.010)
 
-dilepton_ptV_binning = common.get_dilepton_ptV_binning(args.finePtBinning, args.originalPtBinning)
+dilepton_ptV_binning = common.get_dilepton_ptV_binning(
+    args.finePtBinning, args.originalPtBinning
+)
 if args.useTheoryAgnosticBinning:
     theoryAgnostic_axes, _ = differential.get_theoryAgnostic_axes(
         ptV_flow=True, absYV_flow=True, wlike=True

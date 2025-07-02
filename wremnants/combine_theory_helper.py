@@ -472,8 +472,14 @@ class TheoryHelper(object):
         processesZ = ["single_v_samples"]
         processesW = ["single_v_samples"]
         processes = processesW if self.label == "W" else processesZ
-        var_names = [f"per_bin_stat_unc_theory_corr_bin{i}{direction}" for i in range(1600) for direction in ["Up", "Down"]]
-        logger.debug(f"Adding theory-correction statistical uncertainties from syst entries {var_names}")
+        var_names = [
+            f"per_bin_stat_unc_theory_corr_bin{i}{direction}"
+            for i in range(1600)
+            for direction in ["Up", "Down"]
+        ]
+        logger.debug(
+            f"Adding theory-correction statistical uncertainties from syst entries {var_names}"
+        )
 
         self.datagroups.addSystematic(
             histname=self.corr_hist_name,

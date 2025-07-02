@@ -57,8 +57,13 @@ def load_corr_helpers(
             logger.debug(f"Make theory correction helper for file: {fname}")
             corrh = load_corr_hist(fname, proc[0], get_corr_name(generator))
             numh = None
-            if generator in ["scetlib_nnlojet_N3p0LLN2LOUnsmoothed", "scetlib_nnlojet_N4p0LLN3LOUnsmoothed", "scetlib_nnlojet_N4p0LLN3LOUnsmoothed_N3pLLFixed", "scetlib_nnlojet_N3p1LLN3LOUnsmoothed"]:
-                numh  = load_corr_hist(fname, proc[0], f"{generator}_hist")
+            if generator in [
+                "scetlib_nnlojet_N3p0LLN2LOUnsmoothed",
+                "scetlib_nnlojet_N4p0LLN3LOUnsmoothed",
+                "scetlib_nnlojet_N4p0LLN3LOUnsmoothed_N3pLLFixed",
+                "scetlib_nnlojet_N3p1LLN3LOUnsmoothed",
+            ]:
+                numh = load_corr_hist(fname, proc[0], f"{generator}_hist")
 
             corrh = postprocess_corr_hist(corrh, numh)
             if not make_tensor:
@@ -262,25 +267,27 @@ def postprocess_corr_hist(corrh, numh=None):
             compute_envelope(corrh, "resum_scale_envelope", resum_scale_vars)
         )
 
-    
     # add per-bin stat unc from correction (~= only the numerator, MiNNLO has very small stat uncs)
     if numh is not None:
         numh_nom = numh[{"vars": 0}]
         var_relative = np.sqrt(numh_nom.variances()) / numh_nom.values()
-        nom_vals  = corrh[{"vars": 0}].values()
+        nom_vals = corrh[{"vars": 0}].values()
 
         shape = var_relative.shape
-        nbins = var_relative.size 
+        nbins = var_relative.size
 
-        base_up = np.broadcast_to(nom_vals, (nbins,) + shape).copy() # nbins copies of the original histogram with shape `shape`
+        # nbins copies of the original histogram with shape `shape`
+        base_up = np.broadcast_to(nom_vals, (nbins,) + shape).copy()
         base_dn = base_up.copy()
 
-        linear_idx     = np.arange(nbins) # 1-dim array ennumerating all bins
-        multi_idx      = np.unravel_index(linear_idx, shape) # n-dim index to address each bin
-        flat_var_rel   = var_relative.ravel() # 1-dim array of variations 
+        linear_idx = np.arange(nbins)  # 1-dim array ennumerating all bins
+        multi_idx = np.unravel_index(linear_idx, shape)  # n-d idx for each bin
+        flat_var_rel = var_relative.ravel()  # 1-dim array of variations
 
-        base_up[(linear_idx,) + multi_idx] *= (1.0 + flat_var_rel) # address n-th copy of histograms (to hold the variation in the n-th bin [and no other]). In that n-th copy, modify the corresponding bin in the n-dim hist
-        base_dn[(linear_idx,) + multi_idx] *= (1.0 - flat_var_rel)
+        # address n-th copy of histograms (to hold the variation in the n-th bin [and no other]).
+        # In that n-th copy, modify the corresponding bin in the n-dim hist
+        base_up[(linear_idx,) + multi_idx] *= 1.0 + flat_var_rel
+        base_dn[(linear_idx,) + multi_idx] *= 1.0 - flat_var_rel
 
         template = corrh[{"vars": 0}]
 
@@ -290,7 +297,7 @@ def postprocess_corr_hist(corrh, numh=None):
             h_up.values()[...] = base_up[i]
             h_dn.values()[...] = base_dn[i]
 
-            additional_var_hists[f"per_bin_stat_unc_theory_corr_bin{i}Up"]   = h_up
+            additional_var_hists[f"per_bin_stat_unc_theory_corr_bin{i}Up"] = h_up
             additional_var_hists[f"per_bin_stat_unc_theory_corr_bin{i}Down"] = h_dn
 
     if not additional_var_hists:
