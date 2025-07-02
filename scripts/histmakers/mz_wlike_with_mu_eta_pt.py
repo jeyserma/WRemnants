@@ -446,6 +446,9 @@ def build_graph(df, dataset):
     isZ = dataset.name in common.zprocs
     isWorZ = isW or isZ
 
+    if isWorZ:
+        qcdScaleByHelicity_helper = qcdScaleByHelicity_helpers[dataset.name[0]]
+
     if dataset.is_data:
         df = df.DefinePerSample("weight", "1.0")
     else:
@@ -455,10 +458,6 @@ def build_graph(df, dataset):
     df = df.Define(
         "isEvenEvent", f"event % 2 {'!=' if args.flipEventNumberSplitting else '=='} 0"
     )
-
-    if isWorZ:
-        qcdScaleByHelicity_helper = qcdScaleByHelicity_helpers[dataset.name[0]]
-
     weightsum = df.SumAndCount("weight")
 
     axes = nominal_axes
