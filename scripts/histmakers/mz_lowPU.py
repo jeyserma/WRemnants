@@ -110,7 +110,7 @@ axes_mt = [axis_mt]
 cols_mt = ["transverseMass"]
 
 qcdScaleByHelicity_helpers = (
-    wremnants.theory_corrections.make_qcd_uncertainty_helpers_by_helicity(is_z=True)
+    wremnants.theory_corrections.make_qcd_uncertainty_helpers_by_helicity()
 )
 axis_ptVgen = qcdScaleByHelicity_helpers["Z"].hist.axes["ptVgen"]
 axis_chargeVgen = qcdScaleByHelicity_helpers["Z"].hist.axes["chargeVgen"]
