@@ -1710,12 +1710,12 @@ def build_graph(df, dataset):
             df = df.Define(
                 f"muRmuFPolVar_{coeffKey}_tensor", helperQ, theoryAgnostic_helpers_cols
             )
-            noiAsPoiWithPolHistName = Datagroups.histName(
+            muRmuFWithPolHistName = Datagroups.histName(
                 "nominal", syst=f"muRmuFPolVar{process_name}_{coeffKey}"
             )
             results.append(
                 df.HistoBoost(
-                    noiAsPoiWithPolHistName,
+                    muRmuFWithPolHistName,
                     nominal_axes,
                     [*nominal_cols, f"muRmuFPolVar_{coeffKey}_tensor"],
                     tensor_axes=helperQ.tensor_axes,
