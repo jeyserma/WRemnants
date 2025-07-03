@@ -108,7 +108,11 @@ def make_subparsers(parser):
             choices=["prefsr", "postfsr"],
             help="Definition for unfolding",
         )
-
+        parser.add_argument(
+            "--unfoldSimultaneousWandZ",
+            action="store_true",
+            help="Simultaneously unfold W and Z and correlate Z background in W channel",
+        )
         parser = parsing.set_parser_default(parser, "massVariation", 10)
 
     return parser
@@ -1536,18 +1540,15 @@ def setup(
                     passSystToFakes=passSystToFakes,
                 )
 
-        if inputBaseName == "prefsr":
-            ewUncs = [*args.ewUnc, *args.isrUnc]
-        else:
-            ewUncs = [*args.ewUnc, *args.fsrUnc, *args.isrUnc]
-
-        combine_helpers.add_electroweak_uncertainty(
-            datagroups,
-            ewUncs,
-            samples="single_v_samples",
-            flavor=datagroups.flavor,
-            passSystToFakes=passSystToFakes,
-        )
+        if inputBaseName != "prefsr":
+            # make prefsr ane EW free definition
+            combine_helpers.add_electroweak_uncertainty(
+                datagroups,
+                [*args.ewUnc, *args.fsrUnc, *args.isrUnc],
+                samples="single_v_samples",
+                flavor=datagroups.flavor,
+                passSystToFakes=passSystToFakes,
+            )
 
     if xnorm or genfit:
         return datagroups
@@ -2527,8 +2528,9 @@ if __name__ == "__main__":
 
         writer.add_data_covariance(fitresult_cov)
 
-    # loop over all files
+    dgs = {}  # keep datagroups for across channel definitions
     outnames = []
+    # loop over all files
     for i, ifile in enumerate(args.inputFile):
         fitvar = args.fitvar[i].split("-")
         genvar = (
@@ -2577,6 +2579,36 @@ if __name__ == "__main__":
                 lumi=lumi,
             )
 
+            if args.unfoldSimultaneousWandZ and datagroups.mode == "w_mass":
+                # for simultaneous unfolding of W and Z we need to add the noi variations on the Z background in the single lepton channel
+
+                if "z_dilepton" not in dgs:
+                    raise RuntimeError(
+                        "Datagroup 'z_dilepton' not found but required for unfoldSimultaneousWandZ (CLA order matters: specify dilepton first and then single lepton)"
+                    )
+
+                poi_axes = ["ptVGen", "absYVGen", "helicitySig"]
+
+                # we have to use the same scalemap as in the Z channel
+                scalemap = combine_helpers.get_scalemap(
+                    dgs["z_dilepton"],
+                    poi_axes,
+                    gen_level=args.unfoldingLevel,
+                )
+
+                combine_helpers.add_noi_unfolding_variations(
+                    datagroups,
+                    "Z",
+                    True,
+                    False,
+                    poi_axes=poi_axes,
+                    prior_norm=args.priorNormXsec,
+                    scale_norm=args.scaleNormXsecHistYields,
+                    gen_level=args.unfoldingLevel,
+                    process="Zmumu",
+                    scalemap=scalemap,
+                )
+
         outnames.append(
             (
                 outputFolderName(
@@ -2585,6 +2617,8 @@ if __name__ == "__main__":
                 analysis_label(datagroups),
             )
         )
+
+        dgs[datagroups.mode] = datagroups
 
     if len(outnames) == 1:
         outfolder, outfile = outnames[0]
