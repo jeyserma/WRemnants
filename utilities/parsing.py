@@ -8,6 +8,27 @@ from wums import logging
 choices_padding = ["auto", "lower left", "lower right", "upper left", "upper right"]
 
 
+def str_to_complex_or_int(value):
+    # this function only accepts pure imaginary or pure real (integer) numbers
+    # because it is used for UHI (for instance with options such as --axlim)
+    value = value.strip()
+    if value.endswith("j"):
+        try:
+            complex_value = complex(value)
+        except ValueError:
+            raise argparse.ArgumentTypeError(f"Invalid complex number: '{value}'")
+        if complex_value.real != 0:
+            raise ValueError(
+                f"str_to_complex_or_int: invalid value '{value}', it must be pure imaginary"
+            )
+        return complex_value
+    else:
+        try:
+            return int(value)
+        except ValueError:
+            raise argparse.ArgumentTypeError(f"Invalid integer: '{value}'")
+
+
 def set_parser_attribute(parser, argument, attribute, newValue):
     # change an argument of the parser, must be called before parse_arguments
     logger = logging.child_logger(__name__)
@@ -69,7 +90,10 @@ def common_parser(analysis_label=""):
 
     import ROOT
 
-    ROOT.ROOT.EnableImplicitMT(max(0, initargs.nThreads))
+    if initargs.nThreads == 1:
+        ROOT.ROOT.DisableImplicitMT()
+    else:
+        ROOT.ROOT.EnableImplicitMT(max(0, initargs.nThreads))
     from wremnants import theory_corrections, theory_tools
 
     class PDFFilterAction(argparse.Action):
@@ -477,6 +501,26 @@ def common_parser(analysis_label=""):
             type=float,
             help="Lower threshold for muon pt in the veto definition",
         )
+        # Options to test splitting of data into subsets
+        parser.add_argument(
+            "--addRunAxis",
+            action="store_true",
+            help="Add axis with slices of luminosity based on run numbers",
+        )
+        parser.add_argument(
+            "--nRunBins",
+            type=int,
+            default=5,
+            choices=range(2, 6),
+            help="""
+            Number of bins to use with --addRunAxis 
+            (hardcoded luminosity splitting inside histmakers)""",
+        )
+        parser.add_argument(
+            "--randomizeDataByRun",
+            action="store_true",
+            help="When adding the run axis with --addRunAxis, randomly put data events into the various bins",
+        )
 
     commonargs, _ = parser.parse_known_args()
 
@@ -521,7 +565,7 @@ def common_parser(analysis_label=""):
         "--sfFile", type=str, help="File with muon scale factors", default=sfFile
     )
 
-    if analysis_label not in ["vgen"]:
+    if analysis_label in ["w_lowpu", "z_lowpu", "w_mass", "z_wlike", "z_dilepton"]:
         parser.add_argument(
             "--eta",
             nargs=3,

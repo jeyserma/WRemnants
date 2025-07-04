@@ -1027,6 +1027,16 @@ class Datagroups(object):
         rebin_before_selection=False,
         rename=True,
     ):
+        if len(ax_lim):
+            if not all(x.real == 0 or x.imag == 0 for x in ax_lim):
+                raise ValueError(
+                    "In set_rebin_action(): ax_lim only accepts pure real or imaginary numbers"
+                )
+            if any(x.imag == 0 and (x.real % 1) != 0.0 for x in ax_lim):
+                raise ValueError(
+                    "In set_rebin_action(): ax_lim requires real numbers to be of integer type"
+                )
+
         self.rebinBeforeSelection = rebin_before_selection
 
         for a in hh.get_rebin_actions(
@@ -2044,8 +2054,9 @@ class Datagroups(object):
     @staticmethod
     def analysisLabel(filename):
         if filename not in Datagroups.mode_map:
-            raise ValueError(
+            logger.warning(
                 f"Unrecognized analysis script {filename}! Expected one of {Datagroups.mode_map.keys()}"
             )
-
-        return Datagroups.mode_map[filename]
+            return filename.replace(".py", "")
+        else:
+            return Datagroups.mode_map[filename]
