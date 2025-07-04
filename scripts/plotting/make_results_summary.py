@@ -1,11 +1,10 @@
 import matplotlib.pyplot as plt
 import pandas as pd
-import rabbit.io_tools
 from matplotlib import ticker
 
 from utilities import parsing
-from wremnants import plot_tools
-from wums import output_tools
+from utilities.io_tools import rabbit_input
+from wums import output_tools, plot_tools
 
 parser = parsing.plot_parser()
 parser.add_argument(
@@ -47,7 +46,7 @@ dfw = pd.DataFrame.from_dict(
 if not args.pdg:
     dfw = dfw[dfw["Name"] != "PDG Average"]
 
-cms_res = rabbit.io_tools.read_groupunc_df(
+cms_res = rabbit_input.read_groupunc_df(
     args.fitresult,
     [
         "stat",
