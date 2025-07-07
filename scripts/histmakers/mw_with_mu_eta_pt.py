@@ -829,7 +829,7 @@ def build_graph(df, dataset):
                         break
         elif dataset.name == "ZmumuPostVFP":
             if args.unfolding and dataset.name == "ZmumuPostVFP":
-                unfolder_z.add_gen_histograms(
+                df = unfolder_z.add_gen_histograms(
                     args, df, results, dataset, corr_helpers, qcdScaleByHelicity_helper
                 )
 
@@ -1663,7 +1663,7 @@ def build_graph(df, dataset):
             )
         )
 
-    if args.poiAsNoi and isW:
+    if args.poiAsNoi:
         if (
             args.theoryAgnostic
             and isWmunu
