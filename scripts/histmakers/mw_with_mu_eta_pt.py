@@ -369,7 +369,6 @@ axis_uTAngleCosine = hist.axis.Regular(
 # sum those groups up in post processing
 groups_to_aggregate = args.aggregateGroups
 
-
 if args.unfolding:
     # first and last pT bins are merged into under and overflow
     template_wpt = (template_maxpt - template_minpt) / args.unfoldingBins[1]
