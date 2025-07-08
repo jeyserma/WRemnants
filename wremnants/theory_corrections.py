@@ -43,6 +43,7 @@ def load_corr_helpers(
     generators,
     make_tensor=True,
     base_dir=f"{common.data_dir}/TheoryCorrections/",
+    minnlo_ratio=True,
 ):
     corr_helpers = {}
     for proc in procs:
@@ -55,7 +56,9 @@ def load_corr_helpers(
                 )
                 continue
             logger.debug(f"Make theory correction helper for file: {fname}")
-            corrh = load_corr_hist(fname, proc[0], get_corr_name(generator))
+            corrh = load_corr_hist(
+                fname, proc[0], get_corr_name(generator, minnlo_ratio=minnlo_ratio)
+            )
             corrh = postprocess_corr_hist(corrh)
             if not make_tensor:
                 corr_helpers[proc][generator] = corrh
@@ -279,16 +282,23 @@ def postprocess_corr_hist(corrh):
     return corrh
 
 
-def get_corr_name(generator):
+def get_corr_name(generator, minnlo_ratio=True):
     # Hack for now
     label = generator.replace("1D", "")
     if "dataPtll" in generator or "dataRecoPtll" in generator:
         return "MC_data_ratio"
-    return (
-        f"{label}_minnlo_ratio"
-        if "Helicity" not in generator
-        else f"{label.replace('Helicity', '')}_minnlo_coeffs"
-    )
+    if minnlo_ratio:
+        return (
+            f"{label}_minnlo_ratio"
+            if "Helicity" not in generator
+            else f"{label.replace('Helicity', '')}_minnlo_coeffs"
+        )
+    else:
+        return (
+            f"{label}_hist"
+            if "Helicity" not in generator
+            else f"{label.replace('Helicity', '')}_coeffs"
+        )
 
 
 def rebin_corr_hists(hists, ndim=-1, binning=None):
@@ -405,12 +415,19 @@ def make_qcd_uncertainty_helpers_by_helicity(
     filename_w=f"{common.data_dir}/angularCoefficients/w_z_moments.hdf5",
     rebin_ptWgen=True,
     rebin_ptZgen=True,
+    return_tensor=True,
 ):
     helper_w = make_qcd_uncertainty_helper_by_helicity(
-        is_z=False, filename=filename_w, rebin_ptVgen=rebin_ptWgen
+        is_z=False,
+        filename=filename_w,
+        rebin_ptVgen=rebin_ptWgen,
+        return_tensor=return_tensor,
     )
     helper_z = make_qcd_uncertainty_helper_by_helicity(
-        is_z=True, filename=filename_z, rebin_ptVgen=rebin_ptZgen
+        is_z=True,
+        filename=filename_z,
+        rebin_ptVgen=rebin_ptZgen,
+        return_tensor=return_tensor,
     )
 
     return {"W": helper_w, "Z": helper_z}
@@ -420,6 +437,7 @@ def make_qcd_uncertainty_helper_by_helicity(
     is_z=False,
     filename=f"{common.data_dir}/angularCoefficients/w_z_moments.hdf5",
     rebin_ptVgen=True,
+    return_tensor=True,
 ):
 
     # load helicity cross sections from file
@@ -504,14 +522,17 @@ def make_qcd_uncertainty_helper_by_helicity(
         ].values()[..., None]
     )
 
-    helper = makeCorrectionsTensor(
-        corr_coeffs, ROOT.wrem.CentralCorrByHelicityHelper, tensor_rank=3
-    )
+    if return_tensor:
+        helper = makeCorrectionsTensor(
+            corr_coeffs, ROOT.wrem.CentralCorrByHelicityHelper, tensor_rank=3
+        )
 
-    # override tensor_axes since the output is different here
-    helper.tensor_axes = [vars_ax]
+        # override tensor_axes since the output is different here
+        helper.tensor_axes = [vars_ax]
 
-    return helper
+        return helper
+    else:
+        return corr_coeffs
 
 
 def make_helicity_test_corrector(is_z=False, filename=None):
