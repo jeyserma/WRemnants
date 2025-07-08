@@ -652,11 +652,6 @@ def make_parser(parser=None):
         type=float,
         help="Specify normalization uncertainty for Fake background (for W analysis). If negative, treat as free floating, if 0 nothing is added",
     )
-    parser.add_argument(
-        "--passNormUncToFakes",
-        action="store_true",
-        help="Propagate normalization uncertainties into the fake estimation",
-    )
     # pseudodata
     parser.add_argument(
         "--pseudoData", type=str, nargs="+", help="Histograms to use as pseudodata"
@@ -813,8 +808,6 @@ def setup(
     ]
     isTheoryAgnosticPolVar = args.analysisMode == "theoryAgnosticPolVar"
     isPoiAsNoi = (isUnfolding or isTheoryAgnostic) and args.poiAsNoi
-    isFloatingPOIsTheoryAgnostic = isTheoryAgnostic and not isPoiAsNoi
-    isFloatingPOIs = (isUnfolding or isTheoryAgnostic) and not isPoiAsNoi
 
     # NOTE: args.filterProcGroups and args.excludeProcGroups should in principle not be used together
     #       (because filtering is equivalent to exclude something), however the exclusion is also meant to skip
@@ -1180,11 +1173,6 @@ def setup(
         logger.info(f"Signal samples: {datagroups.procGroups['signal_samples']}")
 
     signal_samples_forMass = ["signal_samples_inctau"]
-    if isFloatingPOIsTheoryAgnostic:
-        logger.error(
-            "Temporarily not using mass weights for Wtaunu. Please update when possible"
-        )
-        signal_samples_forMass = ["signal_samples"]
 
     datagroups.writer = writer
 
@@ -1620,7 +1608,7 @@ def setup(
             name="CMS_PhotonInduced",
             processes=["PhotonInduced"],
             groups=[f"CMS_background", "experiment", "expNoCalib"],
-            passToFakes=args.passNormUncToFakes,
+            passToFakes=passSystToFakes,
             norm=2.0,
         )
     if wmass:
@@ -1682,14 +1670,14 @@ def setup(
             name="CMS_Top",
             processes=["Top"],
             groups=[f"CMS_background", "experiment", "expNoCalib"],
-            passToFakes=args.passNormUncToFakes,
+            passToFakes=passSystToFakes,
             norm=1.06,
         )
         datagroups.addNormSystematic(
             name="CMS_VV",
             processes=["Diboson"],
             groups=[f"CMS_background", "experiment", "expNoCalib"],
-            passToFakes=args.passNormUncToFakes,
+            passToFakes=passSystToFakes,
             norm=1.16,
         )
     else:
@@ -2471,8 +2459,6 @@ if __name__ == "__main__":
     ]
     isTheoryAgnosticPolVar = args.analysisMode == "theoryAgnosticPolVar"
     isPoiAsNoi = (isUnfolding or isTheoryAgnostic) and args.poiAsNoi
-    isFloatingPOIsTheoryAgnostic = isTheoryAgnostic and not isPoiAsNoi
-    isFloatingPOIs = (isUnfolding or isTheoryAgnostic) and not isPoiAsNoi
 
     if isUnfolding and args.fitXsec:
         raise ValueError(
@@ -2489,13 +2475,6 @@ if __name__ == "__main__":
                 logger.warning(
                     "This is only needed to properly get the systematic axes"
                 )
-
-    if isFloatingPOIsTheoryAgnostic:
-        # The following is temporary, just to avoid passing the option explicitly
-        logger.warning(
-            "For now setting theory agnostic without POI as NOI activates --doStatOnly"
-        )
-        args.doStatOnly = True
 
     if len(args.inputFile) > 1 and (args.fitWidth or args.decorMassWidth):
         raise ValueError(
@@ -2579,7 +2558,7 @@ if __name__ == "__main__":
             fitresult_data=fitresult_data,
         )
 
-        if isFloatingPOIs or isUnfolding:
+        if isUnfolding:
             # add masked channel
             datagroups_xnorm = setup(
                 writer,
