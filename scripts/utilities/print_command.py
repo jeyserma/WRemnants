@@ -54,7 +54,12 @@ def print_command_from_dict(infile):
             for k in meta_data.keys():
                 v = get(k)
                 if type(v) is dict:
-                    logger.info(f"{k}: " + "\n" + "\n\t".join([f"{kk}: {vv}" for kk, vv in v.items()]) + "\n")
+                    logger.info(
+                        f"{k}: "
+                        + "\n"
+                        + "\n\t".join([f"{kk}: {vv}" for kk, vv in v.items()])
+                        + "\n"
+                    )
                 else:
                     logger.info(f"{k}: {v}")
     else:
