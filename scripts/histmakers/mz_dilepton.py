@@ -490,10 +490,9 @@ bias_helper = muon_calibration.make_muon_bias_helpers(args)
     reverse_variations=args.reweightPixelMultiplicity
 )
 
-seed_data = 2 * args.randomSeedForToys
-seed_mc = 2 * args.randomSeedForToys + 1
-
 if args.nToysMC > 0:
+    seed_data = 2 * args.randomSeedForToys
+    seed_mc = 2 * args.randomSeedForToys + 1
     toy_helper_data = ROOT.wrem.ToyHelper(
         args.nToysMC, seed_data, 1, ROOT.ROOT.GetThreadPoolSize()
     )
@@ -993,7 +992,11 @@ def build_graph(df, dataset):
                 storage=hist.storage.Double(),
             )
         )
-        results.append(df.HistoBoost("nominal_asimov", axes, [*cols, "nominal_weight"]))
+
+        if args.nToysMC > 0 or args.splitSampleInN > 1 or args.jackknifeN > 1:
+            results.append(
+                df.HistoBoost("nominal_asimov", axes, [*cols, "nominal_weight"])
+            )
         if args.nToysMC > 0:
             axes = [*axes, axis_toys]
             cols = [*cols, "toyIdxs"]
