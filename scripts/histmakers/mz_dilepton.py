@@ -310,7 +310,7 @@ if args.csVarsHist:
         overflow=False,
     )
 
-    quantile_file = f"{common.data_dir}/angularCoefficients/mz_dilepton_scetlib_dyturboCorr_maxFiles_m1_alphaSunfoldingBinning_csQuantiles.hdf5"
+    quantile_file = f"{common.data_dir}/angularCoefficients/mz_dilepton_scetlib_dyturboCorr_maxFiles_m1_unfoldingBinning_csQuantiles.hdf5"
     quantile_helper_csVars = make_quantile_helper(
         quantile_file,
         ["cosThetaStarll", "phiStarll"],
@@ -332,7 +332,7 @@ if args.unfolding:
         # helper to derive helicity xsec shape from event by event reweighting
         weightsByHelicity_helper_unfolding = helicity_utils.make_helicity_weight_helper(
             is_z=True,
-            filename=f"{common.data_dir}/TheoryCorrections/w_z_helicity_xsecs_scetlib_dyturboCorr_maxFiles_m1_alphaSunfoldingBinning_helicity.hdf5",
+            filename=f"{common.data_dir}/TheoryCorrections/w_z_helicity_xsecs_scetlib_dyturboCorr_maxFiles_m1_unfoldingBinning_helicity.hdf5",
             rebi_ptVgen=False,
         )
 
