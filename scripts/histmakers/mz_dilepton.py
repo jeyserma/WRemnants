@@ -87,7 +87,36 @@ parser.add_argument(
     action="store_true",
     help="Make hists with fine binned CS variables for producing quantiles",
 )
-
+parser.add_argument(
+    "--splitSampleInN",
+    type=int,
+    default=-1,
+    help="Split the sample in N parts, useful for debugging and testing",
+)
+parser.add_argument(
+    "--randomSeedForSplit",
+    type=int,
+    default=12345,
+    help="Random seed for splitting the sample in N parts",
+)
+parser.add_argument(
+    "--jackknifeN",
+    type=int,
+    default=0,
+    help="Number of jackknife samples to use, if > 0, then the sample is split in 2*jackknifeN parts",
+)
+parser.add_argument(
+    "--jackknifeEfficiency",
+    type=float,
+    default=0.5,
+    help="Jackknife efficiency, used to define the size of the sample",
+)
+parser.add_argument(
+    "--randomSeedForJackknife",
+    type=int,
+    default=12345,
+    help="Random seed for jackknifing procedure",
+)
 parser = parsing.set_parser_default(
     parser, "aggregateGroups", ["Diboson", "Top", "Wtaunu", "Wmunu"]
 )
@@ -279,7 +308,7 @@ if args.csVarsHist:
     # 10 quantiles
     all_axes["yll"] = hist.axis.Variable(common.yll_10quantiles_binning, name="yll")
 
-    quantile_file = f"{common.data_dir}/angularCoefficients/mz_dilepton_scetlib_dyturboCorr_maxFiles_m1_csQuantiles.hdf5"
+    quantile_file = f"{common.data_dir}/angularCoefficients/mz_dilepton_scetlib_dyturboCorr_maxFiles_m1_alphaSunfoldingBinning_csQuantiles.hdf5"
     quantile_helper_csVars = make_quantile_helper(
         quantile_file,
         ["cosThetaStarll", "phiStarll"],
@@ -301,8 +330,8 @@ if args.unfolding:
         # helper to derive helicity xsec shape from event by event reweighting
         weightsByHelicity_helper_unfolding = helicity_utils.make_helicity_weight_helper(
             is_z=True,
-            filename=f"{common.data_dir}/angularCoefficients/w_z_helicity_xsecs_scetlib_dyturboCorr_maxFiles_m1_unfoldingBinning.hdf5",
-            rebi_ptVgen=True,
+            filename=f"{common.data_dir}/TheoryCorrections/w_z_helicity_xsecs_scetlib_dyturboCorr_maxFiles_m1_alphaSunfoldingBinning_helicity.hdf5",
+            rebi_ptVgen=False,
         )
 
     unfolding_axes = {}
@@ -476,11 +505,35 @@ if args.nToysMC > 0:
     axis_toys = hist.axis.Integer(
         0, args.nToysMC, underflow=False, overflow=False, name="toys"
     )
+if args.splitSampleInN > 1:
+    seed_mc_split = 2 * args.randomSeedForSplit + 2
+    rand_helper_mc = ROOT.wrem.RandomUniformHelper(
+        args.splitSampleInN, seed_mc_split, ROOT.ROOT.GetThreadPoolSize()
+    )
+    axis_split = hist.axis.Integer(
+        0,
+        args.splitSampleInN,
+        underflow=False,
+        overflow=False,
+        name="sample_split",
+    )
+if args.jackknifeN > 0:
+    seed_mc_jackknife = 2 * args.randomSeedForJackknife + 1
+    jackknife_helper = ROOT.wrem.JackknifeHelper(
+        args.jackknifeN,
+        args.jackknifeEfficiency,
+        seed_mc_jackknife,
+        ROOT.ROOT.GetThreadPoolSize(),
+    )
+    axis_jackknife = hist.axis.Integer(
+        0, args.jackknifeN, underflow=False, overflow=False, name="jackknife_sample"
+    )
 
 theory_corrs = [*args.theoryCorr, *args.ewTheoryCorr]
 corr_helpers = theory_corrections.load_corr_helpers(
     [d.name for d in datasets if d.name in common.vprocs], theory_corrs
 )
+
 
 def build_graph(df, dataset):
     logger.info(f"build graph for dataset: {dataset.name}")
@@ -506,6 +559,12 @@ def build_graph(df, dataset):
             df = df.Define("toyIdxs", toy_helper_data, ["rdfslot_"])
         else:
             df = df.Define("toyIdxs", toy_helper_mc, ["rdfslot_"])
+
+    if args.splitSampleInN > 1 and not dataset.is_data:
+        df = df.Define("sample_n", rand_helper_mc, ["rdfslot_"])
+
+    if args.jackknifeN > 0 and not dataset.is_data:
+        df = df.Define("jackknife_sample", jackknife_helper, ["rdfslot_"])
 
     weightsum = df.SumAndCount("weight")
 
@@ -934,6 +993,13 @@ def build_graph(df, dataset):
         if args.nToysMC > 0:
             axes = [*axes, axis_toys]
             cols = [*cols, "toyIdxs"]
+        if args.splitSampleInN > 1:
+            axes = [*axes, axis_split]
+            cols = [*cols, "sample_n"]
+        if args.jackknifeN > 1:
+            axes = [*axes, axis_jackknife]
+            cols = [*cols, "jackknife_sample"]
+
         results.append(df.HistoBoost("nominal", axes, [*cols, "nominal_weight"]))
 
         if isZ:
