@@ -1608,7 +1608,7 @@ def setup(
         datagroups.addNormSystematic(
             name="CMS_PhotonInduced",
             processes=["PhotonInduced"],
-            groups=[f"CMS_background", "experiment", "expNoCalib"],
+            groups=[f"CMS_background", "experiment", "expNoLumi", "expNoCalib"],
             passToFakes=passSystToFakes,
             norm=2.0,
         )
@@ -1619,7 +1619,11 @@ def setup(
                 processes=["Wmunu"],
                 groups=[
                     f"CMS_background",
-                    *(["experiment", "expNoCalib"] if args.logNormalWmunu > 0 else []),
+                    *(
+                        ["experiment", "expNoLumi", "expNoCalib"]
+                        if args.logNormalWmunu > 0
+                        else []
+                    ),
                 ],
                 passToFakes=passSystToFakes,
                 noi=args.logNormalWmunu < 0,
@@ -1632,7 +1636,11 @@ def setup(
                 processes=["Wtaunu"],
                 groups=[
                     f"CMS_background",
-                    *(["experiment", "expNoCalib"] if args.logNormalWmunu > 0 else []),
+                    *(
+                        ["experiment", "expNoLumi", "expNoCalib"]
+                        if args.logNormalWmunu > 0
+                        else []
+                    ),
                 ],
                 passToFakes=passSystToFakes,
                 noi=args.logNormalWtaunu < 0,
@@ -1645,7 +1653,7 @@ def setup(
                 datagroups.addSystematic(
                     name=f"CMS_{datagroups.fakeName}",
                     processes=[datagroups.fakeName],
-                    groups=["Fake", "experiment", "expNoCalib"],
+                    groups=["Fake", "experiment", "expNoLumi", "expNoCalib"],
                     passToFakes=False,
                     baseName=f"CMS_{datagroups.fakeName}_",
                     systAxes=["run_", "downUpVar"],
@@ -1662,7 +1670,7 @@ def setup(
                 datagroups.addNormSystematic(
                     name=f"CMS_{datagroups.fakeName}",
                     processes=[datagroups.fakeName],
-                    groups=["Fake", "experiment", "expNoCalib"],
+                    groups=["Fake", "experiment", "expNoLumi", "expNoCalib"],
                     passToFakes=False,
                     norm=args.logNormalFake,
                 )
@@ -1670,14 +1678,14 @@ def setup(
         datagroups.addNormSystematic(
             name="CMS_Top",
             processes=["Top"],
-            groups=[f"CMS_background", "experiment", "expNoCalib"],
+            groups=[f"CMS_background", "experiment", "expNoLumi", "expNoCalib"],
             passToFakes=passSystToFakes,
             norm=1.06,
         )
         datagroups.addNormSystematic(
             name="CMS_VV",
             processes=["Diboson"],
-            groups=[f"CMS_background", "experiment", "expNoCalib"],
+            groups=[f"CMS_background", "experiment", "expNoLumi", "expNoCalib"],
             passToFakes=passSystToFakes,
             norm=1.16,
         )
@@ -1685,7 +1693,7 @@ def setup(
         datagroups.addNormSystematic(
             name="CMS_background",
             processes=["Other"],
-            groups=[f"CMS_background", "experiment", "expNoCalib"],
+            groups=[f"CMS_background", "experiment", "expNoLumi", "expNoCalib"],
             norm=1.15,
         )
 
@@ -1725,7 +1733,7 @@ def setup(
                 **info,
                 name=subgroup,
                 baseName=subgroup,
-                groups=[subgroup, "Fake", "experiment", "expNoCalib"],
+                groups=[subgroup, "Fake", "experiment", "expNoLumi", "expNoCalib"],
                 actionArgs=dict(variations_smoothing=True),
             )
 
@@ -1735,7 +1743,7 @@ def setup(
                 **info,
                 name=subgroup,
                 baseName=subgroup,
-                groups=[subgroup, "Fake", "experiment", "expNoCalib"],
+                groups=[subgroup, "Fake", "experiment", "expNoLumi", "expNoCalib"],
                 actionArgs=dict(variations_frf=True),
             )
 
@@ -1751,7 +1759,7 @@ def setup(
                 **info,
                 name=subgroup,
                 baseName=subgroup,
-                groups=[subgroup, "Fake", "experiment", "expNoCalib"],
+                groups=[subgroup, "Fake", "experiment", "expNoLumi", "expNoCalib"],
                 actionArgs=dict(variations_scf=True),
             )
 
@@ -1813,7 +1821,13 @@ def setup(
                     subgroup = f"{datagroups.fakeName}Param{idx}"
                     datagroups.addSystematic(
                         inputBaseName,
-                        groups=[subgroup, "Fake", "experiment", "expNoCalib"],
+                        groups=[
+                            subgroup,
+                            "Fake",
+                            "experiment",
+                            "expNoLumi",
+                            "expNoCalib",
+                        ],
                         name=subgroup
                         + (
                             f"_{'_'.join(axesToDecorrNames)}"
@@ -1922,7 +1936,13 @@ def setup(
                 datagroups.addSystematic(
                     name,
                     mirror=mirror,
-                    groups=[groupName, "muon_eff_all", "experiment", "expNoCalib"],
+                    groups=[
+                        groupName,
+                        "muon_eff_all",
+                        "experiment",
+                        "expNoLumi",
+                        "expNoCalib",
+                    ],
                     splitGroup=splitGroupDict,
                     systAxes=axes,
                     labelsByAxis=axlabels,
@@ -1946,6 +1966,7 @@ def setup(
                                 groupName,
                                 "muon_eff_all",
                                 "experiment",
+                                "expNoLumi",
                                 "expNoCalib",
                             ],
                             systAxes=["n_syst_variations"],
@@ -2060,7 +2081,13 @@ def setup(
                     datagroups.addSystematic(
                         name,
                         mirror=mirror,
-                        groups=[groupName, "muon_eff_all", "experiment", "expNoCalib"],
+                        groups=[
+                            groupName,
+                            "muon_eff_all",
+                            "experiment",
+                            "expNoLumi",
+                            "expNoCalib",
+                        ],
                         splitGroup=splitGroupDict,
                         systAxes=axes,
                         labelsByAxis=axlabels,
@@ -2093,7 +2120,7 @@ def setup(
                     lepEff,
                     processes=datagroups.allMCProcesses(),
                     mirror=True,
-                    groups=["CMS_lepton_eff", "experiment", "expNoCalib"],
+                    groups=["CMS_lepton_eff", "experiment", "expNoLumi", "expNoCalib"],
                     baseName=lepEff,
                     systAxes=["tensor_axis_0"],
                     labelsByAxis=[""],
@@ -2115,7 +2142,7 @@ def setup(
                 "prefireCorr",
                 processes=datagroups.allMCProcesses(),
                 mirror=False,
-                groups=["CMS_prefire17", "experiment", "expNoCalib"],
+                groups=["CMS_prefire17", "experiment", "expNoLumi", "expNoCalib"],
                 baseName="CMS_prefire17",
                 systAxes=["downUpVar"],
                 labelsByAxis=["downUpVar"],
@@ -2142,7 +2169,7 @@ def setup(
         datagroups.addSystematic(
             name="residualEffiSF",
             processes=["MCnoQCD"],
-            groups=["residualEffiSF", "experiment", "expNoCalib"],
+            groups=["residualEffiSF", "experiment", "expNoLumi", "expNoCalib"],
             baseName="residualEffiSF_",
             systAxes=["eta_", "run_", "downUpVar"],
             labelsByAxis=["eta", "run", "downUpVar"],
@@ -2163,7 +2190,7 @@ def setup(
         datagroups.addSystematic(
             name="residualEffiSF",
             processes=["MCnoQCD"],
-            groups=["residualEffiSF", "experiment", "expNoCalib"],
+            groups=["residualEffiSF", "experiment", "expNoLumi", "expNoCalib"],
             baseName="residualEffiSF_",
             systAxes=["run_", "downUpVar"],
             labelsByAxis=["run", "downUpVar"],
@@ -2220,7 +2247,7 @@ def setup(
     datagroups.addSystematic(
         "muonL1PrefireSyst",
         processes=["MCnoQCD"],
-        groups=["muonPrefire", "prefire", "experiment", "expNoCalib"],
+        groups=["muonPrefire", "prefire", "experiment", "expNoLumi", "expNoCalib"],
         baseName="CMS_prefire_syst_m",
         systAxes=prefireSystAxes,
         labelsByAxis=prefireSystLabels,
@@ -2249,7 +2276,7 @@ def setup(
     datagroups.addSystematic(
         "muonL1PrefireStat",
         processes=["MCnoQCD"],
-        groups=["muonPrefire", "prefire", "experiment", "expNoCalib"],
+        groups=["muonPrefire", "prefire", "experiment", "expNoLumi", "expNoCalib"],
         baseName="CMS_prefire_stat_m_",
         passToFakes=passSystToFakes,
         systAxes=prefireStatAxes,
@@ -2261,7 +2288,7 @@ def setup(
     datagroups.addSystematic(
         "ecalL1Prefire",
         processes=["MCnoQCD"],
-        groups=["ecalPrefire", "prefire", "experiment", "expNoCalib"],
+        groups=["ecalPrefire", "prefire", "experiment", "expNoLumi", "expNoCalib"],
         baseName="CMS_prefire_ecal",
         systAxes=["downUpVar"],
         labelsByAxis=["downUpVar"],
@@ -2271,7 +2298,7 @@ def setup(
     datagroups.addSystematic(
         "muonScaleSyst_responseWeights",
         processes=["single_v_samples"],
-        groups=["scaleCrctn", "muonCalibration", "experiment"],
+        groups=["scaleCrctn", "muonCalibration", "experiment", "expNoLumi"],
         baseName="Scale_correction_",
         systAxes=["unc", "downUpVar"],
         passToFakes=passSystToFakes,
@@ -2280,7 +2307,7 @@ def setup(
     datagroups.addSystematic(
         "muonScaleClosSyst_responseWeights",
         processes=["single_v_samples"],
-        groups=["scaleClosCrctn", "muonCalibration", "experiment"],
+        groups=["scaleClosCrctn", "muonCalibration", "experiment", "expNoLumi"],
         baseName="ScaleClos_correction_",
         systAxes=["unc", "downUpVar"],
         passToFakes=passSystToFakes,
@@ -2299,7 +2326,7 @@ def setup(
     datagroups.addSystematic(
         "muonScaleClosASyst_responseWeights",
         processes=["single_v_samples"],
-        groups=["scaleClosACrctn", "muonCalibration", "experiment"],
+        groups=["scaleClosACrctn", "muonCalibration", "experiment", "expNoLumi"],
         baseName="ScaleClosA_correction_",
         systAxes=["unc", "downUpVar"],
         passToFakes=passSystToFakes,
@@ -2309,7 +2336,7 @@ def setup(
         datagroups.addSystematic(
             "muonScaleClosMSyst_responseWeights",
             processes=["single_v_samples"],
-            groups=["scaleClosMCrctn", "muonCalibration", "experiment"],
+            groups=["scaleClosMCrctn", "muonCalibration", "experiment", "expNoLumi"],
             baseName="ScaleClosM_correction_",
             systAxes=["unc", "downUpVar"],
             passToFakes=passSystToFakes,
@@ -2320,7 +2347,7 @@ def setup(
             "muonResolutionSyst_responseWeights",
             mirror=True,
             processes=["single_v_samples"],
-            groups=["resolutionCrctn", "muonCalibration", "experiment"],
+            groups=["resolutionCrctn", "muonCalibration", "experiment", "expNoLumi"],
             baseName="Resolution_correction_",
             systAxes=["smearing_variation"],
             passToFakes=passSystToFakes,
@@ -2331,7 +2358,7 @@ def setup(
         "pixelMultiplicitySyst",
         mirror=True,
         processes=["single_v_samples"],
-        groups=["pixelMultiplicitySyst", "muonCalibration", "experiment"],
+        groups=["pixelMultiplicitySyst", "muonCalibration", "experiment", "expNoLumi"],
         baseName="pixel_multiplicity_syst_",
         systAxes=["var"],
         passToFakes=passSystToFakes,
@@ -2342,7 +2369,12 @@ def setup(
             "pixelMultiplicityStat",
             mirror=True,
             processes=["single_v_samples"],
-            groups=["pixelMultiplicityStat", "muonCalibration", "experiment"],
+            groups=[
+                "pixelMultiplicityStat",
+                "muonCalibration",
+                "experiment",
+                "expNoLumi",
+            ],
             baseName="pixel_multiplicity_stat_",
             systAxes=["var"],
             passToFakes=passSystToFakes,
@@ -2354,7 +2386,7 @@ def setup(
         datagroups.addSystematic(
             name="timeStability",
             processes=["MCnoQCD"],
-            groups=["timeStability", "experiment", "expNoCalib"],
+            groups=["timeStability", "experiment", "expNoLumi", "expNoCalib"],
             passToFakes=passSystToFakes,
             mirror=True,
             labelsByAxis=[f"run"],
@@ -2369,7 +2401,7 @@ def setup(
             "muonScaleSyst_responseWeights",
             name="muonScaleSyst_responseWeightsDecorr",
             processes=["single_v_samples"],
-            groups=["scaleCrctn", "muonCalibration", "experiment"],
+            groups=["scaleCrctn", "muonCalibration", "experiment", "expNoLumi"],
             baseName="Scale_correction_",
             systAxes=["unc", "run_", "downUpVar"],
             passToFakes=passSystToFakes,
@@ -2383,7 +2415,7 @@ def setup(
             "muonScaleClosSyst_responseWeights",
             name="muonScaleClosSyst_responseWeightsDecorr",
             processes=["single_v_samples"],
-            groups=["scaleClosCrctn", "muonCalibration", "experiment"],
+            groups=["scaleClosCrctn", "muonCalibration", "experiment", "expNoLumi"],
             baseName="ScaleClos_correction_",
             systAxes=["unc", "run_", "downUpVar"],
             passToFakes=passSystToFakes,
@@ -2398,7 +2430,12 @@ def setup(
                 name="muonResolutionSyst_responseWeightsDecorr",
                 mirror=True,
                 processes=["single_v_samples"],
-                groups=["resolutionCrctn", "muonCalibration", "experiment"],
+                groups=[
+                    "resolutionCrctn",
+                    "muonCalibration",
+                    "experiment",
+                    "expNoLumi",
+                ],
                 baseName="Resolution_correction_",
                 systAxes=["smearing_variation", "run_"],
                 passToFakes=passSystToFakes,

@@ -332,6 +332,14 @@ nuisance_grouping = {
         "FakemuRate",
         "FakemuShape",
     ],
+    "unfolding": [
+        "Total",
+        "stat",
+        "binByBinStat",
+        "theory",
+        "expNoLumi",
+        "luminosity",
+    ],
     "unfolding_max": [
         "Total",
         "stat",
@@ -458,6 +466,7 @@ impact_labels = {
     "ZmassAndWidth": "Z mass & width",
     "bcQuarkMass": "b,c quark masses",
     "experiment": "Experiment",
+    "expNoLumi": "Experiment",
     "expNoCalib": "Experiment (excl. calib.)",
     "theory": "Theory",
     "nlo_ew_virtual": "EW (virtual)",
