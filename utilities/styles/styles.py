@@ -160,6 +160,7 @@ axis_labels = {
     "dxy": r"$\mathit{d}_\mathrm{xy}$ (cm)",
     "iso": {"label": r"$I$", "unit": "GeV"},
     "relIso": r"$I_\mathrm{rel}$",
+    "run": r"Run range",
     # "ewPTll": r"$\mathrm{Post\ FSR}\ p_\mathrm{T}^{\mu\mu}$",
     # "ewMll": r"$\mathrm{Post\ FSR}\ m^{\mu\mu}$",
     # "ewYll": r"$\mathrm{Post\ FSR}\ Y^{\mu\mu}$",
@@ -664,13 +665,6 @@ def get_systematics_label(key, idx=0):
     # default return key
     logger.info(f"No label found for {key}")
     return key
-
-
-for i_hel in range(0, 9):
-    for ipt in range(0, 17):
-        for iy in range(0, 10):
-            k = f"Z_ptVGen{ipt}_absYVGen{iy}_helicitySig{i_hel}"
-            systematics_labels[k] = get_systematics_label(k)
 
 
 def get_labels_colors_procs_sorted(procs):

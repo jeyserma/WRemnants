@@ -6,10 +6,13 @@ import hist
 import numpy as np
 import ROOT
 
+import narf
 from utilities import common
 from utilities.io_tools import input_tools
 from wums import boostHistHelpers as hh
 from wums import ioutils, logging, output_tools
+
+narf.clingutils.Declare('#include "histHelpers.hpp"')
 
 logger = logging.child_logger(__name__)
 
@@ -204,9 +207,29 @@ def write_analysis_output(results, outfile, args):
     return outfile
 
 
-import narf
-
-narf.clingutils.Declare('#include "histHelpers.hpp"')
+def get_run_lumi_edges(nRunBins, era):
+    if era == "2016PostVFP":
+        if nRunBins == 2:
+            run_edges = [278768, 280385, 284044]
+            lumi_edges = [0.0, 0.48013, 1.0]
+        elif nRunBins == 3:
+            run_edges = [278768, 279767, 283270, 284044]
+            lumi_edges = [0.0, 0.25749, 0.72954, 1.0]
+        elif nRunBins == 4:
+            run_edges = [278768, 279767, 280385, 283270, 284044]
+            lumi_edges = [0.0, 0.25749, 0.48013, 0.72954, 1.0]
+        elif nRunBins == 5:
+            run_edges = [278768, 279588, 280017, 282037, 283478, 284044]
+            lumi_edges = [0.0, 0.13871, 0.371579, 0.6038544, 0.836724, 1.0]
+        else:
+            raise NotImplementedError(
+                f"Invalid number of bins ({nRunBins}) passed to --nRunBins."
+            )
+    else:
+        raise NotImplementedError(
+            f"Function get_run_lumi_edges() does not yet support era {era}."
+        )
+    return run_edges, lumi_edges
 
 
 def make_quantile_helper(
