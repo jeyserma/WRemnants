@@ -436,7 +436,9 @@ def make_qcd_uncertainty_helpers_by_helicity(
 def make_qcd_uncertainty_helper_by_helicity(
     is_z=False,
     filename=f"{common.data_dir}/angularCoefficients/w_z_moments.hdf5",
-    rebin_ptVgen=True,
+    rebin_ptVgen=common.ptV_binning,
+    rebin_absYVgen=None,
+    rebin_massVgen=True,
     return_tensor=True,
 ):
 
@@ -444,29 +446,40 @@ def make_qcd_uncertainty_helper_by_helicity(
     with h5py.File(filename, "r") as h5file:
         results = input_tools.load_results_h5py(h5file)
 
-    def get_helicity_xsecs(suffix="", rebin_ptVgen=True, rebin_absYVgen=None):
+    def get_helicity_xsecs(
+        suffix="",
+        rebin_ptVgen=common.ptV_binning,
+        rebin_absYVgen=None,
+        rebin_massVgen=2,
+    ):
         h = results[f"Z{suffix}"] if is_z else results[f"W{suffix}"]
 
         if rebin_ptVgen is not None:
-
-            # Common.ptV_binning is the approximate 5% quantiles, rounded to integers
-            if rebin_ptVgen is bool:
-                h = hh.rebinHist(h, "ptVgen", common.ptV_binning)
-            elif type(rebin_ptVgen) in (list, np.ndarray):
-                h = hh.rebinHist(h, "ptVgen", rebin_ptVgen)
-
-            if is_z:
-                axis_massVgen = h.axes["massVgen"]
-                if len(axis_massVgen.edges) > 2:
-                    h = hh.rebinHist(h, "massVgen", axis_massVgen.edges[::2])
-
+            h = hh.rebinHist(h, "ptVgen", rebin_ptVgen)
+        if rebin_massVgen is not None:
+            if type(rebin_massVgen) is bool and rebin_massVgen:
+                if is_z:
+                    axis_massVgen = h.axes["massVgen"]
+                    if len(axis_massVgen.edges) > 2:
+                        h = hh.rebinHist(h, "massVgen", axis_massVgen.edges[::2])
+            else:
+                h = hh.rebinHist(h, "massVgen", rebin_massVgen)
         if rebin_absYVgen is not None:
             h = hh.rebinHist(h, "absYVgen", rebin_absYVgen)
 
         return h
 
-    helicity_xsecs = get_helicity_xsecs(rebin_ptVgen=rebin_ptVgen)
-    helicity_xsecs_lhe = get_helicity_xsecs("_lhe", rebin_ptVgen=rebin_ptVgen)
+    helicity_xsecs = get_helicity_xsecs(
+        rebin_ptVgen=rebin_ptVgen,
+        rebin_absYVgen=rebin_absYVgen,
+        rebin_massVgen=rebin_massVgen,
+    )
+    helicity_xsecs_lhe = get_helicity_xsecs(
+        "_lhe",
+        rebin_ptVgen=rebin_ptVgen,
+        rebin_absYVgen=rebin_absYVgen,
+        rebin_massVgen=rebin_massVgen,
+    )
 
     helicity_xsecs_nom = helicity_xsecs[{"muRfact": 1.0j, "muFfact": 1.0j}].values()
 

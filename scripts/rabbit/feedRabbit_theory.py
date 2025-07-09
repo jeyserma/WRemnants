@@ -374,8 +374,9 @@ if args.angularCoeffs:
     qcd_helper = theory_corrections.make_qcd_uncertainty_helper_by_helicity(
         is_z=True,
         filename=args.predAiFile,
-        rebi_ptVgen=h_data_ai.axes["ptVGen"].edges,
-        rebi_absYVgen=h_data_ai.axes["absYVGen"].edges,
+        rebin_ptVgen=h_data_ai.axes["ptVGen"].edges,
+        rebin_absYVgen=h_data_ai.axes["absYVGen"].edges,
+        rebin_massVgen=True,
         return_tensor=False,
     )
 
