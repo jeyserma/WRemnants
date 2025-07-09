@@ -361,22 +361,11 @@ def build_graph(df, dataset):
 
         # LHE level
         df = syst_tools.define_weak_weights(df, dataset.name)
-        axis_lheMV = hist.axis.Variable(
-            # massBins,
-            [0.0, 46.0, 50.0]
-            + np.linspace(60, 120, 61).tolist()
-            + [140.0, 160.0, 200.0],
-            name="massVlhe",
-            underflow=False,
-        )
+        axis_lheMV = hist.axis.Variable(massBins, name="massVlhe", underflow=False)
         axis_lhePtV = hist.axis.Variable(
-            # common.ptV_binning,
-            common.get_dilepton_ptV_binning(),
-            underflow=False,
-            name="ptVlhe",
+            common.ptV_binning, underflow=False, name="ptVlhe"
         )
-        # axis_lheAbsYV = hist.axis.Regular(50, 0, 5, underflow=False, name="absYVlhe")
-        axis_lheAbsYV = hist.axis.Regular(100, 0, 5, underflow=False, name="absYVlhe")
+        axis_lheAbsYV = hist.axis.Regular(50, 0, 5, underflow=False, name="absYVlhe")
         axis_lheYV = hist.axis.Regular(100, -5.0, 5.0, name="YVlhe")
         axis_lhechargeZ = hist.axis.Integer(
             0, 1, underflow=False, overflow=False, name="chargeVlhe"
