@@ -4,6 +4,7 @@ import os
 import hist
 import numpy as np
 
+from utilities import common
 from utilities.io_tools import input_tools
 from wums import boostHistHelpers as hh
 from wums import logging, output_tools
@@ -80,11 +81,7 @@ if args.debug:
 
 # integrate over pt and phistar
 h = h[{"ptVlhe": hist.sum, "phiStarlhe": hist.sum, "cosThetaStarlhe": hist.sum}]
-h = hh.rebinHist(
-    h,
-    "absYVlhe",
-    [0, 0.25, 0.5, 0.75, 1, 1.25, 1.5, 1.75, 2, 2.25, 2.5, 2.75, 3, 3.25, 3.5, 4, 5],
-)
+h = hh.rebinHist(h, "absYVlhe", common.absYV_binning)
 
 hcorr = hist.Hist(*h.axes)
 # safe default

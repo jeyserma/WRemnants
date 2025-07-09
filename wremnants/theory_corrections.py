@@ -465,8 +465,8 @@ def make_qcd_uncertainty_helper_by_helicity(
 
         return h
 
-    helicity_xsecs = get_helicity_xsecs(rebin=rebin_ptVgen)
-    helicity_xsecs_lhe = get_helicity_xsecs("_lhe", rebin=rebin_ptVgen)
+    helicity_xsecs = get_helicity_xsecs(rebin_ptVgen=rebin_ptVgen)
+    helicity_xsecs_lhe = get_helicity_xsecs("_lhe", rebin_ptVgen=rebin_ptVgen)
 
     helicity_xsecs_nom = helicity_xsecs[{"muRfact": 1.0j, "muFfact": 1.0j}].values()
 
