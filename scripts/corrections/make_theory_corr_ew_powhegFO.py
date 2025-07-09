@@ -80,7 +80,7 @@ if args.debug:
         plt.close()
 
 # integrate over pt and phistar
-h = h[{"ptVlhe": hist.sum, "phiStarlhe": hist.sum, "cosThetaStarlhe": hist.sum}]
+h = h[{"ptVlhe": hist.sum, "phiStarlhe": hist.sum}]
 h = hh.rebinHist(h, "absYVlhe", common.absYV_binning)
 
 hcorr = hist.Hist(*h.axes)
@@ -103,7 +103,7 @@ hcorr[{"massVlhe": -1}] = hcorr[{"massVlhe": -2}].values()
 hcorr[{"massVlhe": hist.overflow}] = hcorr[{"massVlhe": -2}].values()
 
 # charge axis should go at the end
-hcorr = hcorr.project("massVlhe", "absYVlhe", "chargeVlhe", "weak")
+hcorr = hcorr.project("massVlhe", "absYVlhe", "cosThetaStarlhe", "chargeVlhe", "weak")
 
 print(hcorr)
 

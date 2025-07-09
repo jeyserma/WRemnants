@@ -120,8 +120,6 @@ def make_plot_2d(
 
     xlabel = styles.axis_labels.get(axes[0], axes[0])
     ylabel = styles.axis_labels.get(axes[1], axes[1])
-    xlabel = "pT"
-    ylabel = "eta"
 
     if flow:
         xedges, yedges = plot_tools.extendEdgesByFlow(h2d)
@@ -289,7 +287,7 @@ def make_plot_1d(
 
     fig, ax = plot_tools.figure(
         h1ds[0],
-        xlabel="pT",  # styles.axis_labels.get(axis, axis),
+        xlabel=styles.axis_labels.get(axis, axis),
         ylabel=ylabel,
         automatic_scale=False,
         width_scale=1.2,
