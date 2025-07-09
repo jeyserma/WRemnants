@@ -8,9 +8,9 @@ from matplotlib.colors import LogNorm
 
 from utilities import common, parsing
 from utilities.styles import styles
-from wremnants import plot_tools, theory_corrections
+from wremnants import theory_corrections
 from wums import boostHistHelpers as hh
-from wums import logging, output_tools
+from wums import logging, output_tools, plot_tools
 
 parser = parsing.plot_parser()
 parser.add_argument(
@@ -54,20 +54,6 @@ parser.add_argument(
     nargs="*",
     default=None,
     help="Which axes to plot, if not specified plot all axes",
-)
-parser.add_argument(
-    "--xlim",
-    type=float,
-    nargs=2,
-    default=[None, None],
-    help="Min and max values for x axis (if not specified, range set automatically)",
-)
-parser.add_argument(
-    "--ylim",
-    type=float,
-    nargs=2,
-    default=[None, None],
-    help="Min and max values for y axis (if not specified, range set automatically)",
 )
 parser.add_argument(
     "--clim",
@@ -134,6 +120,8 @@ def make_plot_2d(
 
     xlabel = styles.axis_labels.get(axes[0], axes[0])
     ylabel = styles.axis_labels.get(axes[1], axes[1])
+    xlabel = "pT"
+    ylabel = "eta"
 
     if flow:
         xedges, yedges = plot_tools.extendEdgesByFlow(h2d)
@@ -156,12 +144,12 @@ def make_plot_2d(
             )
         )
 
-    if args.xlim[0] is None:
+    if args.xlim and args.xlim[0] is None:
         xlim = (xedges[0], xedges[-1])
     else:
         xlim = args.xlim
 
-    if args.ylim[0] is None:
+    if args.ylim and args.ylim[0] is None:
         ylim = (yedges[0], yedges[-1])
     else:
         ylim = args.ylim
@@ -235,7 +223,7 @@ def make_plot_2d(
     if args.postfix:
         outfile += f"_{args.postfix}"
     plot_tools.save_pdf_and_png(outdir, outfile)
-    plot_tools.write_index_and_log(outdir, outfile, args=args)
+    output_tools.write_index_and_log(outdir, outfile, args=args)
 
 
 def make_plot_1d(
@@ -301,7 +289,7 @@ def make_plot_1d(
 
     fig, ax = plot_tools.figure(
         h1ds[0],
-        xlabel=styles.axis_labels.get(axis, axis),
+        xlabel="pT",  # styles.axis_labels.get(axis, axis),
         ylabel=ylabel,
         automatic_scale=False,
         width_scale=1.2,
@@ -360,7 +348,7 @@ def make_plot_1d(
     if args.postfix:
         outfile += f"_{args.postfix}"
     plot_tools.save_pdf_and_png(outdir, outfile)
-    plot_tools.write_index_and_log(outdir, outfile, args=args)
+    output_tools.write_index_and_log(outdir, outfile, args=args)
 
 
 for dataset, corr_hists in corr_dict.items():
@@ -542,10 +530,10 @@ for dataset, corr_hists in corr_dict.items():
                     labels=all_labels,
                     flow=not args.noFlow,
                     corr="all",
-                    xmin=args.xlim[0],
-                    xmax=args.xlim[1],
-                    ymin=args.ylim[0],
-                    ymax=args.ylim[1],
+                    xmin=args.xlim[0] if args.xlim else None,
+                    xmax=args.xlim[1] if args.xlim else None,
+                    ymin=args.ylim[0] if args.ylim else None,
+                    ymax=args.ylim[1] if args.ylim else None,
                     uncertainty_bands=args.showUncertainties,
                 )
 

@@ -4,8 +4,9 @@ import os
 import hist
 import numpy as np
 
-from utilities.io_tools import input_tools, output_tools
-from wums import logging
+from utilities.io_tools import input_tools
+from wums import boostHistHelpers as hh
+from wums import logging, output_tools
 
 parser = argparse.ArgumentParser()
 
@@ -78,7 +79,12 @@ if args.debug:
         plt.close()
 
 # integrate over pt and phistar
-h = h[{"ptVlhe": hist.sum, "phiStarlhe": hist.sum}]
+h = h[{"ptVlhe": hist.sum, "phiStarlhe": hist.sum, "cosThetaStarlhe": hist.sum}]
+h = hh.rebinHist(
+    h,
+    "absYVlhe",
+    [0, 0.25, 0.5, 0.75, 1, 1.25, 1.5, 1.75, 2, 2.25, 2.5, 2.75, 3, 3.25, 3.5, 4, 5],
+)
 
 hcorr = hist.Hist(*h.axes)
 # safe default
@@ -100,7 +106,7 @@ hcorr[{"massVlhe": -1}] = hcorr[{"massVlhe": -2}].values()
 hcorr[{"massVlhe": hist.overflow}] = hcorr[{"massVlhe": -2}].values()
 
 # charge axis should go at the end
-hcorr = hcorr.project("massVlhe", "absYVlhe", "cosThetaStarlhe", "chargeVlhe", "weak")
+hcorr = hcorr.project("massVlhe", "absYVlhe", "chargeVlhe", "weak")
 
 print(hcorr)
 
@@ -120,4 +126,6 @@ for f in [args.input]:
     except ValueError as e:
         logger.warning(f"No meta data found for file {f}")
 
-output_tools.write_theory_corr_hist(correction_name, "Z", res, args, meta_dict)
+output_tools.write_lz4_pkl_output(
+    correction_name, "Z", res, basedir="./", args=args, file_meta_data=meta_dict
+)

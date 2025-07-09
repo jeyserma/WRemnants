@@ -1,7 +1,9 @@
 import collections.abc
+import pickle
 import re
 
 import hist
+import lz4.frame
 import numpy as np
 import ROOT
 
@@ -1910,6 +1912,8 @@ def add_muon_efficiency_unc_hists(
             "tnpUT0",
             "tnpCharge0",
         ]  # passIso0 required only for iso stat variations, added later
+        if not smooth3D:
+            muvars_stat.remove("tnpUT0")
         muon_columns_stat_trig = [f"trigMuons_{v}" for v in muvars_stat]
         muon_columns_stat_nonTrig = [f"nonTrigMuons_{v}" for v in muvars_stat]
 
@@ -1922,6 +1926,8 @@ def add_muon_efficiency_unc_hists(
             "tnpCharge0",
             "passIso0",
         ]
+        if not smooth3D:
+            muvars_syst.remove("tnpUT0")
         muon_columns_syst_trig = [f"trigMuons_{v}" for v in muvars_syst]
         muon_columns_syst_nonTrig = [f"nonTrigMuons_{v}" for v in muvars_syst]
 
@@ -2567,3 +2573,44 @@ def add_helicity_hists(
         results.append(gen_theoryAgnostic)
 
     return df
+
+
+def scale_hist_up_down(h, scale):
+    hUp = hh.scaleHist(h, scale)
+    hDown = hh.scaleHist(h, 1 / scale)
+
+    hVar = hist.Hist(
+        *[a for a in h.axes],
+        common.down_up_axis,
+        storage=hist.storage.Weight(),
+    )
+    hVar.values(flow=True)[...] = np.stack(
+        [hDown.values(flow=True), hUp.values(flow=True)], axis=-1
+    )
+    hVar.variances(flow=True)[...] = np.stack(
+        [hDown.variances(flow=True), hUp.variances(flow=True)], axis=-1
+    )
+    return hVar
+
+
+def scale_hist_up_down_corr_from_file(h, corr_file=None, corr_hist=None):
+    # FIXME: this might not be thread safe, but it is a test for now
+    with lz4.frame.open(corr_file) as f:
+        corrs = pickle.load(f)
+    boost_corr = corrs[corr_hist]
+
+    hUp = hh.multiplyHists(h, boost_corr)
+    hDown = hh.divideHists(h, boost_corr)
+
+    hVar = hist.Hist(
+        *[a for a in h.axes],
+        common.down_up_axis,
+        storage=hist.storage.Weight(),
+    )
+    hVar.values(flow=True)[...] = np.stack(
+        [hDown.values(flow=True), hUp.values(flow=True)], axis=-1
+    )
+    hVar.variances(flow=True)[...] = np.stack(
+        [hDown.variances(flow=True), hUp.variances(flow=True)], axis=-1
+    )
+    return hVar

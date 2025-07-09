@@ -5,9 +5,9 @@ import math
 import hist
 import numpy as np
 
-import combinetf2.debugdata
-import combinetf2.io_tools
-from combinetf2 import tensorwriter
+import rabbit.debugdata
+import rabbit.io_tools
+from rabbit import tensorwriter
 from utilities import common, parsing
 from wremnants import (
     combine_helpers,
@@ -20,7 +20,11 @@ from wremnants import (
 from wremnants.datasets.datagroups import Datagroups
 from wremnants.histselections import FakeSelectorSimpleABCD
 from wremnants.regression import Regressor
-from wremnants.syst_tools import massWeightNames
+from wremnants.syst_tools import (
+    massWeightNames,
+    scale_hist_up_down,
+    scale_hist_up_down_corr_from_file,
+)
 from wums import boostHistHelpers as hh
 from wums import logging
 
@@ -216,15 +220,18 @@ def make_parser(parser=None):
     )
     parser.add_argument(
         "--axlim",
-        type=float,
+        type=parsing.str_to_complex_or_int,
         default=[],
         nargs="*",
-        help="Restrict axis to this range (assumes pairs of values by axis, with trailing axes optional)",
+        help="""
+        Restrict axis to this range or these bins (assumes pairs of values by axis, with trailing axes optional).
+        Arguments must be pure real or pure imaginary numbers to select bin indices or values, respectively.
+        """,
     )
     parser.add_argument(
         "--rebinBeforeSelection",
         action="store_true",
-        help="Rebin before the selection operation (e.g. before fake rate computation), default if after",
+        help="Rebin before the selection operation (e.g. before fake rate computation), default is after",
     )
     parser.add_argument(
         "--lumiUncertainty",
@@ -251,6 +258,13 @@ def make_parser(parser=None):
             when the argument of lumiScale is larger than unity, because bin-by-bin fluctuations will not be covered by the assumed uncertainty. 
             For data, this only has an effect for the data-driven estimate of the QCD multijet background through the uncertainty propagation from them data-MC subtraction.
             """,
+    )
+    parser.add_argument(
+        "--procsWithoutLumiNorm",
+        type=str,
+        nargs="*",
+        help="Do not apply luminosity norm uncertainty on these processes (Data, Fake, and QCD are already automatically excluded)",
+        default=[],
     )
     parser.add_argument(
         "--fitXsec", action="store_true", help="Fit signal inclusive cross section"
@@ -321,6 +335,20 @@ def make_parser(parser=None):
         help="Restrict axis to this range (assumes pairs of values by axis, with trailing axes optional)",
     )
     parser.add_argument(
+        "--decorrSystByRun",
+        type=str,
+        nargs="*",
+        default=[],
+        choices=["prefire", "effi", "lumi", "fakenorm", "effisyst"],
+        help="Customize what uncertainties to decorrelate by run, to facilitate tests (note: effi is for both effStat and effSyst, while effisyst is only for effSyst).",
+    )
+    parser.add_argument(
+        "--residualEffiSFasUncertainty",
+        type=int,
+        default=0,
+        help="When decorrelating by N run bins (specify N), add custom systematic uncertainty for residual efficiency scale factors.",
+    )
+    parser.add_argument(
         "--fitresult",
         type=str,
         nargs="+",
@@ -381,7 +409,18 @@ def make_parser(parser=None):
         type=str,
         default="chebyshev",
         choices=Regressor.polynomials,
-        help="Order of the polynomial for the smoothing of the application region or full prediction, depending on the smoothing mode",
+        help="Type of polynomial for the smoothing of the application region or full prediction, depending on the smoothing mode",
+    )
+    parser.add_argument(
+        "--ABCDedgesByAxis",
+        type=str,
+        nargs="+",
+        default=[],
+        help="""
+        Edges for ABCD method given an axis. Syntax is --ABCDedgesByAxis 'nameX=x1,x2,x3' 'nameY=y1,y2,y3'
+        Values after = are converted into float internally.
+        Can specify only one axis or two (potentially more).
+        """,
     )
     parser.add_argument(
         "--allowNegativeExpectation",
@@ -393,7 +432,7 @@ def make_parser(parser=None):
         "--doStatOnly",
         action="store_true",
         default=False,
-        help="Set up fit to get stat-only uncertainty (currently combinetf with -S 0 doesn't work)",
+        help="Set up fit to get stat-only uncertainty",
     )
     parser.add_argument(
         "--noTheoryUnc",
@@ -619,11 +658,6 @@ def make_parser(parser=None):
         type=float,
         help="Specify normalization uncertainty for Fake background (for W analysis). If negative, treat as free floating, if 0 nothing is added",
     )
-    parser.add_argument(
-        "--passNormUncToFakes",
-        action="store_true",
-        help="Propagate normalization uncertainties into the fake estimation",
-    )
     # pseudodata
     parser.add_argument(
         "--pseudoData", type=str, nargs="+", help="Histograms to use as pseudodata"
@@ -730,7 +764,7 @@ def make_parser(parser=None):
     parser.add_argument(
         "--muRmuFPolVar",
         action="store_true",
-        help="Use polynomial variations (like in theoryAgnosticPolVar) instead of binned variations for muR and muF (of course in setupCombine these are still constrained nuisances)",
+        help="Use polynomial variations (like in theoryAgnosticPolVar) instead of binned variations for muR and muF (of course in setupRabbit these are still constrained nuisances)",
     )
     parser.add_argument(
         "--binByBinStatScaleForMW",
@@ -760,7 +794,7 @@ def make_parser(parser=None):
         dest="selection",
         type=str,
         default=None,
-        help="Apply a selection to the histograms, if the axis exists. This option can be applied to any of the axis, not necessarily one of the fitaxes, unlike --axlim. e.g. '--select 'ptll 0 10'"
+        help="Apply a selection to the histograms, if the axis exists. This option can be applied to any of the axis, not necessarily one of the fitaxes, unlike --axlim. e.g. '--select 'ptll 0 10'",
     )
     parser = make_subparsers(parser)
 
@@ -788,8 +822,6 @@ def setup(
     ]
     isTheoryAgnosticPolVar = args.analysisMode == "theoryAgnosticPolVar"
     isPoiAsNoi = (isUnfolding or isTheoryAgnostic) and args.poiAsNoi
-    isFloatingPOIsTheoryAgnostic = isTheoryAgnostic and not isPoiAsNoi
-    isFloatingPOIs = (isUnfolding or isTheoryAgnostic) and not isPoiAsNoi
 
     # NOTE: args.filterProcGroups and args.excludeProcGroups should in principle not be used together
     #       (because filtering is equivalent to exclude something), however the exclusion is also meant to skip
@@ -823,7 +855,11 @@ def setup(
             sel_lb = complex(sel_lb)
             sel_ub = complex(sel_ub)
             datagroups.setGlobalAction(
-                lambda h: h[{sel_ax: slice(sel_lb, sel_ub,hist.sum)}] if sel_ax in h.axes.name else h,
+                lambda h: (
+                    h[{sel_ax: slice(sel_lb, sel_ub, hist.sum)}]
+                    if sel_ax in h.axes.name
+                    else h
+                ),
             )
 
     if args.angularCoeffs:
@@ -893,7 +929,7 @@ def setup(
             f"When running lowPU mode, fakeEstimation should be set to 'simple' and fakeSmoothingMode set to 'binned'."
         )
 
-    if "run" in fitvar:
+    if dilepton and "run" in fitvar:
         # in case fit is split by runs/ cumulated lumi
         # run axis only exists for data, add it for MC, and scale the MC according to the luminosity fractions
         run_edges = common.run_edges
@@ -1011,6 +1047,12 @@ def setup(
     if args.qcdProcessName:
         datagroups.fakeName = args.qcdProcessName
 
+    abcdExplicitAxisEdges = {}
+    if len(args.ABCDedgesByAxis):
+        for item in args.ABCDedgesByAxis:
+            ax_name, ax_edges = item.split("=")
+            abcdExplicitAxisEdges[ax_name] = [float(x) for x in ax_edges.split(",")]
+
     if wmass and not xnorm:
         datagroups.fakerate_axes = args.fakerateAxes
         histselector_kwargs = dict(
@@ -1021,6 +1063,7 @@ def setup(
             mcCorr=args.fakeMCCorr,
             integrate_x="mt" not in fitvar,
             forceGlobalScaleFakes=args.forceGlobalScaleFakes,
+            abcdExplicitAxisEdges=abcdExplicitAxisEdges,
         )
         datagroups.set_histselectors(
             datagroups.getNames(), inputBaseName, **histselector_kwargs
@@ -1120,6 +1163,11 @@ def setup(
         "MCnoQCD",
         excludeMatch=["QCD", "Data", "Fake"],
     )
+    procsWithoutLumiNorm = ["QCD", "Data", "Fake"] + args.procsWithoutLumiNorm
+    datagroups.addProcessGroup(
+        "MCwithLumiNorm",
+        excludeMatch=procsWithoutLumiNorm,
+    )
     # FIXME/FOLLOWUP: the following groups may actually not exclude the OOA when it is not defined as an independent process with specific name
     datagroups.addProcessGroup(
         "signal_samples_noOutAcc",
@@ -1152,11 +1200,6 @@ def setup(
         logger.info(f"Signal samples: {datagroups.procGroups['signal_samples']}")
 
     signal_samples_forMass = ["signal_samples_inctau"]
-    if isFloatingPOIsTheoryAgnostic:
-        logger.error(
-            "Temporarily not using mass weights for Wtaunu. Please update when possible"
-        )
-        signal_samples_forMass = ["signal_samples"]
 
     datagroups.writer = writer
 
@@ -1189,8 +1232,8 @@ def setup(
         datagroups.addPseudodataHistogramFakes(pseudodata, pseudodataGroups)
     if args.pseudoData and not xnorm:
         if args.pseudoDataFitInputFile:
-            indata = combinetf2.debugdata.FitInputData(args.pseudoDataFitInputFile)
-            debugdata = combinetf2.debugdata.FitDebugData(indata)
+            indata = rabbit.debugdata.FitInputData(args.pseudoDataFitInputFile)
+            debugdata = rabbit.debugdata.FitDebugData(indata)
             datagroups.addPseudodataHistogramsFitInput(
                 debugdata,
                 args.pseudoData,
@@ -1234,7 +1277,7 @@ def setup(
 
     if args.doStatOnly and isUnfolding and not isPoiAsNoi:
         # At least one nuisance parameter is needed to run combine impacts (e.g. needed for unfolding postprocessing chain)
-        # TODO: fix combineTF2 to run w/o nuisances
+        # TODO: fix Rabbit to run w/o nuisances
         datagroups.addNormSystematic(
             name="dummy",
             processes=["MCnoQCD"],
@@ -1278,6 +1321,8 @@ def setup(
                     mirror=False,
                     systAxes=["massShift", *new_names],
                     passToFakes=passSystToFakes,
+                    # isPoiHistDecorr is a special flag to deal with how the massShift variations are internally formed
+                    isPoiHistDecorr=len(args.fitMassDecorr),
                     actionRequiresNomi=True,
                     action=syst_tools.decorrelateByAxes,
                     actionArgs=dict(
@@ -1533,44 +1578,49 @@ def setup(
 
     if wmass:
         # mirror hist in linear scale, this was done in the old definition of luminosity uncertainty from a histogram
-        def scale_hist_up_down(h, scale):
-            hUp = hh.scaleHist(h, scale)
-            hDown = hh.scaleHist(h, 1 / scale)
-
-            hVar = hist.Hist(
-                *[a for a in h.axes],
-                common.down_up_axis,
-                storage=hist.storage.Weight(),
+        if "lumi" in args.decorrSystByRun and "run" in fitvar:
+            datagroups.addSystematic(
+                name="lumi",
+                processes=["MCwithLumiNorm"],
+                groups=[f"luminosity", "experiment", "expNoCalib"],
+                passToFakes=passSystToFakes,
+                baseName="lumi_",
+                systAxes=["run_", "downUpVar"],
+                labelsByAxis=["run", "downUpVar"],
+                actionRequiresNomi=True,
+                action=syst_tools.decorrelateByAxes,
+                actionArgs=dict(axesToDecorrNames=["run"], newDecorrAxesNames=["run_"]),
+                preOp=scale_hist_up_down,
+                preOpArgs={
+                    "scale": (
+                        datagroups.lumi_uncertainty
+                        if args.lumiUncertainty is None
+                        else args.lumiUncertainty
+                    )
+                },
             )
-            hVar.values(flow=True)[...] = np.stack(
-                [hDown.values(flow=True), hUp.values(flow=True)], axis=-1
+        else:
+            datagroups.addSystematic(
+                name="lumi",
+                processes=["MCwithLumiNorm"],
+                groups=[f"luminosity", "experiment", "expNoCalib"],
+                passToFakes=passSystToFakes,
+                outNames=["lumiDown", "lumiUp"],
+                systAxes=["downUpVar"],
+                labelsByAxis=["downUpVar"],
+                preOp=scale_hist_up_down,
+                preOpArgs={
+                    "scale": (
+                        datagroups.lumi_uncertainty
+                        if args.lumiUncertainty is None
+                        else args.lumiUncertainty
+                    )
+                },
             )
-            hVar.variances(flow=True)[...] = np.stack(
-                [hDown.variances(flow=True), hUp.variances(flow=True)], axis=-1
-            )
-            return hVar
-
-        datagroups.addSystematic(
-            name="lumi",
-            processes=["MCnoQCD"],
-            groups=[f"luminosity", "experiment", "expNoCalib"],
-            passToFakes=passSystToFakes,
-            outNames=["lumiDown", "lumiUp"],
-            systAxes=["downUpVar"],
-            labelsByAxis=["downUpVar"],
-            preOp=scale_hist_up_down,
-            preOpArgs={
-                "scale": (
-                    datagroups.lumi_uncertainty
-                    if args.lumiUncertainty is None
-                    else args.lumiUncertainty
-                )
-            },
-        )
     else:
         datagroups.addNormSystematic(
             name="lumi",
-            processes=["MCnoQCD"],
+            processes=["MCwithLumiNorm"],
             groups=[f"luminosity", "experiment", "expNoCalib"],
             passToFakes=passSystToFakes,
             norm=(
@@ -1580,12 +1630,14 @@ def setup(
             ),
         )
 
-    if not lowPU and 'PhotonInduced' in datagroups.groups:  # lowPU does not include PhotonInduced as a process. skip it:
+    if (
+        not lowPU and "PhotonInduced" in datagroups.groups
+    ):  # lowPU does not include PhotonInduced as a process. skip it:
         datagroups.addNormSystematic(
             name="CMS_PhotonInduced",
             processes=["PhotonInduced"],
             groups=[f"CMS_background", "experiment", "expNoCalib"],
-            passToFakes=args.passNormUncToFakes,
+            passToFakes=passSystToFakes,
             norm=2.0,
         )
     if wmass:
@@ -1617,29 +1669,47 @@ def setup(
             )
 
         if args.logNormalFake > 0.0:
-            datagroups.addNormSystematic(
-                name=f"CMS_{datagroups.fakeName}",
-                processes=[datagroups.fakeName],
-                groups=["Fake", "experiment", "expNoCalib"],
-                passToFakes=False,
-                norm=args.logNormalFake,
-            )
+            if "fakenorm" in args.decorrSystByRun and "run" in fitvar:
+                datagroups.addSystematic(
+                    name=f"CMS_{datagroups.fakeName}",
+                    processes=[datagroups.fakeName],
+                    groups=["Fake", "experiment", "expNoCalib"],
+                    passToFakes=False,
+                    baseName=f"CMS_{datagroups.fakeName}_",
+                    systAxes=["run_", "downUpVar"],
+                    labelsByAxis=["run", "downUpVar"],
+                    actionRequiresNomi=True,
+                    action=syst_tools.decorrelateByAxes,
+                    actionArgs=dict(
+                        axesToDecorrNames=["run"], newDecorrAxesNames=["run_"]
+                    ),
+                    preOp=scale_hist_up_down,
+                    preOpArgs={"scale": args.logNormalFake},
+                )
+            else:
+                datagroups.addNormSystematic(
+                    name=f"CMS_{datagroups.fakeName}",
+                    processes=[datagroups.fakeName],
+                    groups=["Fake", "experiment", "expNoCalib"],
+                    passToFakes=False,
+                    norm=args.logNormalFake,
+                )
 
         datagroups.addNormSystematic(
             name="CMS_Top",
             processes=["Top"],
             groups=[f"CMS_background", "experiment", "expNoCalib"],
-            passToFakes=args.passNormUncToFakes,
+            passToFakes=passSystToFakes,
             norm=1.06,
         )
         datagroups.addNormSystematic(
             name="CMS_VV",
             processes=["Diboson"],
             groups=[f"CMS_background", "experiment", "expNoCalib"],
-            passToFakes=args.passNormUncToFakes,
+            passToFakes=passSystToFakes,
             norm=1.16,
         )
-    elif 'Other' in datagroups.groups:
+    elif "Other" in datagroups.groups:
         datagroups.addNormSystematic(
             name="CMS_background",
             processes=["Other"],
@@ -1660,12 +1730,12 @@ def setup(
         fakeselector = datagroups.groups[datagroups.fakeName].histselector
 
         syst_axes = (
-            ["eta", "charge"]
+            [f"_{x}" for x in args.fakerateAxes if x != "pt"]
             if (
                 args.fakeSmoothingMode != "binned"
                 or args.fakeEstimation not in ["extrapolate"]
             )
-            else ["eta", "pt", "charge"]
+            else [f"_{x}" for x in args.fakerateAxes]
         )
         info = dict(
             histname=inputBaseName,
@@ -1675,8 +1745,7 @@ def setup(
             scale=1,
             applySelection=False,  # don't apply selection, all regions will be needed for the action
             action=fakeselector.get_hist,
-            systAxes=[f"_{x}" for x in syst_axes if x in args.fakerateAxes]
-            + ["_param", "downUpVar"],
+            systAxes=syst_axes + ["_param", "downUpVar"],
         )
         if args.fakeSmoothingMode in ["hybrid", "full"]:
             subgroup = f"{datagroups.fakeName}Smoothing"
@@ -1832,6 +1901,22 @@ def setup(
                         f"{groupName}_{x}": f".*effSyst.*{x}"
                         for x in list(effTypesNoIso + ["iso"])
                     }
+                    actionSF = None
+                    effActionArgs = {}
+                    if (
+                        any(x in args.decorrSystByRun for x in ["effi", "effisyst"])
+                        and "run" in fitvar
+                    ):
+                        axes = [
+                            "reco-tracking-idip-trigger-iso",
+                            "n_syst_variations",
+                            "run_",
+                        ]
+                        axlabels = ["WPSYST", "_etaDecorr", "run"]
+                        actionSF = syst_tools.decorrelateByAxes
+                        effActionArgs = dict(
+                            axesToDecorrNames=["run"], newDecorrAxesNames=["run_"]
+                        )
                 else:
                     nameReplace = (
                         []
@@ -1850,6 +1935,15 @@ def setup(
                     splitGroupDict = {
                         f"{groupName}_{x}": f".*effStat.*{x}" for x in effStatTypes
                     }
+                    actionSF = None
+                    effActionArgs = {}
+                    if "effi" in args.decorrSystByRun and "run" in fitvar:
+                        axes = ["SF eta", "nPtEigenBins", "SF charge", "run_"]
+                        axlabels = ["eta", "pt", "q", "run"]
+                        actionSF = syst_tools.decorrelateByAxes
+                        effActionArgs = dict(
+                            axesToDecorrNames=["run"], newDecorrAxesNames=["run_"]
+                        )
                 if args.effStatLumiScale and "Syst" not in name:
                     scale /= math.sqrt(args.effStatLumiScale)
 
@@ -1860,6 +1954,9 @@ def setup(
                     splitGroup=splitGroupDict,
                     systAxes=axes,
                     labelsByAxis=axlabels,
+                    actionRequiresNomi=True,
+                    action=actionSF,
+                    actionArgs=effActionArgs,
                     baseName=name + "_",
                     processes=["MCnoQCD"],
                     passToFakes=passSystToFakes,
@@ -2054,6 +2151,58 @@ def setup(
 
         return datagroups
 
+    # add dedicated uncertainties from residual corrections read from a file
+    # implemented by modifying the nominal histogram
+    if "run" in fitvar and args.residualEffiSFasUncertainty > 0:
+        ## action to apply corrections and move from nominal to alternate histogram in input
+        corr_era = "2016" if era == "2016PostVFP" else era
+        corr_input_path = f"{common.data_dir}/muonSF/corrections/{corr_era}/"
+        preOpCorrAction = scale_hist_up_down_corr_from_file
+        preOpCorrActionArgs = dict(
+            corr_file=f"{corr_input_path}/dataMC_ZmumuEffCorr_eta_{args.residualEffiSFasUncertainty}runBins.pkl.lz4",
+            corr_hist="dataMC_ZmumuEffCorr_eta_runBin",
+        )
+        #
+        logger.warning(
+            "Adding uncertainty for residual efficiency corrections decorrelated by run and eta"
+        )
+        #
+        datagroups.addSystematic(
+            name="residualEffiSF",
+            processes=["MCnoQCD"],
+            groups=["residualEffiSF", "experiment", "expNoCalib"],
+            baseName="residualEffiSF_",
+            systAxes=["eta_", "run_", "downUpVar"],
+            labelsByAxis=["eta", "run", "downUpVar"],
+            passToFakes=passSystToFakes,
+            preOp=preOpCorrAction,
+            preOpArgs=preOpCorrActionArgs,
+            action=syst_tools.decorrelateByAxes,
+            actionArgs=dict(
+                axesToDecorrNames=["eta", "run"], newDecorrAxesNames=["eta_", "run_"]
+            ),
+            actionRequiresNomi=True,
+        )
+        #
+        logger.warning(
+            "Adding uncertainty for residual efficiency corrections decorrelated by run inclusive in eta"
+        )
+        #
+        datagroups.addSystematic(
+            name="residualEffiSF",
+            processes=["MCnoQCD"],
+            groups=["residualEffiSF", "experiment", "expNoCalib"],
+            baseName="residualEffiSF_",
+            systAxes=["run_", "downUpVar"],
+            labelsByAxis=["run", "downUpVar"],
+            passToFakes=passSystToFakes,
+            preOp=preOpCorrAction,
+            preOpArgs=preOpCorrActionArgs,
+            action=syst_tools.decorrelateByAxes,
+            actionArgs=dict(axesToDecorrNames=["run"], newDecorrAxesNames=["run_"]),
+            actionRequiresNomi=True,
+        )
+
     # Below: all that is highPU specific
 
     # msv_config_dict = {
@@ -2085,27 +2234,57 @@ def setup(
     #     passToFakes=passSystToFakes,
     #     scale = args.scaleMuonCorr,
     # )
+    prefireSystAxes = ["downUpVar"]
+    prefireSystLabels = ["downUpVar"]
+    prefireSystAction = None
+    prefireSystActionArgs = {}
+    if "prefire" in args.decorrSystByRun and "run" in fitvar:
+        prefireSystAxes = ["run_"] + prefireSystAxes
+        prefireSystLabels = ["run"] + prefireSystLabels
+        prefireSystAction = syst_tools.decorrelateByAxes
+        prefireSystActionArgs = dict(
+            axesToDecorrNames=["run"], newDecorrAxesNames=["run_"]
+        )
     datagroups.addSystematic(
         "muonL1PrefireSyst",
         processes=["MCnoQCD"],
         groups=["muonPrefire", "prefire", "experiment", "expNoCalib"],
         baseName="CMS_prefire_syst_m",
-        systAxes=["downUpVar"],
-        labelsByAxis=["downUpVar"],
+        systAxes=prefireSystAxes,
+        labelsByAxis=prefireSystLabels,
         passToFakes=passSystToFakes,
+        action=prefireSystAction,
+        actionArgs=prefireSystActionArgs,
+        actionRequiresNomi=True,
     )
+
+    prefireStatAxes = (
+        ["etaPhiRegion", "downUpVar"] if era == "2016PostVFP" else ["downUpVar"]
+    )
+    prefireStatLabels = (
+        ["etaPhiReg", "downUpVar"] if era == "2016PostVFP" else ["downUpVar"]
+    )
+    prefireStatAction = None
+    prefireStatActionArgs = {}
+    if "prefire" in args.decorrSystByRun and "run" in fitvar:
+        prefireStatAxes = ["run_"] + prefireStatAxes
+        prefireStatLabels = ["run"] + prefireStatLabels
+        prefireStatAction = syst_tools.decorrelateByAxes
+        prefireStatActionArgs = dict(
+            axesToDecorrNames=["run"], newDecorrAxesNames=["run_"]
+        )
+
     datagroups.addSystematic(
         "muonL1PrefireStat",
         processes=["MCnoQCD"],
         groups=["muonPrefire", "prefire", "experiment", "expNoCalib"],
         baseName="CMS_prefire_stat_m_",
-        systAxes=(
-            ["etaPhiRegion", "downUpVar"] if era == "2016PostVFP" else ["downUpVar"]
-        ),
-        labelsByAxis=(
-            ["etaPhiReg", "downUpVar"] if era == "2016PostVFP" else ["downUpVar"]
-        ),
         passToFakes=passSystToFakes,
+        systAxes=prefireStatAxes,
+        labelsByAxis=prefireStatLabels,
+        action=prefireStatAction,
+        actionArgs=prefireStatActionArgs,
+        actionRequiresNomi=True,
     )
     datagroups.addSystematic(
         "ecalL1Prefire",
@@ -2197,7 +2376,7 @@ def setup(
             passToFakes=passSystToFakes,
         )
 
-    if "run" in fitvar:
+    if dilepton and "run" in fitvar:
         # add ad-hoc normalization uncertainty uncorrelated across run bins
         #   accounting for time instability (e.g. reflecting the corrections applied as average like pileup, prefiring, ...)
         datagroups.addSystematic(
@@ -2257,7 +2436,7 @@ def setup(
                 actionArgs=dict(axesToDecorrNames=["run"], newDecorrAxesNames=["run_"]),
             )
 
-    # Previously we had a QCD uncertainty for the mt dependence on the fakes, see: https://github.com/WMass/WRemnants/blob/f757c2c8137a720403b64d4c83b5463a2b27e80f/scripts/combine/setupCombineWMass.py#L359
+    # Previously we had a QCD uncertainty for the mt dependence on the fakes, see: https://github.com/WMass/WRemnants/blob/f757c2c8137a720403b64d4c83b5463a2b27e80f/scripts/combine/setupRabbitWMass.py#L359
 
     return datagroups
 
@@ -2309,8 +2488,6 @@ if __name__ == "__main__":
     ]
     isTheoryAgnosticPolVar = args.analysisMode == "theoryAgnosticPolVar"
     isPoiAsNoi = (isUnfolding or isTheoryAgnostic) and args.poiAsNoi
-    isFloatingPOIsTheoryAgnostic = isTheoryAgnostic and not isPoiAsNoi
-    isFloatingPOIs = (isUnfolding or isTheoryAgnostic) and not isPoiAsNoi
 
     if isUnfolding and args.fitXsec:
         raise ValueError(
@@ -2327,13 +2504,6 @@ if __name__ == "__main__":
                 logger.warning(
                     "This is only needed to properly get the systematic axes"
                 )
-
-    if isFloatingPOIsTheoryAgnostic:
-        # The following is temporary, just to avoid passing the option explicitly
-        logger.warning(
-            "For now setting theory agnostic without POI as NOI activates --doStatOnly"
-        )
-        args.doStatOnly = True
 
     if len(args.inputFile) > 1 and (args.fitWidth or args.decorMassWidth):
         raise ValueError(
@@ -2354,8 +2524,8 @@ if __name__ == "__main__":
             logger.warning(
                 "Theoryfit for more than one channels is currently experimental"
             )
-        fitresult, fitresult_meta = combinetf2.io_tools.get_fitresult(
-            args.fitresult[0], meta=True, result=None if args.realData else args.fitresultResult
+        fitresult, fitresult_meta = rabbit.io_tools.get_fitresult(
+            args.fitresult[0], meta=True, result=None if args.realData else "asimov"
         )
 
         if len(args.fitresult) > 1:
@@ -2369,7 +2539,7 @@ if __name__ == "__main__":
             channels = None
 
         fitresult_hist, fitresult_cov, fitresult_channels = (
-            combinetf2.io_tools.get_postfit_hist_cov(
+            rabbit.io_tools.get_postfit_hist_cov(
                 fitresult, physics_model=physics_model, channels=channels
             )
         )
@@ -2417,7 +2587,7 @@ if __name__ == "__main__":
             fitresult_data=fitresult_data,
         )
 
-        if isFloatingPOIs or isUnfolding:
+        if isUnfolding:
             # add masked channel
             datagroups_xnorm = setup(
                 writer,

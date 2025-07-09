@@ -410,11 +410,35 @@ def make_corr_by_helicity(
     return corr_coeffs
 
 
-def make_qcd_uncertainty_helper_by_helicity(
-    is_z=False, filename=None, rebi_ptVgen=True, rebi_absYVgen=None, return_tensor=True
+def make_qcd_uncertainty_helpers_by_helicity(
+    filename_z=f"{common.data_dir}/angularCoefficients/w_z_moments.hdf5",
+    filename_w=f"{common.data_dir}/angularCoefficients/w_z_moments.hdf5",
+    rebin_ptWgen=True,
+    rebin_ptZgen=True,
+    return_tensor=True,
 ):
-    if filename is None:
-        filename = f"{common.data_dir}/angularCoefficients/w_z_moments.hdf5"
+    helper_w = make_qcd_uncertainty_helper_by_helicity(
+        is_z=False,
+        filename=filename_w,
+        rebin_ptVgen=rebin_ptWgen,
+        return_tensor=return_tensor,
+    )
+    helper_z = make_qcd_uncertainty_helper_by_helicity(
+        is_z=True,
+        filename=filename_z,
+        rebin_ptVgen=rebin_ptZgen,
+        return_tensor=return_tensor,
+    )
+
+    return {"W": helper_w, "Z": helper_z}
+
+
+def make_qcd_uncertainty_helper_by_helicity(
+    is_z=False,
+    filename=f"{common.data_dir}/angularCoefficients/w_z_moments.hdf5",
+    rebin_ptVgen=True,
+    return_tensor=True,
+):
 
     # load helicity cross sections from file
     with h5py.File(filename, "r") as h5file:
@@ -441,12 +465,8 @@ def make_qcd_uncertainty_helper_by_helicity(
 
         return h
 
-    helicity_xsecs = get_helicity_xsecs(
-        rebin_ptVgen=rebi_ptVgen, rebin_absYVgen=rebi_absYVgen
-    )
-    helicity_xsecs_lhe = get_helicity_xsecs(
-        "_lhe", rebin_ptVgen=rebi_ptVgen, rebin_absYVgen=rebi_absYVgen
-    )
+    helicity_xsecs = get_helicity_xsecs(rebin=rebin_ptVgen)
+    helicity_xsecs_lhe = get_helicity_xsecs("_lhe", rebin=rebin_ptVgen)
 
     helicity_xsecs_nom = helicity_xsecs[{"muRfact": 1.0j, "muFfact": 1.0j}].values()
 
