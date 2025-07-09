@@ -387,7 +387,7 @@ muon_prefiring_helper, muon_prefiring_helper_stat, muon_prefiring_helper_syst = 
 if args.unfolding and add_helicity_axis:
     qcdScaleByHelicity_helpers = theory_corrections.make_qcd_uncertainty_helper_by_helicity(
         filename_z=f"{common.data_dir}/angularCoefficients/w_z_helicity_xsecs_scetlib_dyturboCorr_maxFiles_m1_unfoldingBinning.hdf5",
-        rebin_ptZgen=False,
+        rebin_ptVgen=False,
     )
 else:
     qcdScaleByHelicity_helpers = (

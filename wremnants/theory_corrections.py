@@ -437,7 +437,7 @@ def make_qcd_uncertainty_helper_by_helicity(
     is_z=False,
     filename=f"{common.data_dir}/angularCoefficients/w_z_moments.hdf5",
     rebin_ptVgen=common.ptV_binning,
-    rebin_absYVgen=None,
+    rebin_absYVgen=False,
     rebin_massVgen=True,
     return_tensor=True,
 ):
@@ -449,22 +449,25 @@ def make_qcd_uncertainty_helper_by_helicity(
     def get_helicity_xsecs(
         suffix="",
         rebin_ptVgen=common.ptV_binning,
-        rebin_absYVgen=None,
+        rebin_absYVgen=False,
         rebin_massVgen=2,
     ):
         h = results[f"Z{suffix}"] if is_z else results[f"W{suffix}"]
 
-        if rebin_ptVgen is not None:
-            h = hh.rebinHist(h, "ptVgen", rebin_ptVgen)
-        if rebin_massVgen is not None:
-            if type(rebin_massVgen) is bool and rebin_massVgen:
+        if rebin_ptVgen:
+            if type(rebin_ptVgen) is bool:
+                h = hh.rebinHist(h, "ptVgen", common.ptV_binning)
+            else:
+                h = hh.rebinHist(h, "ptVgen", rebin_ptVgen)
+        if rebin_massVgen:
+            if type(rebin_massVgen) is bool:
                 if is_z:
                     axis_massVgen = h.axes["massVgen"]
                     if len(axis_massVgen.edges) > 2:
                         h = hh.rebinHist(h, "massVgen", axis_massVgen.edges[::2])
             else:
                 h = hh.rebinHist(h, "massVgen", rebin_massVgen)
-        if rebin_absYVgen is not None:
+        if rebin_absYVgen:
             h = hh.rebinHist(h, "absYVgen", rebin_absYVgen)
 
         return h
