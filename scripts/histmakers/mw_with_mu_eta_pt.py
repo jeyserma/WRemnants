@@ -419,17 +419,17 @@ if args.unfolding:
         cutsmap=cutsmap,
     )
 
-    qcdScaleByHelicity_helpers = theory_corrections.make_qcd_uncertainty_helpers_by_helicity(
-        filename_z=f"{common.data_dir}/angularCoefficients/w_z_helicity_xsecs_scetlib_dyturboCorr_maxFiles_m1_unfoldingBinning.hdf5",
-        rebin_ptZgen=False,
-    )
+    # qcdScaleByHelicity_helpers = theory_corrections.make_qcd_uncertainty_helpers_by_helicity(
+    #     filename_z=f"{common.data_dir}/angularCoefficients/w_z_helicity_xsecs_scetlib_dyturboCorr_maxFiles_m1_unfoldingBinning.hdf5",
+    #     rebin_ptZgen=False,
+    # )
 
     if args.fitresult:
         unfolding_corr_helper = unfolding_tools.reweight_to_fitresult(args.fitresult)
-else:
-    qcdScaleByHelicity_helpers = (
-        theory_corrections.make_qcd_uncertainty_helpers_by_helicity()
-    )
+# else:
+qcdScaleByHelicity_helpers = (
+    theory_corrections.make_qcd_uncertainty_helpers_by_helicity()
+)
 
 
 if args.theoryAgnostic:
