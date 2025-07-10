@@ -169,9 +169,6 @@ if args.useRefinedVeto:
 else:
     pass
 
-
-isFloatingPOIsTheoryAgnostic = args.theoryAgnostic and not args.poiAsNoi
-
 if args.unfolding or args.theoryAgnostic:
     if args.theoryAgnostic:
         if args.theoryAgnosticGenAbsYVbinEdges and any(
@@ -180,11 +177,6 @@ if args.unfolding or args.theoryAgnostic:
             raise ValueError(
                 "Option --genAbsYVbinEdges requires all positive values. Please check"
             )
-    if isFloatingPOIsTheoryAgnostic:
-        logger.warning(
-            "Running theory agnostic with only nominal and mass weight histograms for now."
-        )
-        parser = parsing.set_parser_default(parser, "onlyMainHistograms", True)
 
 # axes for W MC efficiencies with uT dependence for iso and trigger
 axis_pt_eff_list = [
@@ -641,72 +633,6 @@ if args.nToysMC > 0:
         ROOT.ROOT.GetThreadPoolSize(),
     )
 
-######################################################
-######################################################
-######################################################
-## FIXME/TODO
-## next function should have been imported from theoryAgnostic_tools.py, but requires too many things as input,
-## such as the helpers created here. Since it is effectively a specialization of the loop flow,
-## it is part of the histmaker and is probably fine to have it here.
-## In fact, having this custom function overriding the main graph is probably not the best idea, should rather use the same
-
-
-# graph building for W sample with helicity weights for original theory agnostic fit with floating POIs
-def setTheoryAgnosticGraph(
-    df, results, dataset, reco_sel_GF, era, nominal_axes_thAgn, nominal_cols_thAgn, args
-):
-    logger.info(f"Setting theory agnostic graph for {dataset.name}")
-
-    if not args.onlyMainHistograms:
-        if not args.onlyTheorySyst:
-            df = syst_tools.add_L1Prefire_unc_hists(
-                results,
-                df,
-                muon_prefiring_helper_stat,
-                muon_prefiring_helper_syst,
-                nominal_axes_thAgn,
-                nominal_cols_thAgn,
-                addhelicity=True,
-            )
-            df = syst_tools.add_muon_efficiency_unc_hists(
-                results,
-                df,
-                muon_efficiency_helper_stat,
-                muon_efficiency_helper_syst,
-                nominal_axes_thAgn,
-                nominal_cols_thAgn,
-                what_analysis=thisAnalysis,
-                addhelicity=True,
-            )
-        df = syst_tools.add_theory_hists(
-            results,
-            df,
-            args,
-            dataset.name,
-            corr_helpers,
-            qcdScaleByHelicity_helper,
-            nominal_axes_thAgn,
-            nominal_cols_thAgn,
-            for_wmass=True,
-            addhelicity=True,
-        )
-    else:
-        # FIXME: hardcoded to keep mass weights, this would be done in add_theory_hists
-        df = syst_tools.define_mass_weights(df, dataset.name)
-        syst_tools.add_massweights_hist(
-            results,
-            df,
-            nominal_axes_thAgn,
-            nominal_cols_thAgn,
-            proc=dataset.name,
-            addhelicity=True,
-        )
-
-
-######################################################
-######################################################
-######################################################
-
 smearing_weights_procs = []
 
 
@@ -727,7 +653,7 @@ def build_graph(df, dataset):
 
     # disable auxiliary histograms when unfolding to reduce memory consumptions, or when doing the original theory agnostic without --poiAsNoi
     auxiliary_histograms = True
-    if args.noAuxiliaryHistograms or isFloatingPOIsTheoryAgnostic:
+    if args.noAuxiliaryHistograms:
         auxiliary_histograms = False
 
     apply_theory_corr = theory_corrs and dataset.name in corr_helpers
@@ -886,9 +812,7 @@ def build_graph(df, dataset):
             )
         else:
             # the in-acceptance selection must usually not be used to filter signal events when doing POIs as NOIs
-            if isFloatingPOIsTheoryAgnostic or (
-                args.theoryAgnosticPolVar and args.theoryAgnosticSplitOOA
-            ):
+            if args.theoryAgnosticPolVar and args.theoryAgnosticSplitOOA:
                 logger.debug(
                     "Select events in fiducial phase space for theory agnostic analysis"
                 )
@@ -900,20 +824,6 @@ def build_graph(df, dataset):
                     select=True,
                     usePtOverM=usePtOverM,
                 )
-                # helicity axis is special, defined through a tensor later, theoryAgnostic_ only includes W pt and rapidity for now
-                if isFloatingPOIsTheoryAgnostic:
-                    axes = [*nominal_axes, *theoryAgnostic_axes]
-                    cols = [*nominal_cols, *theoryAgnostic_cols]
-                    theoryAgnostic_tools.add_xnorm_histograms(
-                        results,
-                        df,
-                        args,
-                        dataset.name,
-                        corr_helpers,
-                        qcdScaleByHelicity_helper,
-                        theoryAgnostic_axes,
-                        theoryAgnostic_cols,
-                    )
 
     if args.xnormOnly:
         return results, weightsum
@@ -1772,25 +1682,6 @@ def build_graph(df, dataset):
                     )
                 )
 
-    ## FIXME: should be isW, to include Wtaunu, but for now we only split Wmunu
-    ## Note: this part is only for the original theory agnostic with fully floating POIs
-    elif (
-        isWmunu
-        and isFloatingPOIsTheoryAgnostic
-        and not hasattr(dataset, "out_of_acceptance")
-    ):
-        results.append(
-            df.HistoBoost(
-                "nominal",
-                axes,
-                [*cols, "nominal_weight_helicity"],
-                tensor_axes=[axis_helicity],
-            )
-        )
-        setTheoryAgnosticGraph(df, results, dataset, reco_sel_GF, era, axes, cols, args)
-        # End graph here only for standard theory agnostic analysis, otherwise use same loop as traditional analysis
-        return results, weightsum
-
     if isWorZ and not hasattr(dataset, "out_of_acceptance"):
         theoryAgnostic_helpers_cols = [
             "qtOverQ",
@@ -1819,12 +1710,12 @@ def build_graph(df, dataset):
             df = df.Define(
                 f"muRmuFPolVar_{coeffKey}_tensor", helperQ, theoryAgnostic_helpers_cols
             )
-            noiAsPoiWithPolHistName = Datagroups.histName(
+            muRmuFWithPolHistName = Datagroups.histName(
                 "nominal", syst=f"muRmuFPolVar{process_name}_{coeffKey}"
             )
             results.append(
                 df.HistoBoost(
-                    noiAsPoiWithPolHistName,
+                    muRmuFWithPolHistName,
                     nominal_axes,
                     [*nominal_cols, f"muRmuFPolVar_{coeffKey}_tensor"],
                     tensor_axes=helperQ.tensor_axes,
@@ -2214,11 +2105,7 @@ else:
 
 for loop_datasets in dataset_sets:
     resultdict = narf.build_and_run(loop_datasets, build_graph)
-    if (
-        not args.onlyMainHistograms
-        and args.muonScaleVariation == "smearingWeightsGaus"
-        and not isFloatingPOIsTheoryAgnostic
-    ):
+    if not args.onlyMainHistograms and args.muonScaleVariation == "smearingWeightsGaus":
         logger.debug("Apply smearingWeights")
         muon_calibration.transport_smearing_weights_to_reco(
             resultdict, smearing_weights_procs, nonClosureScheme=args.nonClosureScheme
