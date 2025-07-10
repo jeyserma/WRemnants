@@ -82,8 +82,36 @@ parser.add_argument(
     action="store_true",
     help="Make hists with fine binned CS variables for producing quantiles",
 )
-
-
+parser.add_argument(
+    "--splitSampleInN",
+    type=int,
+    default=-1,
+    help="Split the sample in N parts, useful for debugging and testing",
+)
+parser.add_argument(
+    "--randomSeedForSplit",
+    type=int,
+    default=12345,
+    help="Random seed for splitting the sample in N parts",
+)
+parser.add_argument(
+    "--jackknifeN",
+    type=int,
+    default=0,
+    help="Number of jackknife samples to use, if > 0, then the sample is split in 2*jackknifeN parts",
+)
+parser.add_argument(
+    "--jackknifeEfficiency",
+    type=float,
+    default=0.5,
+    help="Jackknife efficiency, used to define the size of the sample",
+)
+parser.add_argument(
+    "--randomSeedForJackknife",
+    type=int,
+    default=12345,
+    help="Random seed for jackknifing procedure",
+)
 parser = parsing.set_parser_default(
     parser, "aggregateGroups", ["Diboson", "Top", "Wtaunu", "Wmunu"]
 )
@@ -111,6 +139,7 @@ datasets = getDatasets(
     nanoVersion="v9",
     base_path=args.dataPath,
     extended="msht20an3lo" not in args.pdfs,
+    oneMCfileEveryN=args.oneMCfileEveryN,
     era=era,
 )
 
@@ -330,7 +359,7 @@ muon_prefiring_helper, muon_prefiring_helper_stat, muon_prefiring_helper_syst = 
 if args.unfolding and add_helicity_axis:
     qcdScaleByHelicity_helpers = theory_corrections.make_qcd_uncertainty_helpers_by_helicity(
         filename_z=f"{common.data_dir}/angularCoefficients/w_z_helicity_xsecs_scetlib_dyturboCorr_maxFiles_m1_unfoldingBinning.hdf5",
-        rebin_ptZgen=False,
+        rebin_ptVgen=False,
     )
 else:
     qcdScaleByHelicity_helpers = (
@@ -433,6 +462,44 @@ bias_helper = muon_calibration.make_muon_bias_helpers(args)
     reverse_variations=args.reweightPixelMultiplicity
 )
 
+if args.nToysMC > 0:
+    seed_data = 2 * args.randomSeedForToys
+    seed_mc = 2 * args.randomSeedForToys + 1
+    toy_helper_data = ROOT.wrem.ToyHelper(
+        args.nToysMC, seed_data, 1, ROOT.ROOT.GetThreadPoolSize()
+    )
+    toy_helper_mc = ROOT.wrem.ToyHelper(
+        args.nToysMC,
+        seed_mc,
+        args.varianceScalingForToys,
+        ROOT.ROOT.GetThreadPoolSize(),
+    )
+    axis_toys = hist.axis.Integer(
+        0, args.nToysMC, underflow=False, overflow=False, name="toys"
+    )
+if args.splitSampleInN > 1:
+    seed_mc_split = 2 * args.randomSeedForSplit + 2
+    rand_helper_mc = ROOT.wrem.RandomUniformHelper(
+        args.splitSampleInN, seed_mc_split, ROOT.ROOT.GetThreadPoolSize()
+    )
+    axis_split = hist.axis.Integer(
+        0,
+        args.splitSampleInN,
+        underflow=False,
+        overflow=False,
+        name="sample_split",
+    )
+if args.jackknifeN > 0:
+    seed_mc_jackknife = 2 * args.randomSeedForJackknife + 1
+    jackknife_helper = ROOT.wrem.JackknifeHelper(
+        args.jackknifeN,
+        args.jackknifeEfficiency,
+        seed_mc_jackknife,
+        ROOT.ROOT.GetThreadPoolSize(),
+    )
+    axis_jackknife = hist.axis.Integer(
+        0, args.jackknifeN, underflow=False, overflow=False, name="jackknife_sample"
+    )
 
 theory_corrs = [*args.theoryCorr, *args.ewTheoryCorr]
 corr_helpers = theory_corrections.load_corr_helpers(
@@ -461,6 +528,18 @@ def build_graph(df, dataset):
     df = df.Define(
         "isEvenEvent", f"event % 2 {'!=' if args.flipEventNumberSplitting else '=='} 0"
     )
+
+    if args.nToysMC > 0:
+        if dataset.is_data:
+            df = df.Define("toyIdxs", toy_helper_data, ["rdfslot_"])
+        else:
+            df = df.Define("toyIdxs", toy_helper_mc, ["rdfslot_"])
+
+    if args.splitSampleInN > 1 and not dataset.is_data:
+        df = df.Define("sample_n", rand_helper_mc, ["rdfslot_"])
+
+    if args.jackknifeN > 0 and not dataset.is_data:
+        df = df.Define("jackknife_sample", jackknife_helper, ["rdfslot_"])
 
     weightsum = df.SumAndCount("weight")
 
@@ -700,6 +779,9 @@ def build_graph(df, dataset):
     logger.debug(f"Define weights and store nominal histograms")
 
     if dataset.is_data:
+        if args.nToysMC > 0:
+            axes = [*axes, axis_toys]
+            cols = [*cols, "toyIdxs"]
         results.append(df.HistoBoost("nominal", axes, cols))
     else:
         df = df.Define("weight_pu", pileup_helper, ["Pileup_nTrueInt"])
@@ -828,6 +910,21 @@ def build_graph(df, dataset):
                 storage=hist.storage.Double(),
             )
         )
+
+        if args.nToysMC > 0 or args.splitSampleInN > 1 or args.jackknifeN > 1:
+            results.append(
+                df.HistoBoost("nominal_asimov", axes, [*cols, "nominal_weight"])
+            )
+        if args.nToysMC > 0:
+            axes = [*axes, axis_toys]
+            cols = [*cols, "toyIdxs"]
+        if args.splitSampleInN > 1:
+            axes = [*axes, axis_split]
+            cols = [*cols, "sample_n"]
+        if args.jackknifeN > 1:
+            axes = [*axes, axis_jackknife]
+            cols = [*cols, "jackknife_sample"]
+
         results.append(df.HistoBoost("nominal", axes, [*cols, "nominal_weight"]))
 
         if isZ:

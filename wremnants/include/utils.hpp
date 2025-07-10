@@ -854,6 +854,73 @@ private:
   std::vector<std::mt19937> rng_;
 };
 
+class RandomUniformHelper {
+
+public:
+  RandomUniformHelper(const std::size_t nsplits, const std::size_t seed = 0,
+                      const unsigned int nslots = 1)
+      : nsplits_(nsplits) {
+    const unsigned int nslotsactual = std::max(nslots, 1U);
+    rng_.reserve(nslotsactual);
+    auto const hash = std::hash<std::string>()("RandomUniformHelper");
+    for (std::size_t islot = 0; islot < nslotsactual; ++islot) {
+      std::seed_seq seq{hash, seed, islot};
+      rng_.emplace_back(seq);
+    }
+  }
+
+  int operator()(const unsigned int slot) {
+    std::uniform_int_distribution<int> dist(0, nsplits_ - 1);
+    int res;
+    auto &rngslot = rng_[slot];
+    res = dist(rngslot);
+    return res;
+  }
+
+private:
+  std::size_t nsplits_;
+  std::vector<std::mt19937> rng_;
+};
+
+class JackknifeHelper {
+
+public:
+  JackknifeHelper(const std::size_t nsplits, const float eff = 0.5,
+                  const std::size_t seed = 0, const unsigned int nslots = 1)
+      : nsplits_(nsplits), eff_(eff) {
+    const unsigned int nslotsactual = std::max(nslots, 1U);
+    rng_.reserve(nslotsactual);
+    auto const hash = std::hash<std::string>()("JackknifeHelper");
+    for (std::size_t islot = 0; islot < nslotsactual; ++islot) {
+      std::seed_seq seq{hash, seed, islot};
+      rng_.emplace_back(seq);
+    }
+  }
+
+  std::vector<int> operator()(const unsigned int slot) {
+    std::uniform_real_distribution<float> dist(0, 1);
+    std::vector<int> res;
+    res.reserve(2 * nsplits_);
+    auto &rngslot = rng_[slot];
+
+    // index 0 is the nominal, so just one entry, not randomized)
+    res.emplace_back(0);
+
+    for (std::size_t itoy = 1; itoy < nsplits_; ++itoy) {
+      const float p = dist(rngslot);
+      if (p < eff_) {
+        res.emplace_back(itoy);
+      }
+    }
+
+    return res;
+  }
+
+private:
+  std::size_t nsplits_;
+  const float eff_;
+  std::vector<std::mt19937> rng_;
+};
 // function to do stuff with run splitting in MC should define a helper
 // to have flexibility to set the internal arrays once at run-time
 unsigned int get_dummy_run_by_lumi_quantile(const unsigned int run,

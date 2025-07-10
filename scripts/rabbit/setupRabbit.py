@@ -363,6 +363,12 @@ def make_parser(parser=None):
         """,
     )
     parser.add_argument(
+        "--fitresultResult",
+        type=str,
+        default="asimov",
+        help="Use fit result from this file (e.g. for making a theory fit).",
+    )
+    parser.add_argument(
         "--fakerateAxes",
         nargs="+",
         help="Axes for the fakerate binning",
@@ -786,6 +792,18 @@ def make_parser(parser=None):
         default="log_normal",
         help="probability density for systematic variations",
     )
+    parser.add_argument(
+        "--select",
+        nargs="+",
+        dest="selection",
+        type=str,
+        default=None,
+        help="Apply a selection to the histograms, if the axis exists."
+        "This option can be applied to any of the axis, not necessarily one of the fitaxes, unlike --axlim."
+        "Use complex numbers for axis value, integers for bin number."
+        "e.g. --select 'ptll 0 10"
+        "e.g. --select 'ptll 0j 10j",
+    )
     parser = make_subparsers(parser)
 
     return parser
@@ -838,6 +856,19 @@ def setup(
 
     datagroups.fit_axes = fitvar
     datagroups.channel = channel
+
+    if args.selection:
+        for sel in args.selection:
+            sel_ax, sel_lb, sel_ub = sel.split()
+            sel_lb = parsing.str_to_complex_or_int(sel_lb)
+            sel_ub = parsing.str_to_complex_or_int(sel_ub)
+            datagroups.setGlobalAction(
+                lambda h: (
+                    h[{sel_ax: slice(sel_lb, sel_ub, hist.sum)}]
+                    if sel_ax in h.axes.name
+                    else h
+                ),
+            )
 
     if args.angularCoeffs:
         datagroups.setGlobalAction(
@@ -1207,7 +1238,7 @@ def setup(
             pseudodataGroups.fakerate_axes = args.fakerateAxes
 
         datagroups.addPseudodataHistogramFakes(pseudodata, pseudodataGroups)
-    if args.pseudoData:
+    if args.pseudoData and not xnorm:
         if args.pseudoDataFitInputFile:
             indata = rabbit.debugdata.FitInputData(args.pseudoDataFitInputFile)
             debugdata = rabbit.debugdata.FitDebugData(indata)
@@ -1604,7 +1635,9 @@ def setup(
             ),
         )
 
-    if not lowPU:  # lowPU does not include PhotonInduced as a process. skip it:
+    if (
+        not lowPU and "PhotonInduced" in datagroups.groups
+    ):  # lowPU does not include PhotonInduced as a process. skip it:
         datagroups.addNormSystematic(
             name="CMS_PhotonInduced",
             processes=["PhotonInduced"],
@@ -1689,7 +1722,7 @@ def setup(
             passToFakes=passSystToFakes,
             norm=1.16,
         )
-    else:
+    elif "Other" in datagroups.groups:
         datagroups.addNormSystematic(
             name="CMS_background",
             processes=["Other"],

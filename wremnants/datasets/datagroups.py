@@ -1940,7 +1940,7 @@ class Datagroups(object):
                 forceNonzero=forceNonzero,
             )
             hists = [
-                self.groups[proc].hists[p]
+                pseudodataGroups.groups[proc].hists[p]
                 for proc in processes
                 if proc not in processesFromNomi
             ]
