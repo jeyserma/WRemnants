@@ -1,6 +1,7 @@
 from copy import deepcopy
 
 import hist
+import numpy as np
 
 from utilities import common, differential
 from wremnants import helicity_utils, syst_tools, theory_tools
@@ -241,14 +242,18 @@ def add_xnorm_histograms(
     return df_xnorm
 
 
-def reweight_to_fitresult(filename, result=None, channel="ch0", flow=True):
+def reweight_to_fitresult(
+    filename, result=None, physics_model="", channel="ch0_masked"
+):
     import wums.boostHistHelpers as hh
     from rabbit.io_tools import get_fitresult
 
     fitresult, meta = get_fitresult(filename, result, meta=True)
 
-    hPrefit = fitresult["channels"][channel][f"hist_prefit_inclusive"].get()
-    hPostfit = fitresult["channels"][channel][f"hist_postfit_inclusive"].get()
+    results = fitresult["physics_models"][physics_model]["channels"][channel]
+
+    hPrefit = results[f"hist_prefit_inclusive"].get()
+    hPostfit = results[f"hist_postfit_inclusive"].get()
 
     hRatio = hh.divideHists(hPostfit, hPrefit)
 
@@ -258,20 +263,30 @@ def reweight_to_fitresult(filename, result=None, channel="ch0", flow=True):
     axes = []
     for ax in hRatio.axes:
         name = ax.name
-        if "VGen" in ax.name:
+        if "VGen" in name:
             suffix = "V"
-            var = ax.name.replace("VGen", "")
+            var = name.replace("VGen", "")
         else:
             suffix = "Lep"
-            var = ax.name.replace("Gen", "")
+            var = name.replace("Gen", "")
         if var == "q":
             var = "charge"
 
         ax._ax.metadata["name"] = f"{level}{suffix}_{var}"
+
+        # enable flow everywhere to allow generic indexing
+        ax = hh.enableAxisFlow(ax)
+
         axes.append(ax)
 
-    hCorr = hist.Hist(*axes, hist.axis.Regular(1, 0, 1, name="vars", flow=False))
-    hCorr.values(flow=flow)[...] = hRatio.values(flow=flow)[..., None]
+    hCorr = hist.Hist(
+        *axes,
+        hist.axis.Regular(1, 0, 1, name="vars", flow=False),
+        data=np.ones(
+            (*[a.extent for a in axes], 1)
+        ),  # default value of 1 at underflow and overflow
+    )
+    hCorr.values(flow=False)[...] = hRatio.values(flow=False)[..., None]
 
     from wremnants.correctionsTensor_helper import makeCorrectionsTensor
 
@@ -294,6 +309,8 @@ class UnfolderZ:
         unfolding_levels=None,
         poi_as_noi=True,
         fitresult=None,
+        fitresult_physics_model=f"Select",
+        fitresult_channel="ch0_masked",
         low_pu=False,
     ):
         self.analysis_label = "z_lowpu" if low_pu else "z_dilepton"
@@ -304,6 +321,11 @@ class UnfolderZ:
             raise RuntimeError(
                 "More than 1 unfolding levels at a time is only supported in poi as noi mode"
             )
+        elif fitresult and len(unfolding_levels) > 1:
+            raise RuntimeError(
+                "More than 1 unfolding levels at a time is not supported when reweighting from a fitresult"
+            )
+
         self.poi_as_noi = poi_as_noi
         self.unfolding_levels = unfolding_levels
 
@@ -349,7 +371,13 @@ class UnfolderZ:
                         )
 
         self.unfolding_corr_helper = (
-            reweight_to_fitresult(fitresult) if fitresult else None
+            reweight_to_fitresult(
+                fitresult,
+                physics_model=fitresult_physics_model,
+                channel=fitresult_channel,
+            )
+            if fitresult
+            else None
         )
 
     def add_gen_histograms(
@@ -370,16 +398,6 @@ class UnfolderZ:
                 **self.cutsmap,
             )
         else:
-            if self.unfolding_corr_helper:
-                logger.debug("Apply reweighting based on unfolded result")
-                df = df.Define(
-                    "unfoldingWeight_tensor",
-                    self.unfolding_corr_helper,
-                    [*self.unfolding_corr_helper.hist.axes.name[:-1], "unity"],
-                )
-                df = df.Define(
-                    "central_weight", "acceptance ? unfoldingWeight_tensor(0) : unity"
-                )
             for level in self.unfolding_levels:
                 df = select_fiducial_space(
                     df,
@@ -390,6 +408,18 @@ class UnfolderZ:
                     accept=True,
                     **self.cutsmap,
                 )
+
+                if self.unfolding_corr_helper:
+                    logger.debug("Apply reweighting based on unfolded result")
+                    df = df.Define(
+                        "unfoldingWeight_tensor",
+                        self.unfolding_corr_helper,
+                        [*self.unfolding_corr_helper.hist.axes.name[:-1], "unity"],
+                    )
+                    df = df.Define(
+                        "central_weight",
+                        f"{level}_acceptance ? unfoldingWeight_tensor(0) : unity",
+                    )
 
                 if self.poi_as_noi:
                     df_xnorm = df.Filter(f"{level}_acceptance")

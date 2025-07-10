@@ -69,7 +69,7 @@ def load_corr_helpers(
             else:
                 corr_helpers[proc][generator] = makeCorrectionsTensor(
                     corrh,
-                    weighted_corr=generator in theory_tools.theory_corr_weight_map,
+                    tensor_weight=generator in theory_tools.theory_corr_weight_map,
                 )
     for generator in generators:
         if not any([generator in corr_helpers[proc] for proc in procs]):
