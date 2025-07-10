@@ -794,7 +794,11 @@ def make_parser(parser=None):
         dest="selection",
         type=str,
         default=None,
-        help="Apply a selection to the histograms, if the axis exists. This option can be applied to any of the axis, not necessarily one of the fitaxes, unlike --axlim. e.g. '--select 'ptll 0 10'",
+        help="Apply a selection to the histograms, if the axis exists."
+        "This option can be applied to any of the axis, not necessarily one of the fitaxes, unlike --axlim."
+        "Use complex numbers for axis value, integers for bin number."
+        "e.g. --select 'ptll 0 10"
+        "e.g. --select 'ptll 0j 10j",
     )
     parser = make_subparsers(parser)
 
@@ -852,8 +856,8 @@ def setup(
     if args.selection:
         for sel in args.selection:
             sel_ax, sel_lb, sel_ub = sel.split()
-            sel_lb = complex(sel_lb)
-            sel_ub = complex(sel_ub)
+            sel_lb = parsing.str_to_complex_or_int(sel_lb)
+            sel_ub = parsing.str_to_complex_or_int(sel_ub)
             datagroups.setGlobalAction(
                 lambda h: (
                     h[{sel_ax: slice(sel_lb, sel_ub, hist.sum)}]
