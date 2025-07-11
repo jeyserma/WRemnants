@@ -588,8 +588,9 @@ def common_parser(analysis_label=""):
         )
         parser.add_argument(
             "--fitresult",
+            nargs="+",
             type=str,
-            help="Fitresult to be used to reweight the gen distribution (e.g. for iterative POI as NOI fit)",
+            help="Fitresult to be used to reweight the gen distribution (e.g. for iterative POI as NOI fit) if two are given use first for numerator and second for denominator",
         )
         parser.add_argument(
             "--poiAsNoi",

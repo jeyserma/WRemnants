@@ -916,6 +916,7 @@ class Datagroups(object):
         histToReadAxes="xnorm",
         axesNamesToRead=None,
         fitvar=[],
+        disable_flow_fit_axes=True,
     ):
         nominal_hist = self.getHistForUnfolding(
             group_name, member_filter, histToReadAxes
@@ -936,11 +937,12 @@ class Datagroups(object):
         else:
             expand_vars_rename = axesNamesToRead
 
-        # turn off flow for axes that are fit and used to define new groups, otherwise groups with empty histogram for the flow bins would be added
-        for a in expand_vars:
-            idx = axesNamesToRead.index(a)
-            ax = axesToRead[idx]
-            axesToRead[idx] = hh.disableAxisFlow(ax)
+        if disable_flow_fit_axes:
+            # turn off flow for axes that are fit and used to define new groups, otherwise groups with empty histogram for the flow bins would be added
+            for a in expand_vars:
+                idx = axesNamesToRead.index(a)
+                ax = axesToRead[idx]
+                axesToRead[idx] = hh.disableAxisFlow(ax)
 
         self.gen_axes[new_name] = axesToRead
         logger.debug(f"New gen axes are: {self.gen_axes}")
@@ -1178,6 +1180,7 @@ class Datagroups(object):
         bin_by_bin_stat_scale=1.0,
         fitresult_data=None,
         masked=False,
+        masked_flow=False,
     ):
         if self.writer is None:
             raise RuntimeError("Writer must be defined to add nominal histograms")
@@ -1212,7 +1215,10 @@ class Datagroups(object):
 
             if self.channel not in self.writer.channels:
                 self.writer.add_channel(
-                    axes=norm_proc_hist.axes, name=self.channel, masked=masked
+                    axes=norm_proc_hist.axes,
+                    name=self.channel,
+                    masked=masked,
+                    flow=masked_flow,
                 )
 
             self.writer.add_process(

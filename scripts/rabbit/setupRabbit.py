@@ -109,6 +109,11 @@ def make_subparsers(parser):
             help="Definition for unfolding",
         )
         parser.add_argument(
+            "--unfoldingWithFlow",
+            action="store_true",
+            help="Include underflow/overflow in masked channels (for iterative unfolding)",
+        )
+        parser.add_argument(
             "--unfoldSimultaneousWandZ",
             action="store_true",
             help="Simultaneously unfold W and Z and correlate Z background in W channel",
@@ -1039,6 +1044,7 @@ def setup(
             member_filter=lambda x: not x.name.endswith("OOA"),
             fitvar=fitvar,
             histToReadAxes=args.unfoldingLevel,
+            disable_flow_fit_axes=not (xnorm and args.unfoldingWithFlow),
         )
 
         # out of acceptance contribution
@@ -1281,6 +1287,7 @@ def setup(
         bin_by_bin_stat_scale=args.binByBinStatScaleForMW if wmass else 1.0,
         fitresult_data=fitresult_data,
         masked=xnorm and fitresult_data is None,
+        masked_flow=xnorm and args.unfoldingWithFlow,
     )
 
     if args.doStatOnly and isUnfolding and not isPoiAsNoi:

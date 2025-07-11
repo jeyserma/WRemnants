@@ -248,20 +248,29 @@ def reweight_to_fitresult(
     import wums.boostHistHelpers as hh
     from rabbit.io_tools import get_fitresult
 
-    fitresult, meta = get_fitresult(filename, result, meta=True)
-
+    fitresult, meta = get_fitresult(filename[0], result, meta=True)
     results = fitresult["physics_models"][physics_model]["channels"][channel]
 
-    hPrefit = results[f"hist_prefit_inclusive"].get()
     hPostfit = results[f"hist_postfit_inclusive"].get()
+
+    if len(filename) == 2:
+        fitresult_den, meta_den = get_fitresult(filename[1], result, meta=True)
+        results_den = fitresult_den["physics_models"][physics_model]["channels"][
+            channel
+        ]
+        hPrefit = results_den[f"hist_prefit_inclusive"].get()
+    else:
+        hPrefit = results[f"hist_prefit_inclusive"].get()
 
     hRatio = hh.divideHists(hPostfit, hPrefit)
 
     # get the gen level the unfolding was performed for
     level = meta["meta_info_input"]["meta_info"]["args"]["unfoldingLevel"]
 
+    values = hRatio.values(flow=True)
+
     axes = []
-    for ax in hRatio.axes:
+    for i, ax in enumerate(hRatio.axes):
         name = ax.name
         if "VGen" in name:
             suffix = "V"
@@ -274,7 +283,18 @@ def reweight_to_fitresult(
 
         ax._ax.metadata["name"] = f"{level}{suffix}_{var}"
 
-        # enable flow everywhere to allow generic indexing
+        # enable flow everywhere to allow generic indexing, add slices of 1 where flow was False
+        if ax.traits.underflow == False:
+            new_shape = list(values.shape)
+            new_shape[i] = 1
+            ones_slice = np.ones(new_shape, dtype=values.dtype)
+            values = np.concatenate([ones_slice, values], axis=i)
+        if ax.traits.overflow == False:
+            new_shape = list(values.shape)
+            new_shape[i] = 1
+            ones_slice = np.ones(new_shape, dtype=values.dtype)
+            values = np.concatenate([values, ones_slice], axis=i)
+
         ax = hh.enableAxisFlow(ax)
 
         axes.append(ax)
@@ -282,11 +302,8 @@ def reweight_to_fitresult(
     hCorr = hist.Hist(
         *axes,
         hist.axis.Regular(1, 0, 1, name="vars", flow=False),
-        data=np.ones(
-            (*[a.extent for a in axes], 1)
-        ),  # default value of 1 at underflow and overflow
     )
-    hCorr.values(flow=False)[...] = hRatio.values(flow=False)[..., None]
+    hCorr.values(flow=True)[...] = values[..., None]
 
     from wremnants.correctionsTensor_helper import makeCorrectionsTensor
 
@@ -321,7 +338,7 @@ class UnfolderZ:
             raise RuntimeError(
                 "More than 1 unfolding levels at a time is only supported in poi as noi mode"
             )
-        elif fitresult and len(unfolding_levels) > 1:
+        elif fitresult is not None and len(unfolding_levels) > 1:
             raise RuntimeError(
                 "More than 1 unfolding levels at a time is not supported when reweighting from a fitresult"
             )
@@ -376,7 +393,7 @@ class UnfolderZ:
                 physics_model=fitresult_physics_model,
                 channel=fitresult_channel,
             )
-            if fitresult
+            if fitresult is not None
             else None
         )
 
