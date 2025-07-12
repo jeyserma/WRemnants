@@ -355,7 +355,13 @@ class TheoryHelper(object):
                 preOpArgs=preop_args,
                 symmetrize=symmetrize,
                 processes=[sample_group],
-                groups=[group_name, "QCDscale", "angularCoeffs", "theory"],
+                groups=[
+                    group_name,
+                    "QCDscale",
+                    "angularCoeffs",
+                    "theory",
+                    "theory_qcd",
+                ],
                 systAxes=syst_axes,
                 labelsByAxis=syst_ax_labels,
                 skipEntries=skip_entries,
@@ -380,7 +386,7 @@ class TheoryHelper(object):
             passToFakes=self.propagate_to_fakes,
             systAxes=[self.syst_ax],
             preOp=op,
-            groups=["helicity_shower_kt", "angularCoeffs", "theory"],
+            groups=["helicity_shower_kt", "angularCoeffs", "theory", "theory_qcd"],
             name="helicity_shower_kt",
             mirror=True,
         )
@@ -451,7 +457,13 @@ class TheoryHelper(object):
             self.datagroups.addSystematic(
                 self.scale_hist_name,
                 processes=[sample_group],
-                groups=["resumTransitionFOScale", "resum", "pTModeling", "theory"],
+                groups=[
+                    "resumTransitionFOScale",
+                    "resum",
+                    "pTModeling",
+                    "theory",
+                    "theory_qcd",
+                ],
                 systAxes=[pt_ax, "vars"],
                 symmetrize="quadratic",
                 passToFakes=self.propagate_to_fakes,
@@ -502,7 +514,7 @@ class TheoryHelper(object):
         self.datagroups.addSystematic(
             self.corr_hist_name,
             processes=processes,
-            groups=["resumTNP", "resum", "pTModeling", "theory"],
+            groups=["resumTNP", "resum", "pTModeling", "theory", "theory_qcd"],
             systAxes=["vars"],
             passToFakes=self.propagate_to_fakes,
             systNameReplace=name_replace,
@@ -591,7 +603,7 @@ class TheoryHelper(object):
             systAxes=[self.syst_ax],
             preOp=lambda h: h[{self.syst_ax: var_vals}],
             outNames=var_names,
-            groups=["resumNonpert", "resum", "pTModeling", "theory"],
+            groups=["resumNonpert", "resum", "pTModeling", "theory", "theory_qcd"],
             name="scetlibNP",
         )
 
@@ -621,7 +633,7 @@ class TheoryHelper(object):
         self.datagroups.addSystematic(
             theory_hist,
             processes=self.samples,
-            groups=["resumScale", "resum", "pTModeling", "theory"],
+            groups=["resumScale", "resum", "pTModeling", "theory", "theory_qcd"],
             passToFakes=self.propagate_to_fakes,
             # skipEntries=[{syst_ax: x} for x in both_exclude + tnp_nuisances], # FIXME
             systAxes=["downUpVar"],  # Is added by the preOpMap
@@ -642,7 +654,7 @@ class TheoryHelper(object):
         self.datagroups.addSystematic(
             theory_hist,
             processes=self.samples,
-            groups=["resumScale", "resum", "pTModeling", "theory"],
+            groups=["resumScale", "resum", "pTModeling", "theory", "theory_qcd"],
             passToFakes=self.propagate_to_fakes,
             systAxes=["vars"],
             preOpMap={
@@ -704,7 +716,7 @@ class TheoryHelper(object):
             self.datagroups.addSystematic(
                 self.corr_hist_name,
                 processes=["single_v_samples"],
-                groups=["resumNonpert", "resum", "pTModeling", "theory"],
+                groups=["resumNonpert", "resum", "pTModeling", "theory", "theory_qcd"],
                 systAxes=[self.syst_ax],
                 passToFakes=self.propagate_to_fakes,
                 preOp=operation,
@@ -780,7 +792,13 @@ class TheoryHelper(object):
                 self.datagroups.addSystematic(
                     self.np_hist_name,
                     processes=[sample_group],
-                    groups=["resumNonpert", "resum", "pTModeling", "theory"],
+                    groups=[
+                        "resumNonpert",
+                        "resum",
+                        "pTModeling",
+                        "theory",
+                        "theory_qcd",
+                    ],
                     systAxes=syst_axes,
                     passToFakes=self.propagate_to_fakes,
                     preOp=operation,
@@ -827,7 +845,7 @@ class TheoryHelper(object):
         pdf_args = dict(
             processes=processes,
             mirror=True if symHessian else False,
-            groups=[pdfName, f"{pdfName}NoAlphaS", "theory"],
+            groups=[pdfName, f"{pdfName}NoAlphaS", "theory", "theory_qcd"],
             passToFakes=self.propagate_to_fakes,
             preOpMap=operation,
             scale=pdfInfo.get("scale", 1) * scale,
@@ -853,7 +871,7 @@ class TheoryHelper(object):
                     skipEntries=[{pdf_ax: "^pdf0[a-z]*"}],
                     processes=processes,
                     mirror=True,
-                    groups=[pdfName, f"{pdfName}NoAlphaS", "theory"],
+                    groups=[pdfName, f"{pdfName}NoAlphaS", "theory", "theory_qcd"],
                     passToFakes=self.propagate_to_fakes,
                     preOpMap=operation,
                     scale=pdfInfo.get("scale", 1) * scale,
@@ -895,7 +913,7 @@ class TheoryHelper(object):
             passToFakes=self.propagate_to_fakes,
         )
         if not noi:
-            as_args["groups"].extend([f"{pdfName}AlphaS", "theory"])
+            as_args["groups"].extend([f"{pdfName}AlphaS", "theory", "theory_qcd"])
         if self.as_from_corr:
             as_args["outNames"] = ["", "pdfAlphaSDown", "pdfAlphaSUp"]
         else:
@@ -939,7 +957,13 @@ class TheoryHelper(object):
             self.datagroups.addSystematic(
                 self.corr_hist_name,
                 processes=[sample_group],
-                groups=["resumTransitionFOScale", "resum", "pTModeling", "theory"],
+                groups=[
+                    "resumTransitionFOScale",
+                    "resum",
+                    "pTModeling",
+                    "theory",
+                    "theory_qcd",
+                ],
                 systAxes=["vars"],
                 symmetrize="quadratic",
                 passToFakes=self.propagate_to_fakes,
@@ -992,7 +1016,7 @@ class TheoryHelper(object):
             processes=self.samples,
             systAxes=[syst_ax],
             symmetrize="quadratic",
-            groups=["bcQuarkMass", "pTModeling", "theory"],
+            groups=["bcQuarkMass", "pTModeling", "theory", "theory_qcd"],
             passToFakes=self.propagate_to_fakes,
             outNames=[
                 "",
@@ -1007,7 +1031,7 @@ class TheoryHelper(object):
             processes=self.samples,
             systAxes=[syst_ax],
             symmetrize="quadratic",
-            groups=["bcQuarkMass", "pTModeling", "theory"],
+            groups=["bcQuarkMass", "pTModeling", "theory", "theory_qcd"],
             passToFakes=self.propagate_to_fakes,
             outNames=[
                 "",
