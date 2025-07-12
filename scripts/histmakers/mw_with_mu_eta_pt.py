@@ -373,6 +373,7 @@ if args.unfolding:
     unfolding_axes = {}
     unfolding_cols = {}
     for level in args.unfoldingLevels:
+        # for poi as noi, need gen eta overflow bin and out of acceptance axes to keep all events and be able to reconstruct corresponding reco histogram
         a, c = differential.get_pt_eta_charge_axes(
             level,
             npt_unfolding,
