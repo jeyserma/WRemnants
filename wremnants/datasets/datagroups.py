@@ -1161,14 +1161,11 @@ class Datagroups(object):
             return False
 
     # Read a specific hist, useful if you need to check info about the file
-    def getHistsForProcAndSyst(self, proc, syst, nominal_name=None):
+    def getHistsForProcAndSyst(self, proc, syst, nominal_name=None, **kwargs):
         if nominal_name is None:
             nominal_name = self.nominalName
         self.loadHistsForDatagroups(
-            baseName=nominal_name,
-            syst=syst,
-            label="syst",
-            procsToRead=[proc],
+            baseName=nominal_name, syst=syst, label="syst", procsToRead=[proc], **kwargs
         )
         return self.groups[proc].hists["syst"]
 

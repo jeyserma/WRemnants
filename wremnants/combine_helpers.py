@@ -1,6 +1,7 @@
 import hist
 import numpy as np
 
+from rabbit import io_tools
 from utilities.io_tools import input_tools
 from wremnants import histselections, syst_tools
 from wums import boostHistHelpers as hh
@@ -315,12 +316,13 @@ def add_electroweak_uncertainty(
 def get_scalemap(datagroups, axes, gen_level, select={}, rename_axes={}):
     # make sure each gen bin variation has a similar effect in the reco space so that
     #  we have similar sensitivity to all parameters within the given up/down variations
-    # FIXME: this currently doesn't work, not sure why ...
+    #  the scale map must have identical values in the fitted and corresponding masked channel
     signal_samples = datagroups.procGroups["signal_samples"]
     hScale = datagroups.getHistsForProcAndSyst(
         signal_samples[0],
         f"{gen_level}_yieldsUnfolding",
         nominal_name="nominal",
+        applySelection=False,
     )
     hScale = hScale[{"acceptance": True, **select}]
     hScale.values(flow=True)[...] = abs(hScale.values(flow=True))
@@ -350,7 +352,9 @@ def add_noi_unfolding_variations(
     gen_level="postfsr",
     process="signal_samples",
     scalemap=None,
+    fitresult=None,
 ):
+
     poi_axes_syst = [f"_{n}" for n in poi_axes] if xnorm else poi_axes[:]
     noi_args = dict(
         histname=gen_level if xnorm else f"nominal_{gen_level}_yieldsUnfolding",
@@ -369,6 +373,36 @@ def add_noi_unfolding_variations(
         labelsByAxis=[f"_{p}" if p != poi_axes[0] else p for p in poi_axes],
     )
 
+    if fitresult is not None:
+        # TODO: re write, this assumes first parameters are the NOIs and that NOIs are in right order
+
+        result = io_tools.get_fitresult(fitresult)
+
+        # get axes object in right order
+        axes = [
+            [a for a in datagroups.gen_axes[label] if a.name == n][0] for n in poi_axes
+        ]
+
+        axes = [
+            hh.disableAxisFlow(a) if a.name in ["absYVGen", "absEtaGen"] else a
+            for a in axes
+        ]
+        scalemap_shape = [a.extent for a in axes]
+        hscalemap = hist.Hist(*axes)
+
+        nnoi = np.prod(scalemap_shape)
+
+        params = np.abs(result["parms"].get().values()[:nnoi])
+        params_err = np.diag(result["cov"].get().values()[:nnoi, :nnoi]) ** 0.5
+
+        # parm_names = [x for x in result["parms"].get().axes["parms"]][:nnoi]
+
+        param_scalemap = np.where(params > params_err, params, params_err)
+
+        param_scalemap = np.reshape(param_scalemap, scalemap_shape)
+
+        hscalemap.values(flow=True)[...] = param_scalemap
+
     if xnorm:
 
         def make_poi_xnorm_variations(h, poi_axes, poi_axes_syst, norm, h_scale=None):
@@ -376,17 +410,20 @@ def add_noi_unfolding_variations(
                 h, poi_axes[::-1], poi_axes_syst[::-1]
             )
             hVar = hh.disableFlow(hVar, ["_absYVGen", "_absEtaGen"])
+
             if h_scale is not None:
                 hVar = hh.multiplyHists(hVar, h_scale)
             return hh.addHists(h, hVar, scale2=norm)
 
-        if scalemap is None:
+        if scalemap is None or fitresult is not None:
             scalemap = get_scalemap(
                 datagroups,
                 poi_axes,
                 gen_level,
                 rename_axes={o: n for o, n in zip(poi_axes, poi_axes_syst)},
             )
+        if fitresult is not None:
+            scalemap = hh.multiplyHists(scalemap, hscalemap)
 
         datagroups.addSystematic(
             **noi_args,
@@ -407,14 +444,17 @@ def add_noi_unfolding_variations(
                     "acceptance": hist.tag.Slicer()[:: hist.sum],
                 }
             ]
+
             hVar = h[{"acceptance": True}]
             hVar = hh.disableFlow(hVar, ["absYVGen", "absEtaGen"])
             if h_scale is not None:
                 hVar = hh.multiplyHists(hVar, h_scale)
             return hh.addHists(hNom, hVar, scale2=norm)
 
-        if scalemap is None:
+        if scalemap is None or fitresult is not None:
             scalemap = get_scalemap(datagroups, poi_axes, gen_level)
+        if fitresult is not None:
+            scalemap = hh.multiplyHists(scalemap, hscalemap)
 
         datagroups.addSystematic(
             **noi_args,

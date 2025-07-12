@@ -109,6 +109,12 @@ def make_subparsers(parser):
             help="Definition for unfolding",
         )
         parser.add_argument(
+            "--unfoldingScalemap",
+            type=str,
+            default=None,
+            help="Read parameter uncertainties from fitresult to assign proper NOI variations",
+        )
+        parser.add_argument(
             "--unfoldingWithFlow",
             action="store_true",
             help="Include underflow/overflow in masked channels (for iterative unfolding)",
@@ -1287,7 +1293,7 @@ def setup(
         bin_by_bin_stat_scale=args.binByBinStatScaleForMW if wmass else 1.0,
         fitresult_data=fitresult_data,
         masked=xnorm and fitresult_data is None,
-        masked_flow=xnorm and args.unfoldingWithFlow,
+        masked_flow=xnorm and isUnfolding and args.unfoldingWithFlow,
     )
 
     if args.doStatOnly and isUnfolding and not isPoiAsNoi:
@@ -1394,6 +1400,7 @@ def setup(
                 prior_norm=args.priorNormXsec,
                 scale_norm=args.scaleNormXsecHistYields,
                 gen_level=args.unfoldingLevel,
+                fitresult=args.unfoldingScalemap,
             )
 
     if args.muRmuFPolVar and not isTheoryAgnosticPolVar:

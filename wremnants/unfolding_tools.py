@@ -360,10 +360,12 @@ class UnfolderZ:
         self.unfolding_cols = {}
         self.unfolding_selections = {}
         for level in self.unfolding_levels:
+            # for poi as noi, need gen rapidity overflow bin and out of acceptance axes to keep all events and be able to reconstruct corresponding reco histogram
             a, c, s = differential.get_dilepton_axes(
                 unfolding_axes_names,
                 reco_axes_edges,
                 level,
+                flow_y=self.poi_as_noi,
                 add_out_of_acceptance_axis=self.poi_as_noi,
             )
             self.unfolding_axes[level] = a
