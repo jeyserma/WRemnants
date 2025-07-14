@@ -1303,7 +1303,11 @@ def setup(
         bin_by_bin_stat_scale=args.binByBinStatScaleForMW if wmass else 1.0,
         fitresult_data=fitresult_data,
         masked=xnorm and fitresult_data is None,
-        masked_flow=xnorm and isUnfolding and args.unfoldingWithFlow,
+        masked_flow_axes=(
+            ["ptGen", "ptVGen"]
+            if (xnorm and isUnfolding and args.unfoldingWithFlow)
+            else []
+        ),
     )
 
     if stat_only and isUnfolding and not isPoiAsNoi:

@@ -1177,7 +1177,7 @@ class Datagroups(object):
         bin_by_bin_stat_scale=1.0,
         fitresult_data=None,
         masked=False,
-        masked_flow=False,
+        masked_flow_axes=[],
     ):
         if self.writer is None:
             raise RuntimeError("Writer must be defined to add nominal histograms")
@@ -1210,12 +1210,20 @@ class Datagroups(object):
                     norm_proc_hist.variances(flow=True) * bin_by_bin_stat_scale**2
                 )
 
+            if len(masked_flow_axes) > 0:
+                self.axes_disable_flow = [
+                    n
+                    for n in norm_proc_hist.axes.name
+                    if n not in masked_flow_axes and n != "helicitySig"
+                ]
+                norm_proc_hist = hh.disableFlow(norm_proc_hist, self.axes_disable_flow)
+
             if self.channel not in self.writer.channels:
                 self.writer.add_channel(
                     axes=norm_proc_hist.axes,
                     name=self.channel,
                     masked=masked,
-                    flow=masked_flow,
+                    flow=len(masked_flow_axes) > 0,
                 )
 
             self.writer.add_process(
@@ -1398,6 +1406,14 @@ class Datagroups(object):
                             if matchre.match(var_name)
                         ]
                     )
+
+                if hasattr(self, "axes_disable_flow") and len(self.axes_disable_flow):
+                    if isinstance(hists, hist.Hist):
+                        hists = hh.disableFlow(hists, self.axes_disable_flow)
+                    else:
+                        hists = [
+                            hh.disableFlow(h, self.axes_disable_flow) for h in hists
+                        ]
 
                 logger.debug(f"Add systematic {var_name}")
                 self.writer.add_systematic(

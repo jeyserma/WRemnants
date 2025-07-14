@@ -391,10 +391,16 @@ def add_noi_unfolding_variations(
     if xnorm:
 
         def make_poi_xnorm_variations(h, poi_axes, poi_axes_syst, norm, h_scale=None):
+            h = hh.disableFlow(
+                h,
+                [
+                    "absYVGen",
+                    "absEtaGen",
+                ],
+            )
             hVar = hh.expand_hist_by_duplicate_axes(
                 h, poi_axes[::-1], poi_axes_syst[::-1]
             )
-            hVar = hh.disableFlow(hVar, ["_absYVGen", "_absEtaGen"])
 
             if h_scale is not None:
                 hVar = hh.multiplyHists(hVar, h_scale)
@@ -431,6 +437,7 @@ def add_noi_unfolding_variations(
 
             hVar = h[{"acceptance": True}]
             hVar = hh.disableFlow(hVar, ["absYVGen", "absEtaGen"])
+
             if h_scale is not None:
                 hVar = hh.multiplyHists(hVar, h_scale)
 

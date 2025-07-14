@@ -451,6 +451,7 @@ impact_labels = {
     "pdfMSHT20NoAlphaS": "PDF",
     "pdfMSHT20AlphaS": "<i>α</i><sub>S</sub> PDF",
     "pdfCT18ZAlphaS": "<i>α</i><sub>S</sub> PDF",
+    "pdfCT18ZNoAlphaS": "PDF",
     "pTModeling": "<i>p</i><sub>T</sub><sup>V</sup> modelling",
     "resum": "Resummation",
     "resumTNP": "Non pert. trans.",
