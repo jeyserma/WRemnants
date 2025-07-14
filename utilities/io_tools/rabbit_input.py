@@ -14,7 +14,7 @@ def read_groupunc_df(filename, uncs, rename_cols={}, name=None):
     ref_massz = 91187.6
 
     fitresult, meta = rabbit.io_tools.get_fitresult(filename, meta=True)
-    poi = rabbit.io_tools.get_poi(meta)
+    poi = rabbit.io_tools.get_poi_names(meta)
 
     impacts, labels = rabbit.io_tools.read_impacts_poi(
         fitresult, grouped=True, poi=poi[0], pulls=False
@@ -35,7 +35,7 @@ def read_groupunc_df(filename, uncs, rename_cols={}, name=None):
     df = pd.DataFrame(info)
 
     df.iloc[0, 1:] = df.iloc[0, 1:] * 100
-    df.iloc[0, 1] += ref_massz if df.loc[0, "Name"] == "massShiftZ100MeV" else ref_massw
+    df.iloc[0, 1] += ref_massz if poi[0] == "massShiftZ100MeV" else ref_massw
 
     if rename_cols:
         df.rename(columns=rename_cols, inplace=True)

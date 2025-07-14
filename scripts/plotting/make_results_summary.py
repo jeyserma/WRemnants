@@ -165,6 +165,6 @@ if args.cmsDecor == "Preliminary":
     name += "_preliminary"
 
 plot_tools.save_pdf_and_png(outdir, name, fig)
-plot_tools.write_index_and_log(outdir, name)
+output_tools.write_index_and_log(outdir, name)
 if eoscp:
     output_tools.copy_to_eos(outdir, args.outpath, args.outfolder)
