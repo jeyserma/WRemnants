@@ -1,7 +1,6 @@
 import hist
 import numpy as np
 
-from rabbit import io_tools
 from utilities.io_tools import input_tools
 from wremnants import histselections, syst_tools
 from wums import boostHistHelpers as hh
@@ -347,7 +346,7 @@ def add_noi_unfolding_variations(
     xnorm,
     poi_axes,
     prior_norm=1,
-    scale_norm=0.01,
+    scale_norm=1,
     poi_axes_flow=["ptGen", "ptVGen"],
     gen_level="postfsr",
     process="signal_samples",
@@ -374,34 +373,20 @@ def add_noi_unfolding_variations(
     )
 
     if fitresult is not None:
-        # TODO: re write, this assumes first parameters are the NOIs and that NOIs are in right order
+        # produce a scalemap based on uncertainties of the gen bin variations of an initial fit
 
-        result = io_tools.get_fitresult(fitresult)
+        from rabbit.io_tools import get_fitresult
 
-        # get axes object in right order
-        axes = [
-            [a for a in datagroups.gen_axes[label] if a.name == n][0] for n in poi_axes
-        ]
+        physics_model = "Select"
 
-        axes = [
-            hh.disableAxisFlow(a) if a.name in ["absYVGen", "absEtaGen"] else a
-            for a in axes
-        ]
-        scalemap_shape = [a.extent for a in axes]
-        hscalemap = hist.Hist(*axes)
+        fitresult, meta = get_fitresult(fitresult, meta=True)
+        results = fitresult["physics_models"][physics_model]["channels"]["ch0_masked"]
 
-        nnoi = np.prod(scalemap_shape)
+        scalemap = results[f"hist_postfit_inclusive"].get()
 
-        params = np.abs(result["parms"].get().values()[:nnoi])
-        params_err = np.diag(result["cov"].get().values()[:nnoi, :nnoi]) ** 0.5
-
-        # parm_names = [x for x in result["parms"].get().axes["parms"]][:nnoi]
-
-        param_scalemap = np.where(params > params_err, params, params_err)
-
-        param_scalemap = np.reshape(param_scalemap, scalemap_shape)
-
-        hscalemap.values(flow=True)[...] = param_scalemap
+        scalemap.values(flow=True)[...] = scalemap.variances(
+            flow=True
+        ) ** 0.5 / scalemap.values(flow=True)
 
     if xnorm:
 
@@ -415,18 +400,17 @@ def add_noi_unfolding_variations(
                 hVar = hh.multiplyHists(hVar, h_scale)
             return hh.addHists(h, hVar, scale2=norm)
 
-        if scalemap is None or fitresult is not None:
+        if scalemap is None:
             scalemap = get_scalemap(
                 datagroups,
                 poi_axes,
                 gen_level,
                 rename_axes={o: n for o, n in zip(poi_axes, poi_axes_syst)},
             )
-        if fitresult is not None:
-            scalemap = hh.multiplyHists(scalemap, hscalemap)
 
         datagroups.addSystematic(
             **noi_args,
+            systAxesFlow=[f"_{n}" for n in poi_axes if n in poi_axes_flow],
             action=make_poi_xnorm_variations,
             actionArgs=dict(
                 poi_axes=poi_axes,
@@ -449,12 +433,11 @@ def add_noi_unfolding_variations(
             hVar = hh.disableFlow(hVar, ["absYVGen", "absEtaGen"])
             if h_scale is not None:
                 hVar = hh.multiplyHists(hVar, h_scale)
+
             return hh.addHists(hNom, hVar, scale2=norm)
 
-        if scalemap is None or fitresult is not None:
+        if scalemap is None:  # or fitresult is not None:
             scalemap = get_scalemap(datagroups, poi_axes, gen_level)
-        if fitresult is not None:
-            scalemap = hh.multiplyHists(scalemap, hscalemap)
 
         datagroups.addSystematic(
             **noi_args,

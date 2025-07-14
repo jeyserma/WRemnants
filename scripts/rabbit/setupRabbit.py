@@ -450,6 +450,11 @@ def make_parser(parser=None):
         help="Set up fit to get stat-only uncertainty",
     )
     parser.add_argument(
+        "--doStatOnlyMasked",
+        action="store_true",
+        help="Masked channel with no systematic uncertainties",
+    )
+    parser.add_argument(
         "--noTheoryUnc",
         action="store_true",
         default=False,
@@ -827,6 +832,7 @@ def setup(
     inputBaseName,
     inputLumiScale,
     fitvar,
+    stat_only=False,
     genvar=None,
     channel="ch0",
     lumi=None,
@@ -1289,14 +1295,18 @@ def setup(
 
     datagroups.addNominalHistograms(
         real_data=args.realData,
-        exclude_bin_by_bin_stat="signal_samples" if args.explicitSignalMCstat else None,
+        exclude_bin_by_bin_stat=(
+            "signal_samples"
+            if args.explicitSignalMCstat or (xnorm and stat_only)
+            else None
+        ),
         bin_by_bin_stat_scale=args.binByBinStatScaleForMW if wmass else 1.0,
         fitresult_data=fitresult_data,
         masked=xnorm and fitresult_data is None,
         masked_flow=xnorm and isUnfolding and args.unfoldingWithFlow,
     )
 
-    if args.doStatOnly and isUnfolding and not isPoiAsNoi:
+    if stat_only and isUnfolding and not isPoiAsNoi:
         # At least one nuisance parameter is needed to run combine impacts (e.g. needed for unfolding postprocessing chain)
         # TODO: fix Rabbit to run w/o nuisances
         datagroups.addNormSystematic(
@@ -1307,7 +1317,7 @@ def setup(
 
     decorwidth = args.decorMassWidth or args.fitWidth
     massWeightName = "massWeight_widthdecor" if decorwidth else "massWeight"
-    if not (args.doStatOnly and constrainMass):
+    if not (stat_only and constrainMass):
         if args.massVariation != 0:
             if len(args.fitMassDecorr) == 0:
                 massVariation = (
@@ -1442,7 +1452,7 @@ def setup(
         )
 
     if (args.fitWidth and not wmass) or (
-        not xnorm and not args.doStatOnly and not args.noTheoryUnc
+        not xnorm and not stat_only and not args.noTheoryUnc
     ):
         # Experimental range
         # widthVars = (42, ['widthW2p043GeV', 'widthW2p127GeV']) if wmass else (2.3, ['widthZ2p4929GeV', 'widthZ2p4975GeV'])
@@ -1461,7 +1471,7 @@ def setup(
             passToFakes=passSystToFakes,
         )
 
-    if wmass and (args.fitWidth or (not args.doStatOnly and not args.noTheoryUnc)):
+    if wmass and (args.fitWidth or (not stat_only and not args.noTheoryUnc)):
         datagroups.addSystematic(
             "widthWeightW",
             name="WidthW0p6MeV",
@@ -1476,7 +1486,7 @@ def setup(
             passToFakes=passSystToFakes,
         )
 
-    if args.fitSin2ThetaW or (not args.doStatOnly and not args.noTheoryUnc):
+    if args.fitSin2ThetaW or (not stat_only and not args.noTheoryUnc):
         datagroups.addSystematic(
             "sin2thetaWeightZ",
             name=f"Sin2thetaZ0p00003",
@@ -1493,7 +1503,7 @@ def setup(
             passToFakes=passSystToFakes,
         )
 
-    if args.fitAlphaS or (not args.doStatOnly and not args.noTheoryUnc):
+    if args.fitAlphaS or (not stat_only and not args.noTheoryUnc):
         theorySystSamples = ["signal_samples_inctau"]
         if wmass:
             if args.helicityFitTheoryUnc:
@@ -1531,12 +1541,12 @@ def setup(
             scale=args.scalePdf if not args.fitAlphaS else 1.0,
         )
 
-        if not args.doStatOnly and not args.noTheoryUnc:
+        if not stat_only and not args.noTheoryUnc:
             theory_helper.add_all_theory_unc(
                 helicity_fit_unc=args.helicityFitTheoryUnc,
             )
 
-    if args.doStatOnly:
+    if stat_only:
         # print a card with only mass weights
         logger.info(
             "Using option --doStatOnly: the card was created with only mass nuisance parameter"
@@ -2638,7 +2648,8 @@ if __name__ == "__main__":
             iBaseName,
             iLumiScale,
             fitvar,
-            genvar,
+            genvar=genvar,
+            stat_only=args.doStatOnly,
             channel=channel,
             lumi=lumi,
             fitresult_data=fitresult_data,
@@ -2653,7 +2664,8 @@ if __name__ == "__main__":
                 args.unfoldingLevel,
                 iLumiScale,
                 genvar,
-                genvar,
+                genvar=genvar,
+                stat_only=args.doStatOnly or args.doStatOnlyMasked,
                 channel=f"{channel}_masked",
                 lumi=lumi,
             )
