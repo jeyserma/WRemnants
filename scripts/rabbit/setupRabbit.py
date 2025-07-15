@@ -2647,7 +2647,7 @@ if __name__ == "__main__":
             lumi = None
             fitresult_data = None
 
-        if len(args.unfoldingScalemap) > i:
+        if args.analysisMode == "unfolding" and len(args.unfoldingScalemap) > i:
             unfolding_scalemap = args.unfoldingScalemap[i]
         else:
             unfolding_scalemap = None
