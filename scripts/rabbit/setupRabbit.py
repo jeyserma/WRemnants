@@ -111,7 +111,8 @@ def make_subparsers(parser):
         parser.add_argument(
             "--unfoldingScalemap",
             type=str,
-            default=None,
+            default=[],
+            nargs="+",
             help="Read parameter uncertainties from fitresult to assign proper NOI variations",
         )
         parser.add_argument(
@@ -837,6 +838,7 @@ def setup(
     channel="ch0",
     lumi=None,
     fitresult_data=None,
+    unfolding_scalemap=None,
 ):
     xnorm = inputBaseName in ["xnorm", "prefsr", "postfsr"]
 
@@ -1414,7 +1416,7 @@ def setup(
                 prior_norm=args.priorNormXsec,
                 scale_norm=args.scaleNormXsecHistYields,
                 gen_level=args.unfoldingLevel,
-                fitresult=args.unfoldingScalemap,
+                fitresult=unfolding_scalemap,
             )
 
     if args.muRmuFPolVar and not isTheoryAgnosticPolVar:
@@ -2645,6 +2647,11 @@ if __name__ == "__main__":
             lumi = None
             fitresult_data = None
 
+        if len(args.unfoldingScalemap) > i:
+            unfolding_scalemap = args.unfoldingScalemap[i]
+        else:
+            unfolding_scalemap = None
+
         datagroups = setup(
             writer,
             args,
@@ -2657,6 +2664,7 @@ if __name__ == "__main__":
             channel=channel,
             lumi=lumi,
             fitresult_data=fitresult_data,
+            unfolding_scalemap=unfolding_scalemap,
         )
 
         if isUnfolding:
@@ -2672,6 +2680,7 @@ if __name__ == "__main__":
                 stat_only=args.doStatOnly or args.doStatOnlyMasked,
                 channel=f"{channel}_masked",
                 lumi=lumi,
+                unfolding_scalemap=unfolding_scalemap,
             )
 
             if args.unfoldSimultaneousWandZ and datagroups.mode == "w_mass":
