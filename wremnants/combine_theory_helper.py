@@ -362,6 +362,7 @@ class TheoryHelper(object):
                     "theory",
                     "theory_qcd",
                 ],
+                splitGroup={f"angularCoeffs_A{i}": f".*helicity_{i}" for i in range(8)},
                 systAxes=syst_axes,
                 labelsByAxis=syst_ax_labels,
                 skipEntries=skip_entries,
