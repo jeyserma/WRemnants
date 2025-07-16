@@ -13,6 +13,8 @@ def read_groupunc_df(filename, uncs, rename_cols={}, name=None):
     ref_massw = 80379
     ref_massz = 91187.6
 
+    print(filename)
+
     fitresult, meta = rabbit.io_tools.get_fitresult(filename, meta=True)
     poi = rabbit.io_tools.get_poi_names(meta)
 
@@ -31,6 +33,8 @@ def read_groupunc_df(filename, uncs, rename_cols={}, name=None):
         "err_total": impacts[labels == "Total"],
     }
     info.update({f"err_{unc}": impacts[labels == unc] for unc in uncs})
+
+    print(info)
 
     df = pd.DataFrame(info)
 
