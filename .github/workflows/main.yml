@@ -6,7 +6,7 @@ name: CI
 on:
   # Triggers the workflow on push or pull request events but only for the master branch
   pull_request:
-    branches: [ main ]
+    branches: [ main, dev ]
   schedule:
     - cron: '0 1 * * 2,4,6' # Run on Tuesday, Thursday, and Saturday morning at 1h00 UTC
     - cron: '30 5 * * 1-5' # Run on weekdays
@@ -971,7 +971,7 @@ jobs:
       - name: analysis
         run: >-
           scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/histmakers/mz_dilepton.py --dataPath $DATAPATH
-          -o $WREMNANTS_OUTDIR -j $NTHREADS --maxFiles $MAX_FILES --axes ptll yll --forceDefaultName --unfolding --postfix unfolding
+          -o $WREMNANTS_OUTDIR -j $NTHREADS --maxFiles $MAX_FILES --axes ptll yll --forceDefaultName --unfolding --unfoldingLevels postfsr --postfix unfolding
 
       - name: plot response matrix
         run: >-
@@ -982,7 +982,7 @@ jobs:
         run: >-
           scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/rabbit/setupRabbit.py 
           -i $HIST_FILE -o $WREMNANTS_OUTDIR --fitvar ptll-yll --lumiScale $LUMI_SCALE
-          --analysisMode unfolding --unfoldingLevel prefsr --genAxes ptVGen-absYVGen --postfix unfolding
+          --analysisMode unfolding --unfoldingLevel postfsr --genAxes ptVGen-absYVGen --postfix unfolding
 
       - name: unfolding fit
         run: >-
@@ -1030,7 +1030,7 @@ jobs:
           scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/rabbit/setupRabbit.py 
           -i $HIST_FILE -o $WREMNANTS_OUTDIR/ZMassDilepton_ptll_yll_unfolding/ 
           --fitresult $WREMNANTS_OUTDIR/ZMassDilepton_ptll_yll_unfolding/fitresults.hdf5 Select
-          --fitAlphaS --fitvar ptVGen-absYVGen --postfix theoryfit --baseName prefsr --explicitSignalMCstat
+          --fitAlphaS --fitvar ptVGen-absYVGen --postfix theoryfit --baseName postfsr --explicitSignalMCstat
       
       - name: run theory fit
         run: >-

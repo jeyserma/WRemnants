@@ -43,6 +43,7 @@ def load_corr_helpers(
     generators,
     make_tensor=True,
     base_dir=f"{common.data_dir}/TheoryCorrections/",
+    minnlo_ratio=True,
 ):
     corr_helpers = {}
     for proc in procs:
@@ -55,7 +56,9 @@ def load_corr_helpers(
                 )
                 continue
             logger.debug(f"Make theory correction helper for file: {fname}")
-            corrh = load_corr_hist(fname, proc[0], get_corr_name(generator))
+            corrh = load_corr_hist(
+                fname, proc[0], get_corr_name(generator, minnlo_ratio=minnlo_ratio)
+            )
             corrh = postprocess_corr_hist(corrh)
             if not make_tensor:
                 corr_helpers[proc][generator] = corrh
@@ -66,7 +69,7 @@ def load_corr_helpers(
             else:
                 corr_helpers[proc][generator] = makeCorrectionsTensor(
                     corrh,
-                    weighted_corr=generator in theory_tools.theory_corr_weight_map,
+                    tensor_weight=generator in theory_tools.theory_corr_weight_map,
                 )
     for generator in generators:
         if not any([generator in corr_helpers[proc] for proc in procs]):
@@ -279,16 +282,23 @@ def postprocess_corr_hist(corrh):
     return corrh
 
 
-def get_corr_name(generator):
+def get_corr_name(generator, minnlo_ratio=True):
     # Hack for now
     label = generator.replace("1D", "")
     if "dataPtll" in generator or "dataRecoPtll" in generator:
         return "MC_data_ratio"
-    return (
-        f"{label}_minnlo_ratio"
-        if "Helicity" not in generator
-        else f"{label.replace('Helicity', '')}_minnlo_coeffs"
-    )
+    if minnlo_ratio:
+        return (
+            f"{label}_minnlo_ratio"
+            if "Helicity" not in generator
+            else f"{label.replace('Helicity', '')}_minnlo_coeffs"
+        )
+    else:
+        return (
+            f"{label}_hist"
+            if "Helicity" not in generator
+            else f"{label.replace('Helicity', '')}_coeffs"
+        )
 
 
 def rebin_corr_hists(hists, ndim=-1, binning=None):
@@ -400,31 +410,79 @@ def make_corr_by_helicity(
     return corr_coeffs
 
 
-def make_qcd_uncertainty_helper_by_helicity(
-    is_z=False, filename=None, rebi_ptVgen=True
+def make_qcd_uncertainty_helpers_by_helicity(
+    filename_z=f"{common.data_dir}/angularCoefficients/w_z_moments.hdf5",
+    filename_w=f"{common.data_dir}/angularCoefficients/w_z_moments.hdf5",
+    rebin_ptWgen=True,
+    rebin_ptZgen=True,
+    return_tensor=True,
 ):
-    if filename is None:
-        filename = f"{common.data_dir}/angularCoefficients/w_z_moments.hdf5"
+    helper_w = make_qcd_uncertainty_helper_by_helicity(
+        is_z=False,
+        filename=filename_w,
+        rebin_ptVgen=rebin_ptWgen,
+        return_tensor=return_tensor,
+    )
+    helper_z = make_qcd_uncertainty_helper_by_helicity(
+        is_z=True,
+        filename=filename_z,
+        rebin_ptVgen=rebin_ptZgen,
+        return_tensor=return_tensor,
+    )
+
+    return {"W": helper_w, "Z": helper_z}
+
+
+def make_qcd_uncertainty_helper_by_helicity(
+    is_z=False,
+    filename=f"{common.data_dir}/angularCoefficients/w_z_moments.hdf5",
+    rebin_ptVgen=common.ptV_binning,
+    rebin_absYVgen=False,
+    rebin_massVgen=True,
+    return_tensor=True,
+):
 
     # load helicity cross sections from file
     with h5py.File(filename, "r") as h5file:
         results = input_tools.load_results_h5py(h5file)
 
-    def get_helicity_xsecs(suffix="", rebin=True):
+    def get_helicity_xsecs(
+        suffix="",
+        rebin_ptVgen=common.ptV_binning,
+        rebin_absYVgen=False,
+        rebin_massVgen=2,
+    ):
         h = results[f"Z{suffix}"] if is_z else results[f"W{suffix}"]
-        if not rebin:
-            return h
 
-        # Common.ptV_binning is the approximate 5% quantiles, rounded to integers
-        h = hh.rebinHist(h, "ptVgen", common.ptV_binning)
+        if rebin_ptVgen:
+            if type(rebin_ptVgen) is bool:
+                h = hh.rebinHist(h, "ptVgen", common.ptV_binning)
+            else:
+                h = hh.rebinHist(h, "ptVgen", rebin_ptVgen)
+        if rebin_massVgen:
+            if type(rebin_massVgen) is bool:
+                if is_z:
+                    axis_massVgen = h.axes["massVgen"]
+                    if len(axis_massVgen.edges) > 2:
+                        h = hh.rebinHist(h, "massVgen", axis_massVgen.edges[::2])
+            else:
+                h = hh.rebinHist(h, "massVgen", rebin_massVgen)
+        if rebin_absYVgen:
+            h = hh.rebinHist(h, "absYVgen", rebin_absYVgen)
 
-        if is_z:
-            axis_massVgen = h.axes["massVgen"]
-            h = hh.rebinHist(h, "massVgen", axis_massVgen.edges[::2])
         return h
 
-    helicity_xsecs = get_helicity_xsecs(rebin=rebi_ptVgen)
-    helicity_xsecs_lhe = get_helicity_xsecs("_lhe", rebin=rebi_ptVgen)
+    helicity_xsecs = get_helicity_xsecs(
+        rebin_ptVgen=rebin_ptVgen,
+        rebin_absYVgen=rebin_absYVgen,
+        rebin_massVgen=rebin_massVgen,
+    )
+    helicity_xsecs_lhe = get_helicity_xsecs(
+        "_lhe",
+        rebin_ptVgen=rebin_ptVgen,
+        rebin_absYVgen=rebin_absYVgen,
+        rebin_massVgen=rebin_massVgen,
+    )
 
     helicity_xsecs_nom = helicity_xsecs[{"muRfact": 1.0j, "muFfact": 1.0j}].values()
 
@@ -488,14 +546,17 @@ def make_qcd_uncertainty_helper_by_helicity(
         ].values()[..., None]
     )
 
-    helper = makeCorrectionsTensor(
-        corr_coeffs, ROOT.wrem.CentralCorrByHelicityHelper, tensor_rank=3
-    )
+    if return_tensor:
+        helper = makeCorrectionsTensor(
+            corr_coeffs, ROOT.wrem.CentralCorrByHelicityHelper, tensor_rank=3
+        )
 
-    # override tensor_axes since the output is different here
-    helper.tensor_axes = [vars_ax]
+        # override tensor_axes since the output is different here
+        helper.tensor_axes = [vars_ax]
 
-    return helper
+        return helper
+    else:
+        return corr_coeffs
 
 
 def make_helicity_test_corrector(is_z=False, filename=None):

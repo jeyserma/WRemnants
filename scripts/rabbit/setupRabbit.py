@@ -108,7 +108,23 @@ def make_subparsers(parser):
             choices=["prefsr", "postfsr"],
             help="Definition for unfolding",
         )
-
+        parser.add_argument(
+            "--unfoldingScalemap",
+            type=str,
+            default=[],
+            nargs="+",
+            help="Read parameter uncertainties from fitresult to assign proper NOI variations",
+        )
+        parser.add_argument(
+            "--unfoldingWithFlow",
+            action="store_true",
+            help="Include underflow/overflow in masked channels (for iterative unfolding)",
+        )
+        parser.add_argument(
+            "--unfoldSimultaneousWandZ",
+            action="store_true",
+            help="Simultaneously unfold W and Z and correlate Z background in W channel",
+        )
         parser = parsing.set_parser_default(parser, "massVariation", 10)
 
     return parser
@@ -359,6 +375,12 @@ def make_parser(parser=None):
         """,
     )
     parser.add_argument(
+        "--fitresultResult",
+        type=str,
+        default="asimov",
+        help="Use fit result from this file (e.g. for making a theory fit).",
+    )
+    parser.add_argument(
         "--fakerateAxes",
         nargs="+",
         help="Axes for the fakerate binning",
@@ -427,6 +449,11 @@ def make_parser(parser=None):
         action="store_true",
         default=False,
         help="Set up fit to get stat-only uncertainty",
+    )
+    parser.add_argument(
+        "--doStatOnlyMasked",
+        action="store_true",
+        help="Masked channel with no systematic uncertainties",
     )
     parser.add_argument(
         "--noTheoryUnc",
@@ -652,11 +679,6 @@ def make_parser(parser=None):
         type=float,
         help="Specify normalization uncertainty for Fake background (for W analysis). If negative, treat as free floating, if 0 nothing is added",
     )
-    parser.add_argument(
-        "--passNormUncToFakes",
-        action="store_true",
-        help="Propagate normalization uncertainties into the fake estimation",
-    )
     # pseudodata
     parser.add_argument(
         "--pseudoData", type=str, nargs="+", help="Histograms to use as pseudodata"
@@ -787,6 +809,18 @@ def make_parser(parser=None):
         default="log_normal",
         help="probability density for systematic variations",
     )
+    parser.add_argument(
+        "--select",
+        nargs="+",
+        dest="selection",
+        type=str,
+        default=None,
+        help="Apply a selection to the histograms, if the axis exists."
+        "This option can be applied to any of the axis, not necessarily one of the fitaxes, unlike --axlim."
+        "Use complex numbers for axis value, integers for bin number."
+        "e.g. --select 'ptll 0 10"
+        "e.g. --select 'ptll 0j 10j",
+    )
     parser = make_subparsers(parser)
 
     return parser
@@ -799,10 +833,12 @@ def setup(
     inputBaseName,
     inputLumiScale,
     fitvar,
+    stat_only=False,
     genvar=None,
     channel="ch0",
     lumi=None,
     fitresult_data=None,
+    unfolding_scalemap=None,
 ):
     xnorm = inputBaseName in ["xnorm", "prefsr", "postfsr"]
 
@@ -839,6 +875,19 @@ def setup(
 
     datagroups.fit_axes = fitvar
     datagroups.channel = channel
+
+    if args.selection:
+        for sel in args.selection:
+            sel_ax, sel_lb, sel_ub = sel.split()
+            sel_lb = parsing.str_to_complex_or_int(sel_lb)
+            sel_ub = parsing.str_to_complex_or_int(sel_ub)
+            datagroups.setGlobalAction(
+                lambda h: (
+                    h[{sel_ax: slice(sel_lb, sel_ub, hist.sum)}]
+                    if sel_ax in h.axes.name
+                    else h
+                ),
+            )
 
     if args.angularCoeffs:
         datagroups.setGlobalAction(
@@ -1009,6 +1058,7 @@ def setup(
             member_filter=lambda x: not x.name.endswith("OOA"),
             fitvar=fitvar,
             histToReadAxes=args.unfoldingLevel,
+            disable_flow_fit_axes=not (xnorm and args.unfoldingWithFlow),
         )
 
         # out of acceptance contribution
@@ -1208,7 +1258,7 @@ def setup(
             pseudodataGroups.fakerate_axes = args.fakerateAxes
 
         datagroups.addPseudodataHistogramFakes(pseudodata, pseudodataGroups)
-    if args.pseudoData:
+    if args.pseudoData and not xnorm:
         if args.pseudoDataFitInputFile:
             indata = rabbit.debugdata.FitInputData(args.pseudoDataFitInputFile)
             debugdata = rabbit.debugdata.FitDebugData(indata)
@@ -1247,13 +1297,22 @@ def setup(
 
     datagroups.addNominalHistograms(
         real_data=args.realData,
-        exclude_bin_by_bin_stat="signal_samples" if args.explicitSignalMCstat else None,
+        exclude_bin_by_bin_stat=(
+            "signal_samples"
+            if args.explicitSignalMCstat or (xnorm and stat_only)
+            else None
+        ),
         bin_by_bin_stat_scale=args.binByBinStatScaleForMW if wmass else 1.0,
         fitresult_data=fitresult_data,
         masked=xnorm and fitresult_data is None,
+        masked_flow_axes=(
+            ["ptGen", "ptVGen"]
+            if (xnorm and isUnfolding and args.unfoldingWithFlow)
+            else []
+        ),
     )
 
-    if args.doStatOnly and isUnfolding and not isPoiAsNoi:
+    if stat_only and isUnfolding and not isPoiAsNoi:
         # At least one nuisance parameter is needed to run combine impacts (e.g. needed for unfolding postprocessing chain)
         # TODO: fix Rabbit to run w/o nuisances
         datagroups.addNormSystematic(
@@ -1264,7 +1323,7 @@ def setup(
 
     decorwidth = args.decorMassWidth or args.fitWidth
     massWeightName = "massWeight_widthdecor" if decorwidth else "massWeight"
-    if not (args.doStatOnly and constrainMass):
+    if not (stat_only and constrainMass):
         if args.massVariation != 0:
             if len(args.fitMassDecorr) == 0:
                 massVariation = (
@@ -1357,6 +1416,7 @@ def setup(
                 prior_norm=args.priorNormXsec,
                 scale_norm=args.scaleNormXsecHistYields,
                 gen_level=args.unfoldingLevel,
+                fitresult=unfolding_scalemap,
             )
 
     if args.muRmuFPolVar and not isTheoryAgnosticPolVar:
@@ -1398,7 +1458,7 @@ def setup(
         )
 
     if (args.fitWidth and not wmass) or (
-        not xnorm and not args.doStatOnly and not args.noTheoryUnc
+        not xnorm and not stat_only and not args.noTheoryUnc
     ):
         # Experimental range
         # widthVars = (42, ['widthW2p043GeV', 'widthW2p127GeV']) if wmass else (2.3, ['widthZ2p4929GeV', 'widthZ2p4975GeV'])
@@ -1417,7 +1477,7 @@ def setup(
             passToFakes=passSystToFakes,
         )
 
-    if wmass and (args.fitWidth or (not args.doStatOnly and not args.noTheoryUnc)):
+    if wmass and (args.fitWidth or (not stat_only and not args.noTheoryUnc)):
         datagroups.addSystematic(
             "widthWeightW",
             name="WidthW0p6MeV",
@@ -1432,7 +1492,7 @@ def setup(
             passToFakes=passSystToFakes,
         )
 
-    if args.fitSin2ThetaW or (not args.doStatOnly and not args.noTheoryUnc):
+    if args.fitSin2ThetaW or (not stat_only and not args.noTheoryUnc):
         datagroups.addSystematic(
             "sin2thetaWeightZ",
             name=f"Sin2thetaZ0p00003",
@@ -1449,7 +1509,7 @@ def setup(
             passToFakes=passSystToFakes,
         )
 
-    if args.fitAlphaS or (not args.doStatOnly and not args.noTheoryUnc):
+    if args.fitAlphaS or (not stat_only and not args.noTheoryUnc):
         theorySystSamples = ["signal_samples_inctau"]
         if wmass:
             if args.helicityFitTheoryUnc:
@@ -1487,12 +1547,12 @@ def setup(
             scale=args.scalePdf if not args.fitAlphaS else 1.0,
         )
 
-        if not args.doStatOnly and not args.noTheoryUnc:
+        if not stat_only and not args.noTheoryUnc:
             theory_helper.add_all_theory_unc(
                 helicity_fit_unc=args.helicityFitTheoryUnc,
             )
 
-    if args.doStatOnly:
+    if stat_only:
         # print a card with only mass weights
         logger.info(
             "Using option --doStatOnly: the card was created with only mass nuisance parameter"
@@ -1536,18 +1596,15 @@ def setup(
                     passSystToFakes=passSystToFakes,
                 )
 
-        if inputBaseName == "prefsr":
-            ewUncs = [*args.ewUnc, *args.isrUnc]
-        else:
-            ewUncs = [*args.ewUnc, *args.fsrUnc, *args.isrUnc]
-
-        combine_helpers.add_electroweak_uncertainty(
-            datagroups,
-            ewUncs,
-            samples="single_v_samples",
-            flavor=datagroups.flavor,
-            passSystToFakes=passSystToFakes,
-        )
+        if inputBaseName != "prefsr":
+            # make prefsr ane EW free definition
+            combine_helpers.add_electroweak_uncertainty(
+                datagroups,
+                [*args.ewUnc, *args.fsrUnc, *args.isrUnc],
+                samples="single_v_samples",
+                flavor=datagroups.flavor,
+                passSystToFakes=passSystToFakes,
+            )
 
     if xnorm or genfit:
         return datagroups
@@ -1608,12 +1665,14 @@ def setup(
             ),
         )
 
-    if not lowPU:  # lowPU does not include PhotonInduced as a process. skip it:
+    if (
+        not lowPU and "PhotonInduced" in datagroups.groups
+    ):  # lowPU does not include PhotonInduced as a process. skip it:
         datagroups.addNormSystematic(
             name="CMS_PhotonInduced",
             processes=["PhotonInduced"],
-            groups=[f"CMS_background", "experiment", "expNoCalib"],
-            passToFakes=args.passNormUncToFakes,
+            groups=[f"CMS_background", "experiment", "expNoLumi", "expNoCalib"],
+            passToFakes=passSystToFakes,
             norm=2.0,
         )
     if wmass:
@@ -1623,7 +1682,11 @@ def setup(
                 processes=["Wmunu"],
                 groups=[
                     f"CMS_background",
-                    *(["experiment", "expNoCalib"] if args.logNormalWmunu > 0 else []),
+                    *(
+                        ["experiment", "expNoLumi", "expNoCalib"]
+                        if args.logNormalWmunu > 0
+                        else []
+                    ),
                 ],
                 passToFakes=passSystToFakes,
                 noi=args.logNormalWmunu < 0,
@@ -1636,7 +1699,11 @@ def setup(
                 processes=["Wtaunu"],
                 groups=[
                     f"CMS_background",
-                    *(["experiment", "expNoCalib"] if args.logNormalWmunu > 0 else []),
+                    *(
+                        ["experiment", "expNoLumi", "expNoCalib"]
+                        if args.logNormalWmunu > 0
+                        else []
+                    ),
                 ],
                 passToFakes=passSystToFakes,
                 noi=args.logNormalWtaunu < 0,
@@ -1649,7 +1716,7 @@ def setup(
                 datagroups.addSystematic(
                     name=f"CMS_{datagroups.fakeName}",
                     processes=[datagroups.fakeName],
-                    groups=["Fake", "experiment", "expNoCalib"],
+                    groups=["Fake", "experiment", "expNoLumi", "expNoCalib"],
                     passToFakes=False,
                     baseName=f"CMS_{datagroups.fakeName}_",
                     systAxes=["run_", "downUpVar"],
@@ -1666,7 +1733,7 @@ def setup(
                 datagroups.addNormSystematic(
                     name=f"CMS_{datagroups.fakeName}",
                     processes=[datagroups.fakeName],
-                    groups=["Fake", "experiment", "expNoCalib"],
+                    groups=["Fake", "experiment", "expNoLumi", "expNoCalib"],
                     passToFakes=False,
                     norm=args.logNormalFake,
                 )
@@ -1674,22 +1741,22 @@ def setup(
         datagroups.addNormSystematic(
             name="CMS_Top",
             processes=["Top"],
-            groups=[f"CMS_background", "experiment", "expNoCalib"],
-            passToFakes=args.passNormUncToFakes,
+            groups=[f"CMS_background", "experiment", "expNoLumi", "expNoCalib"],
+            passToFakes=passSystToFakes,
             norm=1.06,
         )
         datagroups.addNormSystematic(
             name="CMS_VV",
             processes=["Diboson"],
-            groups=[f"CMS_background", "experiment", "expNoCalib"],
-            passToFakes=args.passNormUncToFakes,
+            groups=[f"CMS_background", "experiment", "expNoLumi", "expNoCalib"],
+            passToFakes=passSystToFakes,
             norm=1.16,
         )
-    else:
+    elif "Other" in datagroups.groups:
         datagroups.addNormSystematic(
             name="CMS_background",
             processes=["Other"],
-            groups=[f"CMS_background", "experiment", "expNoCalib"],
+            groups=[f"CMS_background", "experiment", "expNoLumi", "expNoCalib"],
             norm=1.15,
         )
 
@@ -1729,7 +1796,7 @@ def setup(
                 **info,
                 name=subgroup,
                 baseName=subgroup,
-                groups=[subgroup, "Fake", "experiment", "expNoCalib"],
+                groups=[subgroup, "Fake", "experiment", "expNoLumi", "expNoCalib"],
                 actionArgs=dict(variations_smoothing=True),
             )
 
@@ -1739,7 +1806,7 @@ def setup(
                 **info,
                 name=subgroup,
                 baseName=subgroup,
-                groups=[subgroup, "Fake", "experiment", "expNoCalib"],
+                groups=[subgroup, "Fake", "experiment", "expNoLumi", "expNoCalib"],
                 actionArgs=dict(variations_frf=True),
             )
 
@@ -1755,7 +1822,7 @@ def setup(
                 **info,
                 name=subgroup,
                 baseName=subgroup,
-                groups=[subgroup, "Fake", "experiment", "expNoCalib"],
+                groups=[subgroup, "Fake", "experiment", "expNoLumi", "expNoCalib"],
                 actionArgs=dict(variations_scf=True),
             )
 
@@ -1817,7 +1884,13 @@ def setup(
                     subgroup = f"{datagroups.fakeName}Param{idx}"
                     datagroups.addSystematic(
                         inputBaseName,
-                        groups=[subgroup, "Fake", "experiment", "expNoCalib"],
+                        groups=[
+                            subgroup,
+                            "Fake",
+                            "experiment",
+                            "expNoLumi",
+                            "expNoCalib",
+                        ],
                         name=subgroup
                         + (
                             f"_{'_'.join(axesToDecorrNames)}"
@@ -1926,7 +1999,13 @@ def setup(
                 datagroups.addSystematic(
                     name,
                     mirror=mirror,
-                    groups=[groupName, "muon_eff_all", "experiment", "expNoCalib"],
+                    groups=[
+                        groupName,
+                        "muon_eff_all",
+                        "experiment",
+                        "expNoLumi",
+                        "expNoCalib",
+                    ],
                     splitGroup=splitGroupDict,
                     systAxes=axes,
                     labelsByAxis=axlabels,
@@ -1950,6 +2029,7 @@ def setup(
                                 groupName,
                                 "muon_eff_all",
                                 "experiment",
+                                "expNoLumi",
                                 "expNoCalib",
                             ],
                             systAxes=["n_syst_variations"],
@@ -2064,7 +2144,13 @@ def setup(
                     datagroups.addSystematic(
                         name,
                         mirror=mirror,
-                        groups=[groupName, "muon_eff_all", "experiment", "expNoCalib"],
+                        groups=[
+                            groupName,
+                            "muon_eff_all",
+                            "experiment",
+                            "expNoLumi",
+                            "expNoCalib",
+                        ],
                         splitGroup=splitGroupDict,
                         systAxes=axes,
                         labelsByAxis=axlabels,
@@ -2097,7 +2183,7 @@ def setup(
                     lepEff,
                     processes=datagroups.allMCProcesses(),
                     mirror=True,
-                    groups=["CMS_lepton_eff", "experiment", "expNoCalib"],
+                    groups=["CMS_lepton_eff", "experiment", "expNoLumi", "expNoCalib"],
                     baseName=lepEff,
                     systAxes=["tensor_axis_0"],
                     labelsByAxis=[""],
@@ -2119,7 +2205,7 @@ def setup(
                 "prefireCorr",
                 processes=datagroups.allMCProcesses(),
                 mirror=False,
-                groups=["CMS_prefire17", "experiment", "expNoCalib"],
+                groups=["CMS_prefire17", "experiment", "expNoLumi", "expNoCalib"],
                 baseName="CMS_prefire17",
                 systAxes=["downUpVar"],
                 labelsByAxis=["downUpVar"],
@@ -2146,7 +2232,7 @@ def setup(
         datagroups.addSystematic(
             name="residualEffiSF",
             processes=["MCnoQCD"],
-            groups=["residualEffiSF", "experiment", "expNoCalib"],
+            groups=["residualEffiSF", "experiment", "expNoLumi", "expNoCalib"],
             baseName="residualEffiSF_",
             systAxes=["eta_", "run_", "downUpVar"],
             labelsByAxis=["eta", "run", "downUpVar"],
@@ -2167,7 +2253,7 @@ def setup(
         datagroups.addSystematic(
             name="residualEffiSF",
             processes=["MCnoQCD"],
-            groups=["residualEffiSF", "experiment", "expNoCalib"],
+            groups=["residualEffiSF", "experiment", "expNoLumi", "expNoCalib"],
             baseName="residualEffiSF_",
             systAxes=["run_", "downUpVar"],
             labelsByAxis=["run", "downUpVar"],
@@ -2224,7 +2310,7 @@ def setup(
     datagroups.addSystematic(
         "muonL1PrefireSyst",
         processes=["MCnoQCD"],
-        groups=["muonPrefire", "prefire", "experiment", "expNoCalib"],
+        groups=["muonPrefire", "prefire", "experiment", "expNoLumi", "expNoCalib"],
         baseName="CMS_prefire_syst_m",
         systAxes=prefireSystAxes,
         labelsByAxis=prefireSystLabels,
@@ -2253,7 +2339,7 @@ def setup(
     datagroups.addSystematic(
         "muonL1PrefireStat",
         processes=["MCnoQCD"],
-        groups=["muonPrefire", "prefire", "experiment", "expNoCalib"],
+        groups=["muonPrefire", "prefire", "experiment", "expNoLumi", "expNoCalib"],
         baseName="CMS_prefire_stat_m_",
         passToFakes=passSystToFakes,
         systAxes=prefireStatAxes,
@@ -2265,7 +2351,7 @@ def setup(
     datagroups.addSystematic(
         "ecalL1Prefire",
         processes=["MCnoQCD"],
-        groups=["ecalPrefire", "prefire", "experiment", "expNoCalib"],
+        groups=["ecalPrefire", "prefire", "experiment", "expNoLumi", "expNoCalib"],
         baseName="CMS_prefire_ecal",
         systAxes=["downUpVar"],
         labelsByAxis=["downUpVar"],
@@ -2275,7 +2361,7 @@ def setup(
     datagroups.addSystematic(
         "muonScaleSyst_responseWeights",
         processes=["single_v_samples"],
-        groups=["scaleCrctn", "muonCalibration", "experiment"],
+        groups=["scaleCrctn", "muonCalibration", "experiment", "expNoLumi"],
         baseName="Scale_correction_",
         systAxes=["unc", "downUpVar"],
         passToFakes=passSystToFakes,
@@ -2284,7 +2370,7 @@ def setup(
     datagroups.addSystematic(
         "muonScaleClosSyst_responseWeights",
         processes=["single_v_samples"],
-        groups=["scaleClosCrctn", "muonCalibration", "experiment"],
+        groups=["scaleClosCrctn", "muonCalibration", "experiment", "expNoLumi"],
         baseName="ScaleClos_correction_",
         systAxes=["unc", "downUpVar"],
         passToFakes=passSystToFakes,
@@ -2303,7 +2389,7 @@ def setup(
     datagroups.addSystematic(
         "muonScaleClosASyst_responseWeights",
         processes=["single_v_samples"],
-        groups=["scaleClosACrctn", "muonCalibration", "experiment"],
+        groups=["scaleClosACrctn", "muonCalibration", "experiment", "expNoLumi"],
         baseName="ScaleClosA_correction_",
         systAxes=["unc", "downUpVar"],
         passToFakes=passSystToFakes,
@@ -2313,7 +2399,7 @@ def setup(
         datagroups.addSystematic(
             "muonScaleClosMSyst_responseWeights",
             processes=["single_v_samples"],
-            groups=["scaleClosMCrctn", "muonCalibration", "experiment"],
+            groups=["scaleClosMCrctn", "muonCalibration", "experiment", "expNoLumi"],
             baseName="ScaleClosM_correction_",
             systAxes=["unc", "downUpVar"],
             passToFakes=passSystToFakes,
@@ -2324,7 +2410,7 @@ def setup(
             "muonResolutionSyst_responseWeights",
             mirror=True,
             processes=["single_v_samples"],
-            groups=["resolutionCrctn", "muonCalibration", "experiment"],
+            groups=["resolutionCrctn", "muonCalibration", "experiment", "expNoLumi"],
             baseName="Resolution_correction_",
             systAxes=["smearing_variation"],
             passToFakes=passSystToFakes,
@@ -2335,7 +2421,7 @@ def setup(
         "pixelMultiplicitySyst",
         mirror=True,
         processes=["single_v_samples"],
-        groups=["pixelMultiplicitySyst", "muonCalibration", "experiment"],
+        groups=["pixelMultiplicitySyst", "muonCalibration", "experiment", "expNoLumi"],
         baseName="pixel_multiplicity_syst_",
         systAxes=["var"],
         passToFakes=passSystToFakes,
@@ -2346,7 +2432,12 @@ def setup(
             "pixelMultiplicityStat",
             mirror=True,
             processes=["single_v_samples"],
-            groups=["pixelMultiplicityStat", "muonCalibration", "experiment"],
+            groups=[
+                "pixelMultiplicityStat",
+                "muonCalibration",
+                "experiment",
+                "expNoLumi",
+            ],
             baseName="pixel_multiplicity_stat_",
             systAxes=["var"],
             passToFakes=passSystToFakes,
@@ -2358,7 +2449,7 @@ def setup(
         datagroups.addSystematic(
             name="timeStability",
             processes=["MCnoQCD"],
-            groups=["timeStability", "experiment", "expNoCalib"],
+            groups=["timeStability", "experiment", "expNoLumi", "expNoCalib"],
             passToFakes=passSystToFakes,
             mirror=True,
             labelsByAxis=[f"run"],
@@ -2373,7 +2464,7 @@ def setup(
             "muonScaleSyst_responseWeights",
             name="muonScaleSyst_responseWeightsDecorr",
             processes=["single_v_samples"],
-            groups=["scaleCrctn", "muonCalibration", "experiment"],
+            groups=["scaleCrctn", "muonCalibration", "experiment", "expNoLumi"],
             baseName="Scale_correction_",
             systAxes=["unc", "run_", "downUpVar"],
             passToFakes=passSystToFakes,
@@ -2387,7 +2478,7 @@ def setup(
             "muonScaleClosSyst_responseWeights",
             name="muonScaleClosSyst_responseWeightsDecorr",
             processes=["single_v_samples"],
-            groups=["scaleClosCrctn", "muonCalibration", "experiment"],
+            groups=["scaleClosCrctn", "muonCalibration", "experiment", "expNoLumi"],
             baseName="ScaleClos_correction_",
             systAxes=["unc", "run_", "downUpVar"],
             passToFakes=passSystToFakes,
@@ -2402,7 +2493,12 @@ def setup(
                 name="muonResolutionSyst_responseWeightsDecorr",
                 mirror=True,
                 processes=["single_v_samples"],
-                groups=["resolutionCrctn", "muonCalibration", "experiment"],
+                groups=[
+                    "resolutionCrctn",
+                    "muonCalibration",
+                    "experiment",
+                    "expNoLumi",
+                ],
                 baseName="Resolution_correction_",
                 systAxes=["smearing_variation", "run_"],
                 passToFakes=passSystToFakes,
@@ -2527,8 +2623,9 @@ if __name__ == "__main__":
 
         writer.add_data_covariance(fitresult_cov)
 
-    # loop over all files
+    dgs = {}  # keep datagroups for across channel definitions
     outnames = []
+    # loop over all files
     for i, ifile in enumerate(args.inputFile):
         fitvar = args.fitvar[i].split("-")
         genvar = (
@@ -2550,6 +2647,11 @@ if __name__ == "__main__":
             lumi = None
             fitresult_data = None
 
+        if args.analysisMode == "unfolding" and len(args.unfoldingScalemap) > i:
+            unfolding_scalemap = args.unfoldingScalemap[i]
+        else:
+            unfolding_scalemap = None
+
         datagroups = setup(
             writer,
             args,
@@ -2557,10 +2659,12 @@ if __name__ == "__main__":
             iBaseName,
             iLumiScale,
             fitvar,
-            genvar,
+            genvar=genvar,
+            stat_only=args.doStatOnly,
             channel=channel,
             lumi=lumi,
             fitresult_data=fitresult_data,
+            unfolding_scalemap=unfolding_scalemap,
         )
 
         if isUnfolding:
@@ -2572,10 +2676,42 @@ if __name__ == "__main__":
                 args.unfoldingLevel,
                 iLumiScale,
                 genvar,
-                genvar,
+                genvar=genvar,
+                stat_only=args.doStatOnly or args.doStatOnlyMasked,
                 channel=f"{channel}_masked",
                 lumi=lumi,
+                unfolding_scalemap=unfolding_scalemap,
             )
+
+            if args.unfoldSimultaneousWandZ and datagroups.mode == "w_mass":
+                # for simultaneous unfolding of W and Z we need to add the noi variations on the Z background in the single lepton channel
+
+                if "z_dilepton" not in dgs:
+                    raise RuntimeError(
+                        "Datagroup 'z_dilepton' not found but required for unfoldSimultaneousWandZ (CLA order matters: specify dilepton first and then single lepton)"
+                    )
+
+                poi_axes = ["ptVGen", "absYVGen", "helicitySig"]
+
+                # we have to use the same scalemap as in the Z channel
+                scalemap = combine_helpers.get_scalemap(
+                    dgs["z_dilepton"],
+                    poi_axes,
+                    gen_level=args.unfoldingLevel,
+                )
+
+                combine_helpers.add_noi_unfolding_variations(
+                    datagroups,
+                    "Z",
+                    True,
+                    False,
+                    poi_axes=poi_axes,
+                    prior_norm=args.priorNormXsec,
+                    scale_norm=args.scaleNormXsecHistYields,
+                    gen_level=args.unfoldingLevel,
+                    process="Zmumu",
+                    scalemap=scalemap,
+                )
 
         outnames.append(
             (
@@ -2585,6 +2721,8 @@ if __name__ == "__main__":
                 analysis_label(datagroups),
             )
         )
+
+        dgs[datagroups.mode] = datagroups
 
     if len(outnames) == 1:
         outfolder, outfile = outnames[0]

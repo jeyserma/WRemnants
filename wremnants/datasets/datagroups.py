@@ -916,6 +916,7 @@ class Datagroups(object):
         histToReadAxes="xnorm",
         axesNamesToRead=None,
         fitvar=[],
+        disable_flow_fit_axes=True,
     ):
         nominal_hist = self.getHistForUnfolding(
             group_name, member_filter, histToReadAxes
@@ -936,11 +937,12 @@ class Datagroups(object):
         else:
             expand_vars_rename = axesNamesToRead
 
-        # turn off flow for axes that are fit and used to define new groups, otherwise groups with empty histogram for the flow bins would be added
-        for a in expand_vars:
-            idx = axesNamesToRead.index(a)
-            ax = axesToRead[idx]
-            axesToRead[idx] = hh.disableAxisFlow(ax)
+        if disable_flow_fit_axes:
+            # turn off flow for axes that are fit and used to define new groups, otherwise groups with empty histogram for the flow bins would be added
+            for a in expand_vars:
+                idx = axesNamesToRead.index(a)
+                ax = axesToRead[idx]
+                axesToRead[idx] = hh.disableAxisFlow(ax)
 
         self.gen_axes[new_name] = axesToRead
         logger.debug(f"New gen axes are: {self.gen_axes}")
@@ -1159,14 +1161,11 @@ class Datagroups(object):
             return False
 
     # Read a specific hist, useful if you need to check info about the file
-    def getHistsForProcAndSyst(self, proc, syst, nominal_name=None):
+    def getHistsForProcAndSyst(self, proc, syst, nominal_name=None, **kwargs):
         if nominal_name is None:
             nominal_name = self.nominalName
         self.loadHistsForDatagroups(
-            baseName=nominal_name,
-            syst=syst,
-            label="syst",
-            procsToRead=[proc],
+            baseName=nominal_name, syst=syst, label="syst", procsToRead=[proc], **kwargs
         )
         return self.groups[proc].hists["syst"]
 
@@ -1178,6 +1177,7 @@ class Datagroups(object):
         bin_by_bin_stat_scale=1.0,
         fitresult_data=None,
         masked=False,
+        masked_flow_axes=[],
     ):
         if self.writer is None:
             raise RuntimeError("Writer must be defined to add nominal histograms")
@@ -1210,9 +1210,20 @@ class Datagroups(object):
                     norm_proc_hist.variances(flow=True) * bin_by_bin_stat_scale**2
                 )
 
+            if len(masked_flow_axes) > 0:
+                self.axes_disable_flow = [
+                    n
+                    for n in norm_proc_hist.axes.name
+                    if n not in masked_flow_axes and n != "helicitySig"
+                ]
+                norm_proc_hist = hh.disableFlow(norm_proc_hist, self.axes_disable_flow)
+
             if self.channel not in self.writer.channels:
                 self.writer.add_channel(
-                    axes=norm_proc_hist.axes, name=self.channel, masked=masked
+                    axes=norm_proc_hist.axes,
+                    name=self.channel,
+                    masked=masked,
+                    flow=len(masked_flow_axes) > 0,
                 )
 
             self.writer.add_process(
@@ -1395,6 +1406,14 @@ class Datagroups(object):
                             if matchre.match(var_name)
                         ]
                     )
+
+                if hasattr(self, "axes_disable_flow") and len(self.axes_disable_flow):
+                    if isinstance(hists, hist.Hist):
+                        hists = hh.disableFlow(hists, self.axes_disable_flow)
+                    else:
+                        hists = [
+                            hh.disableFlow(h, self.axes_disable_flow) for h in hists
+                        ]
 
                 logger.debug(f"Add systematic {var_name}")
                 self.writer.add_systematic(
@@ -1940,7 +1959,7 @@ class Datagroups(object):
                 forceNonzero=forceNonzero,
             )
             hists = [
-                self.groups[proc].hists[p]
+                pseudodataGroups.groups[proc].hists[p]
                 for proc in processes
                 if proc not in processesFromNomi
             ]
