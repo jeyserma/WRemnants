@@ -352,7 +352,7 @@ class UnfolderZ:
             # helper to derive helicity xsec shape from event by event reweighting
             self.weightsByHelicity_helper_unfolding = helicity_utils.make_helicity_weight_helper(
                 is_z=True,
-                filename=f"{common.data_dir}/angularCoefficients/w_z_helicity_xsecs_scetlib_dyturboCorr_maxFiles_m1_unfoldingBinning.hdf5",
+                filename=f"{common.data_dir}/angularCoefficients/w_z_helicity_xsecs_scetlib_dyturboCorr_maxFiles_m1_alphaSunfoldingBinning_helicity.hdf5",
                 rebi_ptVgen=True,
             )
 
