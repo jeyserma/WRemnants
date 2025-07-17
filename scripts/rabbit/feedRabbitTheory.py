@@ -584,27 +584,6 @@ if args.fitW:
     h_pred_W_full = hh.disableFlow(h_pred_W_full, "qT", under=False, over=True)
     h_pred_W_full = hh.disableFlow(h_pred_W_full, "absY", under=False, over=True)
 
-    # calculate the transfer factor to be applied to your W predictions in full phase space
-    # transfer_W = hh.divideHists(h_W_lep_fiducial, h_W_lep_inclusive, flow=True)
-    # correction = copy.deepcopy(transfer_W)
-    # correction.values(flow=True)[...] = np.ones_like(transfer_W.values(flow=True))
-    # correction.values()[...] = transfer_W.values()
-
-    # hh.renameAxis(h_pred_W_full, "qT", "ptVgen")
-    # hh.renameAxis(h_pred_W_full, "absY", "absYVgen")
-    # hh.renameAxis(h_pred_W_full, "charge", "chargeVgen")
-
-    # debugging
-    # test1 = hh.multiplyHists(correction, h_pred_W_full)
-    # test2 = hh.divideHists(h_pred_W_full, h_W_lep_inclusive, flow=True)
-    # _test2 = copy.deepcopy(test2)
-    # _test2.values(flow=True)[...] = np.ones_like(_test2.values(flow=True))
-    # _test2.values()[...] = test2.values()
-    # test2 = hh.multiplyHists(test2, h_W_lep_fiducial)
-    # print(test2.project("ptGen", "absEtaGen", "qGen").values()/test1.project("ptGen", "absEtaGen", "qGen").values())
-    # exit()
-    # debugging
-
     writer.set_reference(
         "chW",
         h_pred_W_full,
