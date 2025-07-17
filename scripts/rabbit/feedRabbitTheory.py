@@ -29,19 +29,19 @@ class AlphaSTheoryFitTW(TensorWriter):
         self.logger = logging.child_logger(__name__)
         self.ref = {}
 
-    def set_reference(self, channel, h, lumi=16800, scale=1.0, tr_matrix=None):
+    def set_reference(self, channel, h, lumi=16800, scale=1.0, postOp=None):
         self.ref[channel] = {
             "h": h,
             "lumi": lumi,
             "scale": scale,
-            "tr_matrix": tr_matrix,
+            "postOp": postOp,
             "ptV_name": self.get_ptV_axis_name(h),
             "absYV_name": self.get_absYV_axis_name(h),
             "chargeV_name": self.get_charge_axis_name(h),
             "ptV_bins": h.axes[self.get_ptV_axis_name(h)].edges,
             "absYV_bins": h.axes[self.get_absYV_axis_name(h)].edges,
         }
-        self.logger.debug(f"Initialized channel f{channel} with parameters")
+        self.logger.debug(f"Initialized channel {channel} with parameters")
         self.logger.debug(pprint.pformat(self.ref[channel]))
 
     def add_systematic(
@@ -76,6 +76,7 @@ class AlphaSTheoryFitTW(TensorWriter):
                 rebin_y=rebin_y,
                 normalize=normalize,
             )
+
         elif kwargs.get("mirror"):
             h = self.format(
                 h,
@@ -204,25 +205,26 @@ class AlphaSTheoryFitTW(TensorWriter):
         if rebin_y:
             h = hh.rebinHist(h, self.ref[ch]["absYV_name"], self.ref[ch]["absYV_bins"])
         if normalize:
+            self.logger.debug(
+                f"Normalizing to {self.ref[ch]["lumi"] * self.ref[ch]["scale"]}"
+            )
             h *= self.ref[ch]["lumi"] * self.ref[ch]["scale"]
 
         # re-order remaining axes to match expected output
         remaining_axes = list(h.axes.name)
         remaining_axes.remove(self.ref[ch]["ptV_name"])
         remaining_axes.remove(self.ref[ch]["absYV_name"])
-        h = h.project(
-            self.ref[ch]["ptV_name"], self.ref[ch]["absYV_name"], *remaining_axes
-        )
+        ordered_axes = [
+            self.ref[ch]["ptV_name"],
+            self.ref[ch]["absYV_name"],
+            *remaining_axes,
+        ]
+        self.logger.debug(f"Projecting to axes {ordered_axes}")
+        h = h.project(*ordered_axes)
 
-        # calculate Ai's from helicities``
-        if ch == "chAis":
-            h = calculate_ais_from_helicities_hist(h)
-
-        if self.ref[ch]["tr_matrix"]:
-            h = hh.multiplyHists(
-                h, self.ref[ch]["tr_matrix"], flow=True, broadcast_by_ax_name=True
-            )
-            h = h.project("ptGen", "absEtaGen", "qGen")
+        # optionally, apply any post operation
+        if self.ref[ch]["postOp"] is not None:
+            h = self.ref[ch]["postOp"](h)
 
         return h
 
@@ -338,6 +340,31 @@ def calculate_ais_from_helicities_hist(h_hels):
     return h_out
 
 
+def convert_WFull_to_LepFiducial(h_W_lep_fiducial, h_W_lep_inclusive):
+
+    def _convert_WFull_to_LepFiducial(h):
+
+        if "qT" in h.axes.name:
+            hh.renameAxis(h, "qT", "ptVgen")
+            hh.renameAxis(h, "absY", "absYVgen")
+            hh.renameAxis(h, "charge", "chargeVgen")
+
+        correction = hh.divideHists(h, h_W_lep_inclusive)
+        final_correction = copy.deepcopy(correction)
+        final_correction.values(flow=True)[...] = np.ones_like(
+            h_W_lep_inclusive.values(flow=True)
+        )
+        final_correction.values()[...] = correction.values()
+        correction = final_correction
+
+        out = hh.multiplyHists(h_W_lep_fiducial, correction)
+        out = out.project("ptGen", "absEtaGen", "qGen")
+
+        return out
+
+    return _convert_WFull_to_LepFiducial
+
+
 analysis_label = Datagroups.analysisLabel(os.path.basename(__file__))
 parser, initargs = parsing.common_parser(analysis_label)
 
@@ -365,7 +392,7 @@ parser.add_argument(
     "Will be stitched with the --predGenerator file.",
 )
 parser.add_argument(
-    "--angularCoeffs",
+    "--fitAngularCoeffs",
     action="store_true",
     default=False,
     help="Fit the angular coefficients."
@@ -374,6 +401,7 @@ parser.add_argument(
 )
 parser.add_argument(
     "-W",
+    "--fitW",
     action="store_true",
     help="Include W in the fit."
     "Will use --predWFile for predictions and --infileW for the unfolded distribution.",
@@ -400,7 +428,7 @@ parser.add_argument(
 parser.add_argument(
     "--systematicType",
     choices=["log_normal", "normal"],
-    default="log_normal",
+    default="normal",
     help="probability density for systematic variations",
 )
 
@@ -410,14 +438,14 @@ logger = logging.setup_logger(__file__, args.verbose, args.noColorLogger)
 # Build tensor
 writer = AlphaSTheoryFitTW(
     sparse=args.sparse,
-    systematic_type="normal" if args.angularCoeffs else args.systematicType,
-    allow_negative_expectation=args.angularCoeffs,
+    systematic_type="normal" if args.fitAngularCoeffs else args.systematicType,
+    allow_negative_expectation=args.fitAngularCoeffs,
 )
 
 # load in data histogram and covariance matrix
 fitresult, meta = rabbit.io_tools.get_fitresult(args.infile, result="asimov", meta=True)
 if (
-    args.W or args.angularCoeffs
+    args.fitW or args.fitAngularCoeffs
 ):  # have to deal with composite models differently due to rabbit output
 
     # combined Z and W covariance
@@ -431,7 +459,7 @@ if (
     ]["hist_postfit_inclusive"].get()[:, :, 0]
 
     # if set, read and initialize Ai's channel
-    if args.angularCoeffs:
+    if args.fitAngularCoeffs:
         h_data_ai = fitresult["physics_models"]["CompositeModel"]["channels"][
             "AngularCoefficients ch0_masked ptVGen:rebin(0,3,6,9,12,16,20,24,28,33,44)_ch0_masked"
         ]["hist_postfit_inclusive"].get()
@@ -439,7 +467,7 @@ if (
         writer.add_data(h_data_ai, "chAis")
 
     # if set, read and initialize W lepton channel
-    if args.W:
+    if args.fitW:
         h_data_prefsrLep = fitresult["physics_models"]["CompositeModel"]["channels"][
             "Select_ch1_masked"
         ]["hist_postfit_inclusive"].get()
@@ -450,16 +478,22 @@ if (
 else:  # in the case where we are not reading from a composite model
 
     # covariance
-    h_data_cov = fitresult["physics_models"]["Select helicitySig:slice(0,1)"][
+    # h_data_cov = fitresult["physics_models"]["Select helicitySig:slice(0,1)"][
+    #     "hist_postfit_inclusive_cov"
+    # ].get()
+    h_data_cov = fitresult["physics_models"]["CompositeModel"][
         "hist_postfit_inclusive_cov"
     ].get()
 
     # read and initialize sigmaUL channel
-    h_data = fitresult["physics_models"]["Select helicitySig:slice(0,1)"]["channels"][
-        "ch0_masked"
-    ]["hist_postfit_inclusive"].get()[
-        :, :, 0
-    ]  # grabbing the unpolarized term
+    # h_data = fitresult["physics_models"]["Select helicitySig:slice(0,1)"]["channels"][
+    #     "ch0_masked"
+    # ]["hist_postfit_inclusive"].get()[
+    #     :, :, 0
+    # ]  # grabbing the unpolarized term
+    h_data = fitresult["physics_models"]["CompositeModel"]["channels"][
+        "Select helicitySig:slice(0,1)_ch0_masked"
+    ]["hist_postfit_inclusive"].get()[:, :, 0]
 
 # sigmaUL channel
 writer.add_channel(h_data.axes, "chSigmaUL")
@@ -470,8 +504,8 @@ writer.add_data_covariance(h_data_cov)  # N.B: run fit with --externalCovariance
 
 # now that we have loaded in data, we can define our histgram formatters for each channel
 writer.set_reference("chSigmaUL", h_data)
-if args.angularCoeffs:
-    writer.set_reference("chAis", h_data_ai)
+if args.fitAngularCoeffs:
+    writer.set_reference("chAis", h_data_ai, postOp=calculate_ais_from_helicities_hist)
 
 # add background, Z->mumu
 h_sig_sigmaUL = theory_corrections.load_corr_hist(
@@ -483,7 +517,7 @@ h_sig_sigmaUL = h_sig_sigmaUL[{"vars": "pdf0"}]  # select baseline variation
 writer.add_process(h_sig_sigmaUL, "Zmumu", "chSigmaUL", signal=False)
 
 # if set, load in the helicity cross sections predictions from MINNLO
-if args.angularCoeffs:
+if args.fitAngularCoeffs:
     with h5py.File(args.predAiFile, "r") as ff:
         inputs = input_tools.load_results_h5py(ff)
         h_sig_hels = inputs["Z"]
@@ -493,25 +527,25 @@ if args.angularCoeffs:
     writer.add_process(h_sig_hels, "Zmumu", "chAis", signal=False)
 
 # if set, load in the W lepton distributions
-if args.W:
+if args.fitW:
 
-    # MiNNLO(W, lep; fiducial)
-    predWFiducialFile = "/ceph/submit/data/group/cms/store/user/lavezzo/alphaS//250710_gen_histmaker/w_z_gen_dists.cash_maxFiles_m1.hdf5"  # TODO move this in wremnants-data?
+    # MiNNLO(W, lep; fiducial lep)
+    predWFiducialFile = "/ceph/submit/data/group/cms/store/user/lavezzo/alphaS//250710_gen_histmaker/w_z_gen_dists.cash_maxFiles_m1_MiNNLO_lepInclusive.hdf5"
+    # TODO move this in wremnants-data? possibly only extract the hists we need
     with h5py.File(predWFiducialFile, "r") as h5file:
 
+        lumi = 16800
         inputs = input_tools.load_results_h5py(h5file)
+
         weight_sum = inputs["WplusmunuPostVFP"]["weight_sum"]
         xsec = inputs["WplusmunuPostVFP"]["dataset"]["xsec"]
-        lumi = 16800
         h_Wp_lep_fiducial = inputs["WplusmunuPostVFP"]["output"][
             "nominal_gen_prefsrlep"
         ].get()
         h_Wp_lep_fiducial *= xsec * lumi / weight_sum
 
-        inputs = input_tools.load_results_h5py(h5file)
         weight_sum = inputs["WminusmunuPostVFP"]["weight_sum"]
         xsec = inputs["WminusmunuPostVFP"]["dataset"]["xsec"]
-        lumi = 16800
         h_Wm_lep_fiducial = inputs["WminusmunuPostVFP"]["output"][
             "nominal_gen_prefsrlep"
         ].get()
@@ -519,9 +553,16 @@ if args.W:
 
         # important to set flow=True since we are inclusive in W gen
         h_W_lep_fiducial = hh.addHists(h_Wp_lep_fiducial, h_Wm_lep_fiducial, flow=True)
+        h_W_lep_fiducial = hh.disableFlow(
+            h_W_lep_fiducial, "ptVgen", under=False, over=True
+        )
+        h_W_lep_fiducial = hh.disableFlow(
+            h_W_lep_fiducial, "absYVgen", under=False, over=True
+        )
         h_W_lep_fiducial = h_W_lep_fiducial.project(
             "ptVgen", "absYVgen", "chargeVgen", "ptGen", "absEtaGen", "qGen"
         )
+        h_W_lep_inclusive = h_W_lep_fiducial.project("ptVgen", "absYVgen", "chargeVgen")
 
         h_W_lep_fiducial = hh.rebinHist(
             h_W_lep_fiducial, "ptGen", h_data_prefsrLep.axes["ptGen"].edges, flow=True
@@ -533,54 +574,42 @@ if args.W:
             flow=True,
         )
 
-    # MiNNLO(W; full)
-    predWFullFile = "/ceph/submit/data/group/cms/store/user/lavezzo/alphaS//250710_gen_histmaker_full/w_z_gen_dists.cash_maxFiles_m1.hdf5"  # TODO move this in wremnants-data?
-    with h5py.File(predWFullFile, "r") as h5file:
-        inputs = input_tools.load_results_h5py(h5file)
-
-        weight_sum = inputs["WplusmunuPostVFP"]["weight_sum"]
-        xsec = inputs["WplusmunuPostVFP"]["dataset"]["xsec"]
-        lumi = 16800
-        h_Wp_full = inputs["WplusmunuPostVFP"]["output"]["nominal_gen"].get()
-        h_Wp_full *= xsec * lumi / weight_sum
-
-        weight_sum = inputs["WminusmunuPostVFP"]["weight_sum"]
-        xsec = inputs["WminusmunuPostVFP"]["dataset"]["xsec"]
-        lumi = 16800
-        h_Wm_full = inputs["WminusmunuPostVFP"]["output"]["nominal_gen"].get()
-        h_Wm_full *= xsec * lumi / weight_sum
-
-        h_W_full = hh.addHists(h_Wp_full, h_Wm_full)
-        h_W_full = h_W_full.project("ptVgen", "absYVgen", "chargeVgen")
-
     # <your favorite generator>(W; full)
     h_pred_W_full = theory_corrections.load_corr_hist(
         f"{common.data_dir}/TheoryCorrections/{args.predGenerator}CorrW.pkl.lz4",
         "W",
         f"{args.predGenerator}_hist",
     )
-    h_pred_W_full = (
-        h_pred_W_full[{"vars": "pdf0"}].project("qT", "absY", "charge") * lumi
-    )  # TODO could do these lines with a HistFormatter?
-
+    h_pred_W_full = h_pred_W_full[{"vars": "pdf0"}].project("qT", "absY", "charge")
     h_pred_W_full = hh.disableFlow(h_pred_W_full, "qT", under=False, over=True)
-    h_pred_W_full = hh.rebinHist(
-        h_pred_W_full, "qT", h_W_full.axes["ptVgen"].edges, flow=True
-    )
-    h_pred_W_full = hh.rebinHist(
-        h_pred_W_full, "absY", h_W_full.axes["absYVgen"].edges, flow=True
-    )
+    h_pred_W_full = hh.disableFlow(h_pred_W_full, "absY", under=False, over=True)
 
-    transfer_W = hh.divideHists(h_W_lep_fiducial, h_W_full, flow=True)
-    transfer_W = hh.rebinHist(transfer_W, "ptGen", h_data_prefsrLep.axes["ptGen"].edges)
-    transfer_W = hh.rebinHist(
-        transfer_W, "absEtaGen", h_data_prefsrLep.axes["absEtaGen"].edges
-    )
+    # calculate the transfer factor to be applied to your W predictions in full phase space
+    # transfer_W = hh.divideHists(h_W_lep_fiducial, h_W_lep_inclusive, flow=True)
+    # correction = copy.deepcopy(transfer_W)
+    # correction.values(flow=True)[...] = np.ones_like(transfer_W.values(flow=True))
+    # correction.values()[...] = transfer_W.values()
 
-    hh.renameAxis(h_pred_W_full, "qT", "ptVgen")
-    hh.renameAxis(h_pred_W_full, "absY", "absYVgen")
-    hh.renameAxis(h_pred_W_full, "charge", "chargeVgen")
-    writer.set_reference("chW", h_pred_W_full, tr_matrix=transfer_W)
+    # hh.renameAxis(h_pred_W_full, "qT", "ptVgen")
+    # hh.renameAxis(h_pred_W_full, "absY", "absYVgen")
+    # hh.renameAxis(h_pred_W_full, "charge", "chargeVgen")
+
+    # debugging
+    # test1 = hh.multiplyHists(correction, h_pred_W_full)
+    # test2 = hh.divideHists(h_pred_W_full, h_W_lep_inclusive, flow=True)
+    # _test2 = copy.deepcopy(test2)
+    # _test2.values(flow=True)[...] = np.ones_like(_test2.values(flow=True))
+    # _test2.values()[...] = test2.values()
+    # test2 = hh.multiplyHists(test2, h_W_lep_fiducial)
+    # print(test2.project("ptGen", "absEtaGen", "qGen").values()/test1.project("ptGen", "absEtaGen", "qGen").values())
+    # exit()
+    # debugging
+
+    writer.set_reference(
+        "chW",
+        h_pred_W_full,
+        postOp=convert_WFull_to_LepFiducial(h_W_lep_fiducial, h_W_lep_inclusive),
+    )
     writer.add_process(h_pred_W_full, "Wmunu", "chW", signal=False)
 
 # add systematic variations
@@ -588,16 +617,16 @@ if args.W:
 # alphaS variation
 if args.predGenerator == "scetlib_dyturbo":
     alphas_vars = theory_corrections.load_corr_helpers(
-        ["Z", "W"] if args.W else ["Z"],
+        ["Z", "W"] if args.fitW else ["Z"],
         ["scetlib_dyturboCT18Z_pdfas"],
         make_tensor=False,
         minnlo_ratio=False,
     )
-    h = alphas_vars["Z"]["scetlib_dyturboCT18Z_pdfas"]
-    h_syst_down = h[{"vars": 1}]
-    h_syst_up = h[{"vars": 2}]
     writer.add_systematic(
-        [h_syst_up, h_syst_down],
+        [
+            alphas_vars["Z"]["scetlib_dyturboCT18Z_pdfas"][{"vars": 2}],
+            alphas_vars["Z"]["scetlib_dyturboCT18Z_pdfas"][{"vars": 1}],
+        ],
         "pdfAlphaS",
         "Zmumu",
         "chSigmaUL",
@@ -608,13 +637,12 @@ if args.predGenerator == "scetlib_dyturbo":
     )
 
     # alphaS variations for W come from same as Z
-    if args.W:
-
-        h = alphas_vars["W"]["scetlib_dyturboCT18Z_pdfas"]
-        h_syst_down = h[{"vars": 1}]
-        h_syst_up = h[{"vars": 2}]
+    if args.fitW:
         writer.add_systematic(
-            [h_syst_up, h_syst_down],
+            [
+                alphas_vars["W"]["scetlib_dyturboCT18Z_pdfas"][{"vars": 2}],
+                alphas_vars["W"]["scetlib_dyturboCT18Z_pdfas"][{"vars": 1}],
+            ],
             "pdfAlphaS",
             "Wmunu",
             "chW",
@@ -625,7 +653,7 @@ if args.predGenerator == "scetlib_dyturbo":
         )
 
     # Ai's alphaS predictions come only from MiNNLO
-    if args.angularCoeffs:
+    if args.fitAngularCoeffs:
         with h5py.File(
             args.predAiFile.replace("w_z_helicity_xsecs", "w_z_gen_dists"), "r"
         ) as ff:
@@ -650,7 +678,7 @@ else:
     raise Exception("No valid configuration found for alphaS variation.")
 
 # Ai's only uncertainties
-if args.angularCoeffs:
+if args.fitAngularCoeffs:
 
     qcd_helper = theory_corrections.make_qcd_uncertainty_helper_by_helicity(
         is_z=True,
@@ -749,7 +777,7 @@ if args.angularCoeffs:
 
 logger.info(f"Now at variations from {args.predGenerator}")
 generator_vars = theory_corrections.load_corr_helpers(
-    ["Z", "W"] if args.W else ["Z"],
+    ["Z", "W"] if args.fitW else ["Z"],
     [
         args.predGenerator,
         f"{args.predGenerator}MSHT20mcrange",
@@ -872,8 +900,9 @@ for proc in generator_vars.keys():  # loop over processes
 
 # PDF uncertainties
 logger.info("Now at PDF variations")
-if args.angularCoeffs:
+if args.fitAngularCoeffs:
     # for Ai's, we have MINNLO, so use it for sigmaUL + Ai's to be consistent
+    # TODO fix this at some point
     with h5py.File(
         # args.predAiFile.replace("w_z_helicity_xsecs", "w_z_gen_dists"), "r"
         "/ceph/submit/data/group/cms/store/user/lavezzo/alphaS//250627_angularCoefficients/w_z_gen_dists.cash_scetlib_dyturboCorr_maxFiles_1000_alphaSunfoldingBinning_helicity_WZ.hdf5",
@@ -922,12 +951,12 @@ if args.angularCoeffs:
             groups=["pdfCT18Z", f"pdfCT18ZNoAlphaS", "theory"],
         )
 
-        if args.W:
+        if args.fitW:
             writer.add_systematic(
                 [
-                    pdf_vars_W[{"pdfVar": ivar + 1}],
-                    pdf_vars_W[{"pdfVar": ivar}],
-                    pdf_vars_W[{"pdfVar": "pdf0CT18Z"}],
+                    pdf_vars_W[{"helicity": -1j}][{"pdfVar": ivar + 1}],
+                    pdf_vars_W[{"helicity": -1j}][{"pdfVar": ivar}],
+                    pdf_vars_W[{"helicity": -1j}][{"pdfVar": "pdf0CT18Z"}],
                 ],
                 f"pdf{int((ivar+1)/2)}CT18Z",
                 "Wmunu",
@@ -940,7 +969,7 @@ if args.angularCoeffs:
 else:
     # for sigmaUL only, scetlib+dyturbo has the latest & greatest PDFs
     corr_helpers = theory_corrections.load_corr_helpers(
-        ["Z", "W"] if args.W else ["Z"],
+        ["Z", "W"] if args.fitW else ["Z"],
         ["scetlib_dyturboCT18ZVars"],
         make_tensor=False,
         minnlo_ratio=False,
@@ -957,7 +986,7 @@ else:
             groups=["pdfCT18Z", f"pdfCT18ZNoAlphaS", "theory"],
         )
 
-    if args.W:
+    if args.fitW:
         h = corr_helpers["W"]["scetlib_dyturboCT18ZVars"]
         for ivar in range(1, len(h.axes[-1]), 2):
             writer.add_systematic(
@@ -976,11 +1005,11 @@ if directory == "":
     directory = "./"
 filename = args.outname
 filename += f"_sigmaUL"
-if args.angularCoeffs:
+if args.fitAngularCoeffs:
     filename += f"_Ais"
-if args.W:
+if args.fitW:
     filename += f"_W"
 if args.postfix:
     filename += f"_{args.postfix}"
 writer.write(outfolder=directory, outfilename=filename)
-logger.info(f"Written to {directory}/{filename}.hdf5")
+logger.info(f"Written to {os.path.join(directory, filename)}.hdf5")
