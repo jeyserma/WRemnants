@@ -796,6 +796,23 @@ def build_graph(df, dataset):
                     )
 
                 for level in args.unfoldingLevels:
+                    # add full phase space histograms for inclusive cross section
+                    unfolding_tools.add_xnorm_histograms(
+                        results,
+                        df,
+                        args,
+                        dataset.name,
+                        corr_helpers,
+                        qcdScaleByHelicity_helper,
+                        [a for a in unfolding_axes[level] if a.name != "acceptance"],
+                        [
+                            c
+                            for c in unfolding_cols[level]
+                            if c != f"{level}_acceptance"
+                        ],
+                        base_name=f"{level}_full",
+                    )
+
                     if args.poiAsNoi:
                         df_xnorm = df.Filter(f"{level}_acceptance")
                     else:
@@ -820,19 +837,6 @@ def build_graph(df, dataset):
                         axes = [*nominal_axes, *unfolding_axes[level]]
                         cols = [*nominal_cols, *unfolding_cols[level]]
                         break
-
-                # add full phase space histograms for inclusive cross section
-                unfolding_tools.add_xnorm_histograms(
-                    results,
-                    df,
-                    args,
-                    dataset.name,
-                    corr_helpers,
-                    qcdScaleByHelicity_helper,
-                    [],
-                    [],
-                    base_name="full",
-                )
 
         elif dataset.name == "ZmumuPostVFP":
             if args.unfolding and dataset.name == "ZmumuPostVFP":
