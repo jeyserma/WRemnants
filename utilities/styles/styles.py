@@ -258,6 +258,25 @@ nuisance_grouping = {
         "expNoCalib",
         "muonCalibration",
     ],
+    "splitAi": common_groups
+    + [
+        "angularCoeffs",
+        "angularCoeffs_A0",
+        "angularCoeffs_A1",
+        "angularCoeffs_A2",
+        "angularCoeffs_A3",
+        "angularCoeffs_A4",
+        "angularCoeffs_A5",
+        "angularCoeffs_A6",
+        "angularCoeffs_A7",
+        "pdfCT18Z",
+        "pTModeling",
+        "muon_eff_syst",
+        "muon_eff_stat",
+        "prefire",
+        "muonCalibration",
+        "Fake",
+    ],
     "max": common_groups
     + [
         "angularCoeffs",

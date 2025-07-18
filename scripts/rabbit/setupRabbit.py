@@ -824,8 +824,6 @@ def setup(
     ]
     isTheoryAgnosticPolVar = args.analysisMode == "theoryAgnosticPolVar"
     isPoiAsNoi = (isUnfolding or isTheoryAgnostic) and args.poiAsNoi
-    isFloatingPOIsTheoryAgnostic = isTheoryAgnostic and not isPoiAsNoi
-    isFloatingPOIs = (isUnfolding or isTheoryAgnostic) and not isPoiAsNoi
 
     decorr_syst_var = None
     if len(args.decorrSystByVar) >= 2:
@@ -1203,11 +1201,6 @@ def setup(
         logger.info(f"Signal samples: {datagroups.procGroups['signal_samples']}")
 
     signal_samples_forMass = ["signal_samples_inctau"]
-    if isFloatingPOIsTheoryAgnostic:
-        logger.error(
-            "Temporarily not using mass weights for Wtaunu. Please update when possible"
-        )
-        signal_samples_forMass = ["signal_samples"]
 
     datagroups.writer = writer
 
@@ -2531,8 +2524,6 @@ if __name__ == "__main__":
     ]
     isTheoryAgnosticPolVar = args.analysisMode == "theoryAgnosticPolVar"
     isPoiAsNoi = (isUnfolding or isTheoryAgnostic) and args.poiAsNoi
-    isFloatingPOIsTheoryAgnostic = isTheoryAgnostic and not isPoiAsNoi
-    isFloatingPOIs = (isUnfolding or isTheoryAgnostic) and not isPoiAsNoi
 
     if isUnfolding and args.fitXsec:
         raise ValueError(
@@ -2549,13 +2540,6 @@ if __name__ == "__main__":
                 logger.warning(
                     "This is only needed to properly get the systematic axes"
                 )
-
-    if isFloatingPOIsTheoryAgnostic:
-        # The following is temporary, just to avoid passing the option explicitly
-        logger.warning(
-            "For now setting theory agnostic without POI as NOI activates --doStatOnly"
-        )
-        args.doStatOnly = True
 
     if len(args.inputFile) > 1 and (args.fitWidth or args.decorMassWidth):
         raise ValueError(
@@ -2639,7 +2623,7 @@ if __name__ == "__main__":
             fitresult_data=fitresult_data,
         )
 
-        if isFloatingPOIs or isUnfolding:
+        if isUnfolding:
             # add masked channel
             datagroups_xnorm = setup(
                 writer,
