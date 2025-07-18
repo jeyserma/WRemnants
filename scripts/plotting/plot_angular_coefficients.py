@@ -226,7 +226,12 @@ if __name__ == "__main__":
             x_min, x_max = ax1.get_xlim()
             plt.plot([x_min, x_max], [0, 0], color="black", linestyle="--")
 
-            ax1.set_ylim([y_min - yrange * 0.1, y_max + yrange * 0.2])
+            if (y_min > 0) and (y_max > 0):
+                ax1.set_ylim([min(0, y_min) - yrange * 0.1, y_max + yrange * 0.2])
+            elif (y_min < 0) and (y_max < 0):
+                ax1.set_ylim([y_min - yrange * 0.1, max(y_max, 0) + yrange * 0.2])
+            else:
+                ax1.set_ylim([y_min - yrange * 0.1, y_max + yrange * 0.2])
 
             plot_tools.add_cms_decor(
                 ax1, args.cmsDecor, data=False, lumi=None, loc=args.logoPos
