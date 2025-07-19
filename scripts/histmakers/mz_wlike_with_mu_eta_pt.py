@@ -467,7 +467,7 @@ def build_graph(df, dataset):
             phi_width = 2.0 / args.addMuonPhiAxis[0]
             phi_edges = [
                 (-1.0 + i * phi_width) * np.pi
-                for i in range(args.addMuonPhiAxis[0] + 1)
+                for i in range(int(args.addMuonPhiAxis[0]) + 1)
             ]
         else:
             phi_edges = [x for x in args.addMuonPhiAxis]
