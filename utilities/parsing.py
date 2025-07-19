@@ -798,6 +798,12 @@ def plot_parser():
         help="Legend text size (small: axis ticks size, large: axis label size, number)",
     )
     parser.add_argument(
+        "--cmsDecorSize",
+        type=str,
+        default="small",
+        help="'CMS xxx' text size (small: axis ticks size, large: axis label size, number)",
+    )
+    parser.add_argument(
         "--legCols", type=int, default=2, help="Number of columns in legend"
     )
     parser.add_argument(
