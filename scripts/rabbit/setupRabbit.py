@@ -348,6 +348,7 @@ def make_parser(parser=None):
             "fakenorm",
             "effisyst",
             "decornorm",
+            "ptscale",
         ],
         help="""
         Customize what uncertainties to decorrelate by a specific variable (the first string passed to this option),
@@ -2216,7 +2217,7 @@ def setup(
         )
         #
         logger.warning(
-            "Adding uncertainty for residual efficiency corrections decorrelated by {decorr_syst_var} inclusive in eta"
+            f"Adding uncertainty for residual efficiency corrections decorrelated by {decorr_syst_var} inclusive in eta"
         )
         #
         datagroups.addSystematic(
@@ -2470,6 +2471,60 @@ def setup(
                 actionRequiresNomi=True,
                 action=syst_tools.decorrelateByAxes,
                 actionArgs=dict(axesToDecorrNames=["run"], newDecorrAxesNames=["run_"]),
+            )
+
+    ## decorrelated momentum scale and resolution, when requested
+    if not dilepton and "ptscale" in args.decorrSystByVar and decorr_syst_var in fitvar:
+        datagroups.addSystematic(
+            "muonScaleSyst_responseWeights",
+            name="muonScaleSyst_responseWeightsDecorr",
+            processes=["single_v_samples"],
+            groups=["scaleCrctn", "muonCalibration", "experiment"],
+            baseName="Scale_correction_",
+            systAxes=["unc", f"{decorr_syst_var}_", "downUpVar"],
+            passToFakes=passSystToFakes,
+            scale=args.calibrationStatScaling,
+            actionRequiresNomi=True,
+            action=syst_tools.decorrelateByAxes,
+            actionArgs=dict(
+                axesToDecorrNames=[decorr_syst_var],
+                newDecorrAxesNames=[f"{decorr_syst_var}_"],
+            ),
+        )
+
+        datagroups.addSystematic(
+            "muonScaleClosSyst_responseWeights",
+            name="muonScaleClosSyst_responseWeightsDecorr",
+            processes=["single_v_samples"],
+            groups=["scaleClosCrctn", "muonCalibration", "experiment"],
+            baseName="ScaleClos_correction_",
+            systAxes=["unc", f"{decorr_syst_var}_", "downUpVar"],
+            passToFakes=passSystToFakes,
+            actionRequiresNomi=True,
+            action=syst_tools.decorrelateByAxes,
+            actionArgs=dict(
+                axesToDecorrNames=[decorr_syst_var],
+                newDecorrAxesNames=[f"{decorr_syst_var}_"],
+            ),
+        )
+
+        if not datagroups.args_from_metadata("noSmearing"):
+            datagroups.addSystematic(
+                "muonResolutionSyst_responseWeights",
+                name="muonResolutionSyst_responseWeightsDecorr",
+                mirror=True,
+                processes=["single_v_samples"],
+                groups=["resolutionCrctn", "muonCalibration", "experiment"],
+                baseName="Resolution_correction_",
+                systAxes=["smearing_variation", f"{decorr_syst_var}_"],
+                passToFakes=passSystToFakes,
+                scale=args.resolutionStatScaling,
+                actionRequiresNomi=True,
+                action=syst_tools.decorrelateByAxes,
+                actionArgs=dict(
+                    axesToDecorrNames=[decorr_syst_var],
+                    newDecorrAxesNames=[f"{decorr_syst_var}_"],
+                ),
             )
 
     # Previously we had a QCD uncertainty for the mt dependence on the fakes, see: https://github.com/WMass/WRemnants/blob/f757c2c8137a720403b64d4c83b5463a2b27e80f/scripts/combine/setupRabbitWMass.py#L359
