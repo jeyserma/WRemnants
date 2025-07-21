@@ -39,6 +39,7 @@ from wremnants.helicity_utils_polvar import makehelicityWeightHelper_polvar
 from wremnants.histmaker_tools import (
     aggregate_groups,
     get_run_lumi_edges,
+    make_muon_phi_axis,
     scale_to_data,
     write_analysis_output,
 )
@@ -680,20 +681,7 @@ def build_graph(df, dataset):
     cols = nominal_cols
 
     if args.addMuonPhiAxis is not None:
-        if len(args.addMuonPhiAxis) == 1:
-            phi_width = 2.0 / args.addMuonPhiAxis[0]
-            phi_edges = [
-                (-1.0 + i * phi_width) * np.pi
-                for i in range(int(args.addMuonPhiAxis[0]) + 1)
-            ]
-        else:
-            phi_edges = [x for x in args.addMuonPhiAxis]
-        axes = [
-            *axes,
-            hist.axis.Variable(
-                np.array(phi_edges), name="phi", underflow=False, overflow=False
-            ),
-        ]
+        axes = [*axes, make_muon_phi_axis(args.addMuonPhiAxis)]
         cols = [*cols, "goodMuons_phi0"]
 
     if args.addRunAxis:
