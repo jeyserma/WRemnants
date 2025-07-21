@@ -420,18 +420,17 @@ if args.unfolding:
         cutsmap=cutsmap,
     )
 
-    # qcdScaleByHelicity_helpers = theory_corrections.make_qcd_uncertainty_helpers_by_helicity(
-    #     filename_z=f"{common.data_dir}/angularCoefficients/w_z_helicity_xsecs_scetlib_dyturboCorr_maxFiles_m1_unfoldingBinning.hdf5",
-    #     rebin_ptZgen=False,
-    # )
+    qcdScaleByHelicity_helpers = theory_corrections.make_qcd_uncertainty_helpers_by_helicity(
+        filename_z=f"{common.data_dir}/angularCoefficients/w_z_helicity_xsecs_maxFiles_m1_alphaSunfoldingBinning_helicity.hdf5",
+        rebin_ptZgen=False,
+    )
 
     if args.fitresult:
         unfolding_corr_helper = unfolding_tools.reweight_to_fitresult(args.fitresult)
-# else:
-qcdScaleByHelicity_helpers = (
-    theory_corrections.make_qcd_uncertainty_helpers_by_helicity()
-)
-
+else:
+    qcdScaleByHelicity_helpers = (
+        theory_corrections.make_qcd_uncertainty_helpers_by_helicity()
+    )
 
 if args.theoryAgnostic:
     theoryAgnostic_axes, theoryAgnostic_cols = differential.get_theoryAgnostic_axes(
@@ -797,6 +796,23 @@ def build_graph(df, dataset):
                     )
 
                 for level in args.unfoldingLevels:
+                    # add full phase space histograms for inclusive cross section
+                    unfolding_tools.add_xnorm_histograms(
+                        results,
+                        df,
+                        args,
+                        dataset.name,
+                        corr_helpers,
+                        qcdScaleByHelicity_helper,
+                        [a for a in unfolding_axes[level] if a.name != "acceptance"],
+                        [
+                            c
+                            for c in unfolding_cols[level]
+                            if c != f"{level}_acceptance"
+                        ],
+                        base_name=f"{level}_full",
+                    )
+
                     if args.poiAsNoi:
                         df_xnorm = df.Filter(f"{level}_acceptance")
                     else:
@@ -821,6 +837,7 @@ def build_graph(df, dataset):
                         axes = [*nominal_axes, *unfolding_axes[level]]
                         cols = [*nominal_cols, *unfolding_cols[level]]
                         break
+
         elif dataset.name == "ZmumuPostVFP":
             if args.unfolding and dataset.name == "ZmumuPostVFP":
                 df = unfolder_z.add_gen_histograms(
