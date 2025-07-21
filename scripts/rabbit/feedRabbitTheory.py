@@ -146,6 +146,8 @@ class AlphaSTheoryFitTW(TensorWriter):
 
             hup = hh.divideHists(h[0], h[2])
             hdown = hh.divideHists(h[1], h[2])
+            print(hup)
+            print(self.ref[channel][process])
             hup = hh.multiplyHists(hup, self.ref[channel][process])
             hdown = hh.multiplyHists(hdown, self.ref[channel][process])
 
@@ -380,6 +382,11 @@ def convert_WFull_to_LepFiducial(h_W_lep_fiducial, h_W_lep_inclusive):
             hh.renameAxis(h, "absY", "absYVgen")
             hh.renameAxis(h, "charge", "chargeVgen")
 
+        if h.axes["absYVgen"].traits.underflow:  # not needed, messes up the dimensions
+            h = hh.disableFlow(h, "absYVgen", under=False, over=True)
+        if h.axes["ptVgen"].traits.underflow:  # not needed, messes up the dimensions
+            h = hh.disableFlow(h, "ptVgen", under=False, over=True)
+
         correction = hh.divideHists(h, h_W_lep_inclusive)
         final_correction = copy.deepcopy(correction)
         final_correction.values(flow=True)[...] = np.ones_like(
@@ -389,7 +396,7 @@ def convert_WFull_to_LepFiducial(h_W_lep_fiducial, h_W_lep_inclusive):
         correction = final_correction
 
         out = hh.multiplyHists(h_W_lep_fiducial, correction)
-        out = out.project("ptGen", "absEtaGen", "qGen")
+        out = out.project("absEtaGen", "ptGen", "qGen")
 
         return out
 
@@ -505,7 +512,6 @@ if args.fitW:
     h_data_prefsrLep = fitresult["physics_models"]["Select"]["channels"]["ch0_masked"][
         "hist_postfit_inclusive"
     ].get()
-    h_data_prefsrLep = h_data_prefsrLep.project("ptGen", "absEtaGen", "qGen")
     writer.add_channel(h_data_prefsrLep.axes, "chW")
     writer.add_data(h_data_prefsrLep, "chW")
 
@@ -564,8 +570,11 @@ if args.fitW:
         h_W_lep_fiducial = hh.disableFlow(
             h_W_lep_fiducial, "absYVgen", under=False, over=True
         )
+        h_W_lep_fiducial = hh.disableFlow(
+            h_W_lep_fiducial, "absEtaGen", under=False, over=True
+        )
         h_W_lep_fiducial = h_W_lep_fiducial.project(
-            "ptVgen", "absYVgen", "chargeVgen", "ptGen", "absEtaGen", "qGen"
+            "ptVgen", "absYVgen", "chargeVgen", "absEtaGen", "ptGen", "qGen"
         )
         h_W_lep_inclusive = h_W_lep_fiducial.project("ptVgen", "absYVgen", "chargeVgen")
 
@@ -627,6 +636,11 @@ if args.predGenerator == "scetlib_dyturbo":
             constrained=args.constrainAlphaS,
             symmetrize="average",
             kfactor=1.5 / 2.0,
+            groups=(
+                ["pdfCT18Z", "pdfCT18ZAlphaS", "theory"]
+                if args.constrainAlphaS
+                else ["pdfCT18Z"]
+            ),
         )
 
     # alphaS variations for W come from same as Z
@@ -643,6 +657,11 @@ if args.predGenerator == "scetlib_dyturbo":
             constrained=args.constrainAlphaS,
             symmetrize="average",
             kfactor=1.5 / 2.0,
+            groups=(
+                ["pdfCT18Z", "pdfCT18ZAlphaS", "theory"]
+                if args.constrainAlphaS
+                else ["pdfCT18Z"]
+            ),
         )
 
     # Ai's alphaS predictions come only from MiNNLO
@@ -666,241 +685,298 @@ if args.predGenerator == "scetlib_dyturbo":
             constrained=args.constrainAlphaS,
             symmetrize="average",
             kfactor=1.5 / 2.0,
+            groups=(
+                ["pdfCT18Z", "pdfCT18ZAlphaS", "theory"]
+                if args.constrainAlphaS
+                else ["pdfCT18Z"]
+            ),
         )
 
 else:
     raise Exception("No valid configuration found for alphaS variation.")
 
-logger.info(f"Now at variations from {args.predGenerator}")
-generator_vars = theory_corrections.load_corr_helpers(
-    bosons,
-    [
-        args.predGenerator,
-        f"{args.predGenerator}MSHT20mcrange",
-        f"{args.predGenerator}MSHT20mbrange",
-    ],
-    make_tensor=False,
-    minnlo_ratio=False,
-)
-for proc in generator_vars.keys():  # loop over processes
+# # mW variations
+# if args.fitW:
 
-    if proc == "Z":
-        proc_name = "Zmumu"
-        ch_name = "chSigmaUL"
-    elif proc == "W":
-        proc_name = "Wmunu"
-        ch_name = "chW"
+#     logger.info("Now at mW variations")
 
-    h = generator_vars[proc][args.predGenerator]
+#     # mW variations come from MiNNLO
+#     with h5py.File(
+#         "/ceph/submit/data/group/cms/store/user/lavezzo/alphaS/250718_mW_variations/prefsr_massWeightW_MiNNLO.hdf5",
+#         "r",
+#     ) as ff:
+#         inputs = input_tools.load_results_h5py(ff)
+#         mass_vars_Wp = inputs["WplusmunuPostVFP"]["prefsr_massWeightW"].get()
+#         mass_vars_Wm = inputs["WminusmunuPostVFP"]["prefsr_massWeightW"].get()
 
-    # correlated NP uncertainties
-    corr_NP_uncs = [
-        ["Lambda20.25", "Lambda2-0.25", "chargeVgenNP0scetlibNPZLambda2"],
-        ["Lambda4.16", "Lambda4.01", "chargeVgenNP0scetlibNPZLambda4"],
-        [
-            "Delta_Lambda20.02",
-            "Delta_Lambda2-0.02",
-            "chargeVgenNP0scetlibNPZDelta_Lambda2",
-        ],
-    ]
-    for var in corr_NP_uncs:
-        writer.add_systematic(
-            [h[{"vars": var[0]}], h[{"vars": var[1]}]],
-            var[2],
-            proc_name,
-            ch_name,
-            symmetrize="average",
-            groups=["resumNonpert", "resum", "pTModeling", "theory"],
-        )
+#     mass_vars_W = hh.addHists(mass_vars_Wp, mass_vars_Wm)
+#     mass_vars_W = mass_vars_W.project(
+#         "absEtaGen", "ptGen", "qGen", "massShift"
+#     )  # re-order
+#     mass_vars_W = hh.rebinHist(
+#         mass_vars_W, "ptGen", h_data_prefsrLep.axes["ptGen"].edges
+#     )
+#     mass_vars_W = hh.rebinHist(
+#         mass_vars_W, "absEtaGen", h_data_prefsrLep.axes["absEtaGen"].edges
+#     )
+#     mass_vars_W_nom = mass_vars_W[{"massShift": "massShiftW0MeV"}]
+#     mass_vars_W_up = mass_vars_W[{"massShift": "massShiftW100MeVUp"}]
+#     mass_vars_W_down = mass_vars_W[{"massShift": "massShiftW100MeVDown"}]
 
-    # gamma NP uncertainties
-    gamma_NP_uncs = [
-        ["omega_nu0.5", "c_nu-0.1-omega_nu0.5", "scetlibNPgamma"],
-    ]
-    for var in gamma_NP_uncs:
-        writer.add_systematic(
-            [h[{"vars": var[0]}], h[{"vars": var[1]}]],
-            var[2],
-            proc_name,
-            ch_name,
-            symmetrize="average",
-            groups=["resumTNP", "resum", "pTModeling", "theory"],
-        )
+#     # calculate variations on the leptons
+#     # (MiNNLO_var / MiNNLO_nom) * nominal
+#     # where nominal is MiNNLO(W, lep; fiducial) * scetlib(W; full) / MiNNLO(W; full)
+#     ratio_MiNNLO_up = hh.divideHists(mass_vars_W_up, mass_vars_W_nom)
+#     ratio_MiNNLO_down = hh.divideHists(mass_vars_W_down, mass_vars_W_nom)
+#     writer.ref["chW"]["Wmunu"] = hh.disableFlow(
+#         writer.ref["chW"]["Wmunu"], "absEtaGen", under=False, over=True
+#     )
+#     mass_var_up = hh.multiplyHists(ratio_MiNNLO_up, writer.ref["chW"]["Wmunu"])
+#     mass_var_down = hh.multiplyHists(ratio_MiNNLO_down, writer.ref["chW"]["Wmunu"])
 
-    # TNP
-    TNP_uncs = [
-        ["gamma_cusp1.", "gamma_cusp-1."],
-        ["gamma_mu_q1.", "gamma_mu_q-1."],
-        ["gamma_nu1.", "gamma_nu-1."],
-        ["h_qqV1.", "h_qqV-1."],
-        ["s1.", "s-1."],
-        ["b_qqV0.5", "b_qqV-0.5"],
-        ["b_qqbarV0.5", "b_qqbarV-0.5"],
-        ["b_qqS0.5", "b_qqS-0.5"],
-        ["b_qqDS0.5", "b_qqDS-0.5"],
-        ["b_qg0.5", "b_qg-0.5"],
-    ]
-    for var in TNP_uncs:
-        var_name = "resumTNP_" + var[1].split("-")[0]
-        writer.add_systematic(
-            [h[{"vars": var[0]}], h[{"vars": var[1]}]],
-            var_name,
-            proc_name,
-            ch_name,
-            symmetrize="average",
-            groups=["resumTNP", "resum", "pTModeling", "theory"],
-        )
+#     writer.add_systematic(
+#         [mass_var_up, mass_var_down],
+#         "massShiftW",
+#         "Wmunu",
+#         "chW",
+#         mirror=False,
+#         noi=not args.constrainMW,
+#         constrained=args.constrainMW,
+#         format=False,
+#         groups=["ZmassAndWidth", "theory"]
+#     )
 
-    # transition FO scale uncertainties
-    transition_FO_uncs = [
-        [
-            "transition_points0.2_0.75_1.0",
-            "transition_points0.2_0.35_1.0",
-            "resumTransitionZ",
-        ],
-        [
-            "renorm_scale_pt20_envelope_Up",
-            "renorm_scale_pt20_envelope_Down",
-            "resumFOScaleZ",
-        ],
-    ]
-    for var in transition_FO_uncs:
-        writer.add_systematic(
-            [h[{"vars": var[0]}], h[{"vars": var[1]}]],
-            var[2],
-            proc_name,
-            ch_name,
-            symmetrize="quadratic",
-            groups=["resumTransitionFOScale", "resum", "pTModeling", "theory"],
-        )
+# logger.info(f"Now at variations from {args.predGenerator}")
+# generator_vars = theory_corrections.load_corr_helpers(
+#     bosons,
+#     [
+#         args.predGenerator,
+#         f"{args.predGenerator}MSHT20mcrange",
+#         f"{args.predGenerator}MSHT20mbrange",
+#     ],
+#     make_tensor=False,
+#     minnlo_ratio=False,
+# )
+# for proc in generator_vars.keys():  # loop over processes
 
-    # mass quark effects
-    h = generator_vars[proc][f"{args.predGenerator}MSHT20mbrange"]
-    writer.add_scale_systematic(
-        [h[{"vars": -1}], h[{"vars": 1}], h[{"vars": 0}]],
-        "pdfMSHT20mbrange",
-        proc_name,
-        ch_name,
-        symmetrize="quadratic",
-        groups=["bcQuarkMass", "pTModeling", "theory"],
-    )
-    h = generator_vars[proc][f"{args.predGenerator}MSHT20mcrange"]
-    writer.add_scale_systematic(
-        [h[{"vars": -1}], h[{"vars": 1}], h[{"vars": 0}]],
-        "pdfMSHT20mcrange",
-        proc_name,
-        ch_name,
-        symmetrize="quadratic",
-        groups=["bcQuarkMass", "pTModeling", "theory"],
-    )
+#     if proc == "Z":
+#         proc_name = "Zmumu"
+#         ch_name = "chSigmaUL"
+#     elif proc == "W":
+#         proc_name = "Wmunu"
+#         ch_name = "chW"
 
-# PDF uncertainties
-logger.info("Now at PDF variations")
-if args.fitAngularCoeffs:
-    # for Ai's, we have MINNLO, so use it for sigmaUL + Ai's to be consistent
+#     h = generator_vars[proc][args.predGenerator]
 
-    # TODO fix this at some point
-    with h5py.File(
-        # args.predAiFile.replace("w_z_helicity_xsecs", "w_z_gen_dists"), "r"
-        "/ceph/submit/data/group/cms/store/user/lavezzo/alphaS//250627_angularCoefficients/w_z_gen_dists.cash_scetlib_dyturboCorr_maxFiles_1000_alphaSunfoldingBinning_helicity_WZ.hdf5",
-        "r",
-    ) as ff:
-        inputs = input_tools.load_results_h5py(ff)
-        pdf_vars = inputs["ZmumuPostVFP"]["output"][
-            "nominal_gen_helicity_pdfCT18Z"
-        ].get()
-        pdf_vars_Wp = inputs["WplusmunuPostVFP"]["output"][
-            "nominal_gen_helicity_pdfCT18Z"
-        ].get()
-        pdf_vars_Wm = inputs["WminusmunuPostVFP"]["output"][
-            "nominal_gen_helicity_pdfCT18Z"
-        ].get()
-        pdf_vars_W = hh.addHists(pdf_vars_Wp, pdf_vars_Wm)
+#     # correlated NP uncertainties
+#     corr_NP_uncs = [
+#         ["Lambda20.25", "Lambda2-0.25", "chargeVgenNP0scetlibNPZLambda2"],
+#         ["Lambda4.16", "Lambda4.01", "chargeVgenNP0scetlibNPZLambda4"],
+#         [
+#             "Delta_Lambda20.02",
+#             "Delta_Lambda2-0.02",
+#             "chargeVgenNP0scetlibNPZDelta_Lambda2",
+#         ],
+#     ]
+#     for var in corr_NP_uncs:
+#         writer.add_systematic(
+#             [h[{"vars": var[0]}], h[{"vars": var[1]}]],
+#             var[2],
+#             proc_name,
+#             ch_name,
+#             symmetrize="average",
+#             groups=["resumNonpert", "resum", "pTModeling", "theory"],
+#         )
 
-    for ivar in range(1, len(pdf_vars.axes[-1]), 2):
+#     # gamma NP uncertainties
+#     gamma_NP_uncs = [
+#         ["omega_nu0.5", "c_nu-0.1-omega_nu0.5", "scetlibNPgamma"],
+#     ]
+#     for var in gamma_NP_uncs:
+#         writer.add_systematic(
+#             [h[{"vars": var[0]}], h[{"vars": var[1]}]],
+#             var[2],
+#             proc_name,
+#             ch_name,
+#             symmetrize="average",
+#             groups=["resumTNP", "resum", "pTModeling", "theory"],
+#         )
 
-        # sigmaUL
-        if not args.noFitSigmaUL:
-            writer.add_scale_systematic(
-                [
-                    pdf_vars[{"pdfVar": ivar + 1}],
-                    pdf_vars[{"pdfVar": ivar}],
-                    pdf_vars[{"pdfVar": "pdf0CT18Z"}],
-                ],
-                f"pdf{int((ivar+1)/2)}CT18Z",
-                "Zmumu",
-                "chSigmaUL",
-                symmetrize="quadratic",
-                kfactor=1 / 1.645,
-                groups=["pdfCT18Z", f"pdfCT18ZNoAlphaS", "theory"],
-            )
+#     # TNP
+#     TNP_uncs = [
+#         ["gamma_cusp1.", "gamma_cusp-1."],
+#         ["gamma_mu_q1.", "gamma_mu_q-1."],
+#         ["gamma_nu1.", "gamma_nu-1."],
+#         ["h_qqV1.", "h_qqV-1."],
+#         ["s1.", "s-1."],
+#         ["b_qqV0.5", "b_qqV-0.5"],
+#         ["b_qqbarV0.5", "b_qqbarV-0.5"],
+#         ["b_qqS0.5", "b_qqS-0.5"],
+#         ["b_qqDS0.5", "b_qqDS-0.5"],
+#         ["b_qg0.5", "b_qg-0.5"],
+#     ]
+#     for var in TNP_uncs:
+#         var_name = "resumTNP_" + var[1].split("-")[0]
+#         writer.add_systematic(
+#             [h[{"vars": var[0]}], h[{"vars": var[1]}]],
+#             var_name,
+#             proc_name,
+#             ch_name,
+#             symmetrize="average",
+#             groups=["resumTNP", "resum", "pTModeling", "theory"],
+#         )
 
-        # Ai's
-        writer.add_scale_systematic(
-            [
-                pdf_vars[{"pdfVar": ivar + 1}],
-                pdf_vars[{"pdfVar": ivar}],
-                pdf_vars[{"pdfVar": "pdf0CT18Z"}],
-            ],
-            f"pdf{int((ivar+1)/2)}CT18Z",
-            "Zmumu",
-            "chAis",
-            symmetrize="quadratic",
-            kfactor=1 / 1.645,
-            groups=["pdfCT18Z", f"pdfCT18ZNoAlphaS", "theory"],
-        )
+#     # transition FO scale uncertainties
+#     transition_FO_uncs = [
+#         [
+#             "transition_points0.2_0.75_1.0",
+#             "transition_points0.2_0.35_1.0",
+#             "resumTransitionZ",
+#         ],
+#         [
+#             "renorm_scale_pt20_envelope_Up",
+#             "renorm_scale_pt20_envelope_Down",
+#             "resumFOScaleZ",
+#         ],
+#     ]
+#     for var in transition_FO_uncs:
+#         writer.add_systematic(
+#             [h[{"vars": var[0]}], h[{"vars": var[1]}]],
+#             var[2],
+#             proc_name,
+#             ch_name,
+#             symmetrize="quadratic",
+#             groups=["resumTransitionFOScale", "resum", "pTModeling", "theory"],
+#         )
 
-        if args.fitW:
-            # TODO I'm 90% sure this is wrong
-            writer.add_systematic(
-                [
-                    pdf_vars_W[{"helicity": -1j}][{"pdfVar": ivar + 1}],
-                    pdf_vars_W[{"helicity": -1j}][{"pdfVar": ivar}],
-                    pdf_vars_W[{"helicity": -1j}][{"pdfVar": "pdf0CT18Z"}],
-                ],
-                f"pdf{int((ivar+1)/2)}CT18Z",
-                "Wmunu",
-                "chW",
-                symmetrize="quadratic",
-                kfactor=1 / 1.645,
-                groups=["pdfCT18Z", f"pdfCT18ZNoAlphaS", "theory"],
-            )
+#     # mass quark effects
+#     h = generator_vars[proc][f"{args.predGenerator}MSHT20mbrange"]
+#     writer.add_scale_systematic(
+#         [h[{"vars": -1}], h[{"vars": 1}], h[{"vars": 0}]],
+#         "pdfMSHT20mbrange",
+#         proc_name,
+#         ch_name,
+#         symmetrize="quadratic",
+#         groups=["bcQuarkMass", "pTModeling", "theory"],
+#     )
+#     h = generator_vars[proc][f"{args.predGenerator}MSHT20mcrange"]
+#     writer.add_scale_systematic(
+#         [h[{"vars": -1}], h[{"vars": 1}], h[{"vars": 0}]],
+#         "pdfMSHT20mcrange",
+#         proc_name,
+#         ch_name,
+#         symmetrize="quadratic",
+#         groups=["bcQuarkMass", "pTModeling", "theory"],
+#     )
 
-else:
+# # PDF uncertainties
+# logger.info("Now at PDF variations")
+# if args.fitAngularCoeffs:
+#     # for Ai's, we have MINNLO, so use it for sigmaUL + Ai's to be consistent
 
-    # for sigmaUL only, scetlib+dyturbo has the latest & greatest PDFs
-    corr_helpers = theory_corrections.load_corr_helpers(
-        bosons,
-        ["scetlib_dyturboCT18ZVars"],
-        make_tensor=False,
-        minnlo_ratio=False,
-    )
+#     # TODO fix this at some point
+#     with h5py.File(
+#         # args.predAiFile.replace("w_z_helicity_xsecs", "w_z_gen_dists"), "r"
+#         "/ceph/submit/data/group/cms/store/user/lavezzo/alphaS//250627_angularCoefficients/w_z_gen_dists.cash_scetlib_dyturboCorr_maxFiles_1000_alphaSunfoldingBinning_helicity_WZ.hdf5",
+#         "r",
+#     ) as ff:
+#         inputs = input_tools.load_results_h5py(ff)
+#         pdf_vars = inputs["ZmumuPostVFP"]["output"][
+#             "nominal_gen_helicity_pdfCT18Z"
+#         ].get()
+#         pdf_vars_Wp = inputs["WplusmunuPostVFP"]["output"][
+#             "nominal_gen_helicity_pdfCT18Z"
+#         ].get()
+#         pdf_vars_Wm = inputs["WminusmunuPostVFP"]["output"][
+#             "nominal_gen_helicity_pdfCT18Z"
+#         ].get()
+#         pdf_vars_W = hh.addHists(pdf_vars_Wp, pdf_vars_Wm)
 
-    if not args.noFitSigmaUL:
-        h = corr_helpers["Z"]["scetlib_dyturboCT18ZVars"]
-        for ivar in range(1, len(h.axes[-1]), 2):
-            writer.add_systematic(
-                [h[{"vars": ivar + 1}], h[{"vars": ivar}]],
-                f"pdf{int((ivar+1)/2)}CT18Z",
-                "Zmumu",
-                "chSigmaUL",
-                symmetrize="quadratic",
-                kfactor=1 / 1.645,
-                groups=["pdfCT18Z", f"pdfCT18ZNoAlphaS", "theory"],
-            )
+#     for ivar in range(1, len(pdf_vars.axes[-1]), 2):
 
-    if args.fitW:
-        h = corr_helpers["W"]["scetlib_dyturboCT18ZVars"]
-        for ivar in range(1, len(h.axes[-1]), 2):
-            writer.add_systematic(
-                [h[{"vars": ivar + 1}], h[{"vars": ivar}]],
-                f"pdf{int((ivar+1)/2)}CT18Z",
-                "Wmunu",
-                "chW",
-                symmetrize="quadratic",
-                kfactor=1 / 1.645,
-                groups=["pdfCT18Z", f"pdfCT18ZNoAlphaS", "theory"],
-            )
+#         # sigmaUL
+#         if not args.noFitSigmaUL:
+#             writer.add_scale_systematic(
+#                 [
+#                     pdf_vars[{"pdfVar": ivar + 1}],
+#                     pdf_vars[{"pdfVar": ivar}],
+#                     pdf_vars[{"pdfVar": "pdf0CT18Z"}],
+#                 ],
+#                 f"pdf{int((ivar+1)/2)}CT18Z",
+#                 "Zmumu",
+#                 "chSigmaUL",
+#                 symmetrize="quadratic",
+#                 kfactor=1 / 1.645,
+#                 groups=["pdfCT18Z", f"pdfCT18ZNoAlphaS", "theory"],
+#             )
+
+#         # Ai's
+#         writer.add_scale_systematic(
+#             [
+#                 pdf_vars[{"pdfVar": ivar + 1}],
+#                 pdf_vars[{"pdfVar": ivar}],
+#                 pdf_vars[{"pdfVar": "pdf0CT18Z"}],
+#             ],
+#             f"pdf{int((ivar+1)/2)}CT18Z",
+#             "Zmumu",
+#             "chAis",
+#             symmetrize="quadratic",
+#             kfactor=1 / 1.645,
+#             groups=["pdfCT18Z", f"pdfCT18ZNoAlphaS", "theory"],
+#         )
+
+#         if args.fitW:
+#             # TODO I'm 90% sure this is wrong
+#             raise Exception()
+#             writer.add_systematic(
+#                 [
+#                     pdf_vars_W[{"helicity": -1j}][{"pdfVar": ivar + 1}],
+#                     pdf_vars_W[{"helicity": -1j}][{"pdfVar": ivar}],
+#                     pdf_vars_W[{"helicity": -1j}][{"pdfVar": "pdf0CT18Z"}],
+#                 ],
+#                 f"pdf{int((ivar+1)/2)}CT18Z",
+#                 "Wmunu",
+#                 "chW",
+#                 symmetrize="quadratic",
+#                 kfactor=1 / 1.645,
+#                 groups=["pdfCT18Z", f"pdfCT18ZNoAlphaS", "theory"],
+#             )
+
+# else:
+
+#     # for sigmaUL only, scetlib+dyturbo has the latest & greatest PDFs
+#     corr_helpers = theory_corrections.load_corr_helpers(
+#         bosons,
+#         ["scetlib_dyturboCT18ZVars"],
+#         make_tensor=False,
+#         minnlo_ratio=False,
+#     )
+
+#     if not args.noFitSigmaUL:
+#         h = corr_helpers["Z"]["scetlib_dyturboCT18ZVars"]
+#         for ivar in range(1, len(h.axes[-1]), 2):
+#             writer.add_systematic(
+#                 [h[{"vars": ivar + 1}], h[{"vars": ivar}]],
+#                 f"pdf{int((ivar+1)/2)}CT18Z",
+#                 "Zmumu",
+#                 "chSigmaUL",
+#                 symmetrize="quadratic",
+#                 kfactor=1 / 1.645,
+#                 groups=["pdfCT18Z", f"pdfCT18ZNoAlphaS", "theory"],
+#             )
+
+#     if args.fitW:
+#         h = corr_helpers["W"]["scetlib_dyturboCT18ZVars"]
+#         for ivar in range(1, len(h.axes[-1]), 2):
+#             writer.add_systematic(
+#                 [h[{"vars": ivar + 1}], h[{"vars": ivar}]],
+#                 f"pdf{int((ivar+1)/2)}CT18Z",
+#                 "Wmunu",
+#                 "chW",
+#                 symmetrize="quadratic",
+#                 kfactor=1 / 1.645,
+#                 groups=["pdfCT18Z", f"pdfCT18ZNoAlphaS", "theory"],
+#             )
 
 # Ai's only uncertainties
 if args.fitAngularCoeffs:
@@ -999,54 +1075,110 @@ if args.fitAngularCoeffs:
             groups=["QCDScaleZMiNNLO", "QCDscale", "angularCoeffs", "theory"],
         )
 
-# mW variations
+
+# QCD uncertainties by helicity
 if args.fitW:
 
-    logger.info("Now at mW variations")
-
-    with h5py.File(
-        "/ceph/submit/data/group/cms/store/user/lavezzo/alphaS/250718_mW_variations/prefsr_massWeightW_MiNNLO.hdf5",
-        "r",
-    ) as ff:
-        inputs = input_tools.load_results_h5py(ff)
-        mass_vars_Wp = inputs["WplusmunuPostVFP"]["prefsr_massWeightW"].get()
-        mass_vars_Wm = inputs["WminusmunuPostVFP"]["prefsr_massWeightW"].get()
-
-    mass_vars_W = hh.addHists(mass_vars_Wp, mass_vars_Wm)
-    mass_vars_W = mass_vars_W.project(
-        "ptGen", "absEtaGen", "qGen", "massShift"
-    )  # re-order
-    mass_vars_W = hh.rebinHist(
-        mass_vars_W, "ptGen", h_data_prefsrLep.axes["ptGen"].edges
+    qcd_helper = theory_corrections.make_qcd_uncertainty_helper_by_helicity(
+        is_z=False,
+        filename=f"{common.data_dir}/angularCoefficients/w_z_helicity_xsecs_scetlib_dyturboCorr_maxFiles_m1_unfoldingBinning_W.hdf5",
+        rebin_ptVgen=False,  # h_pred_W_full.axes["qT"].edges.tolist(),
+        rebin_absYVgen=False,  # h_pred_W_full.axes["absY"].edges.tolist(),
+        rebin_massVgen=True,
+        return_tensor=False,
     )
-    mass_vars_W = hh.rebinHist(
-        mass_vars_W, "absEtaGen", h_data_prefsrLep.axes["absEtaGen"].edges
-    )
-    mass_vars_W_nom = mass_vars_W[{"massShift": "massShiftW0MeV"}]
-    mass_vars_W_up = mass_vars_W[{"massShift": "massShiftW100MeVUp"}]
-    mass_vars_W_down = mass_vars_W[{"massShift": "massShiftW100MeVDown"}]
 
-    # calculate variations on the leptons
-    # (MiNNLO_var / MiNNLO_nom) * nominal
-    # where nominal is MiNNLO(W, lep; fiducial) * scetlib(W; full) / MiNNLO(W; full)
-    ratio_MiNNLO_up = hh.divideHists(mass_vars_W_up, mass_vars_W_nom)
-    ratio_MiNNLO_down = hh.divideHists(mass_vars_W_down, mass_vars_W_nom)
-    writer.ref["chW"]["Wmunu"] = hh.disableFlow(
-        writer.ref["chW"]["Wmunu"], "absEtaGen", under=False, over=True
-    )
-    mass_var_up = hh.multiplyHists(ratio_MiNNLO_up, writer.ref["chW"]["Wmunu"])
-    mass_var_down = hh.multiplyHists(ratio_MiNNLO_down, writer.ref["chW"]["Wmunu"])
+    print(qcd_helper)
+    base = qcd_helper[{"vars": "pythia_shower_kt"}][{"corr": 0}]
+    comp = h_pred_W_full
+    comp = hh.rebinHist(comp, "qT", base.axes["ptVgen"].edges)
+    comp = hh.rebinHist(comp, "absY", base.axes["absYVgen"].edges)
+    print(base.values() / comp.values())
 
-    writer.add_systematic(
-        [mass_var_up, mass_var_down],
-        "massShiftW",
-        "Wmunu",
-        "chW",
-        mirror=False,
-        noi=not args.constrainMW,
-        constrained=args.constrainMW,
-        format=False,
+    # pythia showering uncertainties
+    logger.info("Now at pythia_shower_kt")
+    pythia_shower_kt = qcd_helper[{"vars": "pythia_shower_kt"}]
+    writer.add_scale_systematic(
+        [pythia_shower_kt[{"corr": 1}], pythia_shower_kt[{"corr": 0}]],
+        "pythia_shower_kt",
+        "Zmumu",
+        "chAis",
+        mirror=True,
+        groups=["helicity_shower_kt", "angularCoeffs", "theory"],
     )
+
+    # QCD scales
+    logger.info("Now at QCD scales")
+
+    # prepare fine binning hists
+    fine_pt_binning = qcd_helper.axes["ptVgen"].edges
+    nptfine = len(fine_pt_binning) - 1
+    scale_inclusive = np.sqrt((nptfine - 1) / nptfine)
+
+    for hel in range(0, 7 + 1):  # no correction on sigma_UL
+
+        # fine binning
+        qcd_scales_hel_up = qcd_helper[{"vars": f"helicity_{hel}_Up"}].project(
+            "ptVgen", "absYVgen", "helicity"
+        )
+        qcd_scales_hel_down = qcd_helper[{"vars": f"helicity_{hel}_Down"}].project(
+            "ptVgen", "absYVgen", "helicity"
+        )
+        qcd_scales_hel_nominal = qcd_helper[{"vars": f"nominal"}].project(
+            "ptVgen", "absYVgen", "helicity"
+        )
+
+        for bin in range(len(fine_pt_binning) - 1):
+
+            ptl = fine_pt_binning[bin]
+            pth = fine_pt_binning[bin + 1]
+
+            qcd_scales_hel_pt_up = copy.deepcopy(qcd_scales_hel_up)
+            qcd_scales_hel_pt_up.values()[...] = qcd_scales_hel_nominal.values()
+            qcd_scales_hel_pt_up.values()[bin, ...] = qcd_scales_hel_up[
+                {"ptVgen": bin}
+            ].values()
+
+            qcd_scales_hel_pt_down = copy.deepcopy(qcd_scales_hel_down)
+            qcd_scales_hel_pt_down.values()[...] = qcd_scales_hel_nominal.values()
+            qcd_scales_hel_pt_down.values()[bin, ...] = qcd_scales_hel_up[
+                {"ptVgen": bin}
+            ].values()
+
+            writer.add_systematic(
+                [qcd_scales_hel_pt_up, qcd_scales_hel_pt_down],
+                f"QCDscaleZfine_Pt{ptl}_{pth}helicity_{hel}",
+                "Zmumu",
+                "chAis",
+                symmetrize="quadratic",
+                groups=["QCDScaleZMiNNLO", "QCDscale", "angularCoeffs", "theory"],
+            )
+
+        # inclusive
+        inclusive_pt_binning = [
+            qcd_scales_hel_up.axes["ptVgen"].edges[0],
+            qcd_scales_hel_up.axes["ptVgen"].edges[-1],
+        ]
+        qcd_scales_hel_int_up = hh.rebinHist(
+            qcd_scales_hel_up, "ptVgen", inclusive_pt_binning
+        )
+        qcd_scales_hel_int_down = hh.rebinHist(
+            qcd_scales_hel_down, "ptVgen", inclusive_pt_binning
+        )
+
+        for bin in range(len(fine_pt_binning) - 1):
+            qcd_scales_hel_up.values()[bin, ...] = qcd_scales_hel_int_up.values()
+            qcd_scales_hel_down.values()[bin, ...] = qcd_scales_hel_int_down.values()
+
+        writer.add_systematic(
+            [qcd_scales_hel_up, qcd_scales_hel_down],
+            f"QCDscaleZinclusive_Pt{inclusive_pt_binning[0]}_{inclusive_pt_binning[1]}helicity_{hel}",
+            "Zmumu",
+            "chAis",
+            kfactor=scale_inclusive,
+            symmetrize="quadratic",
+            groups=["QCDScaleZMiNNLO", "QCDscale", "angularCoeffs", "theory"],
+        )
 
 
 # write output
