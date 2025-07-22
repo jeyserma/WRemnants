@@ -501,6 +501,12 @@ def common_parser(analysis_label=""):
             type=float,
             help="Lower threshold for muon pt in the veto definition",
         )
+        parser.add_argument(
+            "--oneMCfileEveryN",
+            type=int,
+            default=None,
+            help="Use 1 MC file every N, where N is given by this option. Mainly for tests",
+        )
         # Options to test splitting of data into subsets
         parser.add_argument(
             "--addRunAxis",
@@ -582,8 +588,9 @@ def common_parser(analysis_label=""):
         )
         parser.add_argument(
             "--fitresult",
+            nargs="+",
             type=str,
-            help="Fitresult to be used to reweight the gen distribution (e.g. for iterative POI as NOI fit)",
+            help="Fitresult to be used to reweight the gen distribution (e.g. for iterative POI as NOI fit) if two are given use first for numerator and second for denominator",
         )
         parser.add_argument(
             "--poiAsNoi",
@@ -794,6 +801,11 @@ def plot_parser():
         default="auto",
         choices=choices_padding,
         help="Where to put empty entries in legend",
+    )
+    parser.add_argument(
+        "--noLowerLeg",
+        action="store_true",
+        help="Don't plot the legend on the lower panel",
     )
     parser.add_argument(
         "--lowerLegPos",
