@@ -1127,11 +1127,16 @@ def build_graph(df, dataset):
         if dataset.is_data:
             df = df.DefinePerSample("nominal_weight_noPUandVtx", "1.0")
             df = df.DefinePerSample("nominal_weight_noVtx", "1.0")
+            df = df.DefinePerSample("nominal_weight_noSF", "1.0")
         else:
             df = df.Define(
                 "nominal_weight_noPUandVtx", "nominal_weight/(weight_pu*weight_vtx)"
             )
             df = df.Define("nominal_weight_noVtx", "nominal_weight/weight_vtx")
+            df = df.Define(
+                "nominal_weight_noSF",
+                "nominal_weight/weight_fullMuonSF_withTrackingReco",
+            )
 
         axis_nRecoVtx = hist.axis.Regular(50, 0.5, 50.5, name="PV_npvsGood")
         axis_fixedGridRhoFastjetAll = hist.axis.Regular(
@@ -1209,6 +1214,8 @@ def build_graph(df, dataset):
 
     nominal = df.HistoBoost("nominal", axes, [*cols, "nominal_weight"])
     results.append(nominal)
+    nominal_noSF = df.HistoBoost("nominal_noSF", axes, [*cols, "nominal_weight_noSF"])
+    results.append(nominal_noSF)
 
     if useTnpMuonVarForSF and not args.onlyMainHistograms and not args.unfolding:
         df = df.Define(
