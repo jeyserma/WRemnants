@@ -180,6 +180,29 @@ absYV_binning = [
 ]
 
 yll_10quantiles_binning = [-2.5, -1.5, -1.0, -0.5, -0.25, 0, 0.25, 0.5, 1.0, 1.5, 2.5]
+yll_10quantiles_binning_fine = [
+    -2.5,
+    -2.25,
+    -2.0,
+    -1.75,
+    -1.5,
+    -1.25,
+    -1.0,
+    -0.75,
+    -0.5,
+    -0.25,
+    0,
+    0.25,
+    0.5,
+    0.75,
+    1,
+    1.25,
+    1.5,
+    1.75,
+    2,
+    2.25,
+    2.5,
+]
 
 # categorical axes in python bindings always have an overflow bin, so use a regular axis for the charge
 axis_charge = hist.axis.Regular(
