@@ -47,7 +47,7 @@ parser.add_argument(
     help="Use unfolding binning to produce the gen results",
 )
 parser.add_argument(
-    "--genYBinningFine",
+    "--useCorrByHelicityBinning",
     action="store_true",
     help="Use finer absY binning to produce the gen results."
     "Used in particular to produce the smooth PDF corrections.",
@@ -188,11 +188,7 @@ def build_graph(df, dataset):
                 ["ptVGen", "absYVGen"],
                 {
                     "ptll": common.get_dilepton_ptV_binning(fine=False),
-                    "yll": (
-                        common.yll_10quantiles_binning_fine
-                        if args.genYBinningFine
-                        else common.yll_10quantiles_binning
-                    ),
+                    "yll": (common.yll_10quantiles_binning),
                 },
                 "prefsr",
                 add_out_of_acceptance_axis=False,
@@ -211,7 +207,18 @@ def build_graph(df, dataset):
         )
 
         axis_massZgen = hist.axis.Regular(1, 60.0, 120.0, name="massVgen")
-
+    elif args.useCorrByHelicityBinning:
+        axis_absYVgen = hist.axis.Variable(
+            common.yll_10quantiles_binning_corr,
+            name="absYVgen",
+            underflow=False,
+        )
+        axis_ptVgen = hist.axis.Variable(
+            common.ptll_10quantiles_binning_corr,
+            name="ptVgen",
+            underflow=False,
+        )
+        axis_massZgen = hist.axis.Regular(1, 60.0, 120.0, name="massVgen")
     elif args.useTheoryAgnosticBinning:
         axis_absYVgen = hist.axis.Variable(
             axis_yV_thag.edges,  # same axis as theory agnostic norms
