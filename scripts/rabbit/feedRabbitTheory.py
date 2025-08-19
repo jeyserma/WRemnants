@@ -108,6 +108,7 @@ class AlphaSTheoryFitTW(TensorWriter):
         rebin_y=True,
         normalize=True,
         apply_postOp=True,
+        format=True,
         **kwargs,
     ):
         """
@@ -119,33 +120,34 @@ class AlphaSTheoryFitTW(TensorWriter):
         """
 
         if not kwargs.get("mirror"):
-            h[0] = self.format(
-                h[0],
-                channel,
-                process,
-                rebin_pt=rebin_pt,
-                rebin_y=rebin_y,
-                normalize=normalize,
-                apply_postOp=apply_postOp,
-            )
-            h[1] = self.format(
-                h[1],
-                channel,
-                process,
-                rebin_pt=rebin_pt,
-                rebin_y=rebin_y,
-                normalize=normalize,
-                apply_postOp=apply_postOp,
-            )
-            h[2] = self.format(
-                h[2],
-                channel,
-                process,
-                rebin_pt=rebin_pt,
-                rebin_y=rebin_y,
-                normalize=normalize,
-                apply_postOp=apply_postOp,
-            )
+            if format:
+                h[0] = self.format(
+                    h[0],
+                    channel,
+                    process,
+                    rebin_pt=rebin_pt,
+                    rebin_y=rebin_y,
+                    normalize=normalize,
+                    apply_postOp=apply_postOp,
+                )
+                h[1] = self.format(
+                    h[1],
+                    channel,
+                    process,
+                    rebin_pt=rebin_pt,
+                    rebin_y=rebin_y,
+                    normalize=normalize,
+                    apply_postOp=apply_postOp,
+                )
+                h[2] = self.format(
+                    h[2],
+                    channel,
+                    process,
+                    rebin_pt=rebin_pt,
+                    rebin_y=rebin_y,
+                    normalize=normalize,
+                    apply_postOp=apply_postOp,
+                )
 
             hup = hh.divideHists(h[0], h[2])
             hdown = hh.divideHists(h[1], h[2])
@@ -154,24 +156,25 @@ class AlphaSTheoryFitTW(TensorWriter):
 
             super().add_systematic([hup, hdown], name, process, channel, **kwargs)
         else:
-            h[0] = self.format(
-                h[0],
-                channel,
-                process,
-                rebin_pt=rebin_pt,
-                rebin_y=rebin_y,
-                normalize=normalize,
-                apply_postOp=apply_postOp,
-            )
-            h[1] = self.format(
-                h[1],
-                channel,
-                process,
-                rebin_pt=rebin_pt,
-                rebin_y=rebin_y,
-                normalize=normalize,
-                apply_postOp=apply_postOp,
-            )
+            if format:
+                h[0] = self.format(
+                    h[0],
+                    channel,
+                    process,
+                    rebin_pt=rebin_pt,
+                    rebin_y=rebin_y,
+                    normalize=normalize,
+                    apply_postOp=apply_postOp,
+                )
+                h[1] = self.format(
+                    h[1],
+                    channel,
+                    process,
+                    rebin_pt=rebin_pt,
+                    rebin_y=rebin_y,
+                    normalize=normalize,
+                    apply_postOp=apply_postOp,
+                )
 
             h = hh.divideHists(h[0], h[1])
             h = hh.multiplyHists(h, self.ref[channel][process])
@@ -472,6 +475,11 @@ parser.add_argument(
     "--fitresultModel", type=str, default="Select helicitySig:slice(0,1)"
 )
 parser.add_argument(
+    "--fitresultChannelSigmaUL",
+    type=str,
+    default="Select helicitySig:slice(0,1)_ch0_masked",
+)
+parser.add_argument(
     "--predGenerator",
     type=str,
     default=f"scetlib_dyturbo",
@@ -502,12 +510,18 @@ parser.add_argument(
     "Will be stitched with the --predGenerator file.",
 )
 parser.add_argument(
+    "--fitresultChannelAis",
+    type=str,
+    default="AngularCoefficients ch0_masked ptVGen:rebin(0,3,6,9,12,16,20,24,28,33,44)_ch0_masked",
+)
+parser.add_argument(
     "-W",
     "--fitW",
     action="store_true",
     help="Include W in the fit."
     "Will use --predWFile for predictions and --infileW for the unfolded distribution.",
 )
+parser.add_argument("--fitresultChannelW", type=str, default="Select_ch1_masked")
 parser.add_argument("--outname", default="carrot", help="output file name")
 parser.add_argument(
     "--sparse",
@@ -525,6 +539,9 @@ parser.add_argument(
 args = parser.parse_args()
 logger = logging.setup_logger(__file__, args.verbose, args.noColorLogger)
 
+if not args.fitW:
+    args.constrainMW = True  # nothing to fit here...
+
 # Build tensor
 writer = AlphaSTheoryFitTW(
     sparse=args.sparse,
@@ -537,41 +554,39 @@ writer = AlphaSTheoryFitTW(
 fitresult, meta = rabbit.io_tools.get_fitresult(args.infile, result="asimov", meta=True)
 
 # covariance across any number of physics models
-# h_data_cov = fitresult["physics_models"]["CompositeModel"][
-#     "hist_postfit_inclusive_cov"
-# ].get()
-h_data_cov = fitresult["physics_models"]["Select"]["hist_postfit_inclusive_cov"].get()
+h_data_cov = fitresult["physics_models"][args.fitresultModel][
+    "hist_postfit_inclusive_cov"
+].get()
 writer.add_data_covariance(h_data_cov)  # N.B: run fit with --externalCovariance
 
-# read and initialize sigmaUL channel
-if not args.noFitSigmaUL:
-    h_data = fitresult["physics_models"]["CompositeModel"]["channels"][
-        "Select helicitySig:slice(0,1)_ch0_masked"
-    ]["hist_postfit_inclusive"].get()[:, :, 0]
-    writer.add_channel(h_data.axes, "chSigmaUL")
-    writer.add_data(h_data, "chSigmaUL")
-    writer.set_reference("chSigmaUL", h_data)
+# the order of add_channel must be OPPOSITE of what is in postfit_cov due to rabbit
+
+# if set, read and initialize the W lepton channel
+if args.fitW:
+    h_data_prefsrLep = fitresult["physics_models"][args.fitresultModel]["channels"][
+        args.fitresultChannelW
+    ]["hist_postfit_inclusive"].get()
+    writer.add_channel(h_data_prefsrLep.axes, "chW")
+    writer.add_data(h_data_prefsrLep, "chW")
 
 # if set, read and initialize Ai's channel
 if args.fitAngularCoeffs:
-    h_data_ai = fitresult["physics_models"]["CompositeModel"]["channels"][
-        "AngularCoefficients ch0_masked ptVGen:rebin(0,3,6,9,12,16,20,24,28,33,44)_ch0_masked"
+    h_data_ai = fitresult["physics_models"][args.fitresultModel]["channels"][
+        args.fitresultChannelAis
     ]["hist_postfit_inclusive"].get()
     writer.add_channel(h_data_ai.axes, "chAis")
     writer.add_data(h_data_ai, "chAis")
     writer.set_reference("chAis", h_data_ai, postOp=calculate_ais_from_helicities_hist)
 
-# if set, read and initialize W lepton channel
-if args.fitW:
-    # h_data_prefsrLep = fitresult["physics_models"]["CompositeModel"]["channels"][
-    #     "Select_ch1_masked"
-    # ]["hist_postfit_inclusive"].get()
-    print(fitresult["physics_models"]["Select"]["channels"].keys())
-    h_data_prefsrLep = fitresult["physics_models"]["Select"]["channels"]["ch0_masked"][
-        "hist_postfit_inclusive"
-    ].get()
-    writer.add_channel(h_data_prefsrLep.axes, "chW")
-    writer.add_data(h_data_prefsrLep, "chW")
+
+# read and initialize sigmaUL channel
+if not args.noFitSigmaUL:
+    h_data = fitresult["physics_models"][args.fitresultModel]["channels"][
+        args.fitresultChannelSigmaUL
+    ]["hist_postfit_inclusive"].get()[:, :, 0]
+    writer.add_channel(h_data.axes, "chSigmaUL")
+    writer.add_data(h_data, "chSigmaUL")
+    writer.set_reference("chSigmaUL", h_data)
 
 # add backgrounds
 
@@ -657,7 +672,6 @@ if args.fitW:
         "W",
         f"{args.predGenerator}CT18ZVars_hist",
     )
-    print(h_pred_W_full)
     h_pred_W_full = h_pred_W_full[{"vars": "pdf0"}].project("qT", "absY", "charge")
     h_pred_W_full = hh.disableFlow(h_pred_W_full, "qT", under=False, over=True)
     h_pred_W_full = hh.disableFlow(h_pred_W_full, "absY", under=False, over=True)
@@ -674,8 +688,6 @@ if args.fitW:
 bosons = []
 if not args.noFitSigmaUL:
     bosons.append("Z")
-if args.fitW:
-    bosons.append("W")
 
 # alphaS variation
 logger.info("Now at variations for AlphaS")
@@ -710,40 +722,21 @@ if args.predGenerator == "scetlib_dyturbo":
 
     # alphaS variations for W come from same as Z
     if args.fitW:
-        # TODO check this: do we need to do it from MiNNLO?
-        # writer.add_systematic(
-        #     [
-        #         alphas_vars["W"]["scetlib_dyturboCT18Z_pdfas"][{"vars": 2}],
-        #         alphas_vars["W"]["scetlib_dyturboCT18Z_pdfas"][{"vars": 1}],
-        #     ],
-        #     "pdfAlphaS",
-        #     "Wmunu",
-        #     "chW",
-        #     noi=not args.constrainAlphaS,
-        #     constrained=args.constrainAlphaS,
-        #     symmetrize="average",
-        #     kfactor=1.5 / 2.0,
-        #     groups=(
-        #         ["pdfCT18Z", "pdfCT18ZAlphaS", "theory"]
-        #         if args.constrainAlphaS
-        #         else ["pdfCT18Z"]
-        #     ),
-        # )
-
+        # TODO clean up
         with h5py.File(
-            f"/ceph/submit/data/group/cms/store/user/lavezzo/alphaS/250718_mW_histmaker_unfolding/mw_with_mu_eta_pt_scetlib_dyturboCorr_maxFiles_m1.hdf5",
+            f"/ceph/submit/data/group/cms/store/user/lavezzo/alphaS/250815_debug/mw_with_mu_eta_pt_scetlib_dyturboCorr_maxFiles_m1_oldQCDscales.hdf5",
             "r",
         ) as h5file:
             results = input_tools.load_results_h5py(h5file)
             lumi = 16800
             h_Wp = results["WplusmunuPostVFP"]["output"][
-                "prefsr_pdfCT18ZalphaS002"
+                "prefsr_pdfAlphaSByHelicity"
             ].get()
             weight_sum = results["WplusmunuPostVFP"]["weight_sum"]
             xsec = results["WplusmunuPostVFP"]["dataset"]["xsec"]
             h_Wp *= xsec * lumi / weight_sum
             h_Wm = results["WminusmunuPostVFP"]["output"][
-                "prefsr_pdfCT18ZalphaS002"
+                "prefsr_pdfAlphaSByHelicity"
             ].get()
             weight_sum = results["WminusmunuPostVFP"]["weight_sum"]
             xsec = results["WminusmunuPostVFP"]["dataset"]["xsec"]
@@ -754,8 +747,8 @@ if args.predGenerator == "scetlib_dyturbo":
 
         writer.add_systematic(
             [
-                h_W[{"alphasVar": "as0120"}],
-                h_W[{"alphasVar": "as0116"}],
+                h_W[{"vars": 2}],
+                h_W[{"vars": 1}],
             ],
             "pdfAlphaS",
             "Wmunu",
@@ -866,17 +859,70 @@ generator_vars = theory_corrections.load_corr_helpers(
     make_tensor=False,
     minnlo_ratio=False,
 )
-for proc in generator_vars.keys():  # loop over processes
+if args.fitW:
 
-    logger.error("Skipping")
-    continue
+    # TODO clean up and change to use by helicity quark mass weights
+    with h5py.File(
+        "/ceph/submit/data/group/cms/store/user/lavezzo/alphaS/250815_debug/mw_with_mu_eta_pt_scetlib_dyturboCorr_maxFiles_m1_oldQCDscales.hdf5",
+        "r",
+    ) as h5file:
+        results = input_tools.load_results_h5py(h5file)
+        lumi = 16800
+
+        h_Wp = results["WplusmunuPostVFP"]["output"]["prefsr_scetlib_dyturboCorr"].get()
+        weight_sum = results["WplusmunuPostVFP"]["weight_sum"]
+        xsec = results["WplusmunuPostVFP"]["dataset"]["xsec"]
+        h_Wp *= xsec * lumi / weight_sum
+        h_Wm = results["WminusmunuPostVFP"]["output"][
+            "prefsr_scetlib_dyturboCorr"
+        ].get()
+        weight_sum = results["WminusmunuPostVFP"]["weight_sum"]
+        xsec = results["WminusmunuPostVFP"]["dataset"]["xsec"]
+        h_Wm *= xsec * lumi / weight_sum
+        h_W = hh.addHists(h_Wp, h_Wm)
+        generator_vars["W"] = {}
+        generator_vars["W"]["scetlib_dyturbo"] = h_W.project(
+            "absEtaGen", "ptGen", "qGen", "vars"
+        )
+
+        print(results["WplusmunuPostVFP"]["output"]["prefsr_pdfMSHT20mcrange"].get())
+        h_Wp = results["WplusmunuPostVFP"]["output"]["prefsr_pdfMSHT20mcrange"].get()
+        weight_sum = results["WplusmunuPostVFP"]["weight_sum"]
+        xsec = results["WplusmunuPostVFP"]["dataset"]["xsec"]
+        h_Wp *= xsec * lumi / weight_sum
+        h_Wm = results["WminusmunuPostVFP"]["output"]["prefsr_pdfMSHT20mcrange"].get()
+        weight_sum = results["WminusmunuPostVFP"]["weight_sum"]
+        xsec = results["WminusmunuPostVFP"]["dataset"]["xsec"]
+        h_Wm *= xsec * lumi / weight_sum
+        h_W = hh.addHists(h_Wp, h_Wm)
+        generator_vars["W"][f"{args.predGenerator}MSHT20mcrange"] = h_W.project(
+            "absEtaGen", "ptGen", "qGen", "pdfVar"
+        )
+
+        h_Wp = results["WplusmunuPostVFP"]["output"]["prefsr_pdfMSHT20mbrange"].get()
+        weight_sum = results["WplusmunuPostVFP"]["weight_sum"]
+        xsec = results["WplusmunuPostVFP"]["dataset"]["xsec"]
+        h_Wp *= xsec * lumi / weight_sum
+        h_Wm = results["WminusmunuPostVFP"]["output"]["prefsr_pdfMSHT20mbrange"].get()
+        weight_sum = results["WminusmunuPostVFP"]["weight_sum"]
+        xsec = results["WminusmunuPostVFP"]["dataset"]["xsec"]
+        h_Wm *= xsec * lumi / weight_sum
+        h_W = hh.addHists(h_Wp, h_Wm)
+        generator_vars["W"][f"{args.predGenerator}MSHT20mbrange"] = h_W.project(
+            "absEtaGen", "ptGen", "qGen", "pdfVar"
+        )
+
+for proc in generator_vars.keys():  # loop over processes
 
     if proc == "Z":
         proc_name = "Zmumu"
         ch_name = "chSigmaUL"
+        format = True
     elif proc == "W":
+        # TODO maybe drop the 'format' for W since it only applies to the pred
         proc_name = "Wmunu"
         ch_name = "chW"
+        format = False
 
     h = generator_vars[proc][args.predGenerator]
 
@@ -898,6 +944,7 @@ for proc in generator_vars.keys():  # loop over processes
             ch_name,
             symmetrize="average",
             groups=["resumNonpert", "resum", "pTModeling", "theory"],
+            format=format,
         )
 
     # gamma NP uncertainties
@@ -912,6 +959,7 @@ for proc in generator_vars.keys():  # loop over processes
             ch_name,
             symmetrize="average",
             groups=["resumTNP", "resum", "pTModeling", "theory"],
+            format=format,
         )
 
     # TNP
@@ -936,6 +984,7 @@ for proc in generator_vars.keys():  # loop over processes
             ch_name,
             symmetrize="average",
             groups=["resumTNP", "resum", "pTModeling", "theory"],
+            format=format,
         )
 
     # transition FO scale uncertainties
@@ -959,26 +1008,30 @@ for proc in generator_vars.keys():  # loop over processes
             ch_name,
             symmetrize="quadratic",
             groups=["resumTransitionFOScale", "resum", "pTModeling", "theory"],
+            format=format,
         )
 
     # mass quark effects
     h = generator_vars[proc][f"{args.predGenerator}MSHT20mbrange"]
+    var_axis_name = "vars" if proc == "Z" else "pdfVar"
     writer.add_scale_systematic(
-        [h[{"vars": -1}], h[{"vars": 1}], h[{"vars": 0}]],
+        [h[{var_axis_name: -1}], h[{var_axis_name: 1}], h[{var_axis_name: 0}]],
         "pdfMSHT20mbrange",
         proc_name,
         ch_name,
         symmetrize="quadratic",
         groups=["bcQuarkMass", "pTModeling", "theory"],
+        format=format,
     )
     h = generator_vars[proc][f"{args.predGenerator}MSHT20mcrange"]
     writer.add_scale_systematic(
-        [h[{"vars": -1}], h[{"vars": 1}], h[{"vars": 0}]],
+        [h[{var_axis_name: -1}], h[{var_axis_name: 1}], h[{var_axis_name: 0}]],
         "pdfMSHT20mcrange",
         proc_name,
         ch_name,
         symmetrize="quadratic",
         groups=["bcQuarkMass", "pTModeling", "theory"],
+        format=format,
     )
 
 # PDF uncertainties
@@ -988,7 +1041,6 @@ if args.fitAngularCoeffs:
 
     # TODO fix this at some point
     with h5py.File(
-        # args.predAiFile.replace("w_z_helicity_xsecs", "w_z_gen_dists"), "r"
         "/ceph/submit/data/group/cms/store/user/lavezzo/alphaS//250627_angularCoefficients/w_z_gen_dists.cash_scetlib_dyturboCorr_maxFiles_1000_alphaSunfoldingBinning_helicity_WZ.hdf5",
         "r",
     ) as ff:
@@ -1038,7 +1090,7 @@ if args.fitAngularCoeffs:
         )
 
         if args.fitW:
-            # TODO I'm 90% sure this is wrong
+            # TODO I'm 100% sure this is wrong, do it from MiNNLO
             raise Exception()
             writer.add_systematic(
                 [
@@ -1078,44 +1130,28 @@ else:
             )
 
     if args.fitW:
-        h = corr_helpers["W"]["scetlib_dyturboCT18ZVars"]
-
-        # for ivar in range(1, len(h.axes[-1]), 2):
-        #     writer.add_systematic(
-        #         [h[{"vars": ivar}], h[{"vars": ivar + 1}]],
-        #         f"pdf{int((ivar+1)/2)}CT18Z",
-        #         "Wmunu",
-        #         "chW",
-        #         symmetrize="quadratic",
-        #         kfactor=1 / 1.645,
-        #         groups=["pdfCT18Z", f"pdfCT18ZNoAlphaS", "theory"],
-        #     )
 
         # TODO clean this up
         with h5py.File(
-            f"/ceph/submit/data/group/cms/store/user/lavezzo/alphaS/250718_mW_histmaker_unfolding/mw_with_mu_eta_pt_scetlib_dyturboCorr_maxFiles_m1.hdf5",
+            "/ceph/submit/data/group/cms/store/user/lavezzo/alphaS/250815_debug/mw_with_mu_eta_pt_scetlib_dyturboCorr_maxFiles_m1_oldQCDscales.hdf5",
             "r",
         ) as h5file:
             results = input_tools.load_results_h5py(h5file)
             lumi = 16800
-            h_Wp = results["WplusmunuPostVFP"]["output"]["prefsr_pdfCT18Z"].get()
+            h_Wp = results["WplusmunuPostVFP"]["output"][
+                "prefsr_pdfCT18ZUncertByHelicity"
+            ].get()
             weight_sum = results["WplusmunuPostVFP"]["weight_sum"]
             xsec = results["WplusmunuPostVFP"]["dataset"]["xsec"]
             h_Wp *= xsec * lumi / weight_sum
-            h_Wm = results["WminusmunuPostVFP"]["output"]["prefsr_pdfCT18Z"].get()
+            h_Wm = results["WminusmunuPostVFP"]["output"][
+                "prefsr_pdfCT18ZUncertByHelicity"
+            ].get()
             weight_sum = results["WminusmunuPostVFP"]["weight_sum"]
             xsec = results["WminusmunuPostVFP"]["dataset"]["xsec"]
             h_Wm *= xsec * lumi / weight_sum
             h_W = hh.addHists(h_Wp, h_Wm)
             h_W = h_W.project("absEtaGen", "ptGen", "qGen", "pdfVar")
-
-        # h_W_13d = h_W[{'pdfVar': 'pdf1CT18ZDown'}]
-        # test = h[{"vars": 1}][{'Q': sum}].project("qT", "absY", "charge") * lumi
-        # print(test)
-        # test = writer.ref['chW']['postOp'](test)
-
-        # print(test.values() / h_W_13d.values())
-        # # exit()
 
         for ivar in range(1, int((len(h.axes[-1]) - 1) / 2)):
             writer.add_systematic(
@@ -1239,7 +1275,7 @@ if args.fitW:
 
     # TODO clean this up
     with h5py.File(
-        f"/ceph/submit/data/group/cms/store/user/lavezzo/alphaS/250718_mW_histmaker_unfolding/mw_with_mu_eta_pt_scetlib_dyturboCorr_maxFiles_m1.hdf5",
+        "/ceph/submit/data/group/cms/store/user/lavezzo/alphaS/250815_debug/mw_with_mu_eta_pt_scetlib_dyturboCorr_maxFiles_m1_oldQCDscales.hdf5",
         "r",
     ) as h5file:
         results = input_tools.load_results_h5py(h5file)
@@ -1269,10 +1305,30 @@ if args.fitW:
     logger.info("Now at QCD scales (W)")
 
     # prepare fine binning hists
-    h_W = h_W[{"ptVgen": hist.rebin(2)}]
-    fine_pt_binning = h_W.axes["ptVgen"].edges
+    from utilities import common
+
+    fine_pt_binning = common.ptV_binning[::2]
+    inclusive_pt_binning = [
+        common.ptV_binning[0],
+        common.ptV_binning[-1],
+    ]
     nptfine = len(fine_pt_binning) - 1
     scale_inclusive = np.sqrt((nptfine - 1) / nptfine)
+
+    from wremnants import syst_tools
+
+    h_W_new = syst_tools.hist_to_variations(
+        copy.deepcopy(h_W),
+        gen_axes=["ptVgen"],
+        rebin_axes=["ptVgen"],
+        rebin_edges=[fine_pt_binning],
+    )
+    h_W_full = syst_tools.hist_to_variations(
+        copy.deepcopy(h_W),
+        gen_axes=["ptVgen"],
+        rebin_axes=["ptVgen"],
+        rebin_edges=[inclusive_pt_binning],
+    )
 
     for hel in range(0, 7 + 1):  # no correction on sigma_UL
 
@@ -1284,15 +1340,21 @@ if args.fitW:
             "ptVgen", "absEtaGen", "ptGen", "qGen"
         )
 
+        var_up = h_W_new[{"vars": f"helicity_{hel}_Up"}].project(
+            "ptVgen", "absEtaGen", "ptGen", "qGen"
+        )
+        var_down = h_W_new[{"vars": f"helicity_{hel}_Down"}].project(
+            "ptVgen", "absEtaGen", "ptGen", "qGen"
+        )
+
         for bin in range(len(fine_pt_binning) - 1):
 
             ptl = fine_pt_binning[bin]
             pth = fine_pt_binning[bin + 1]
-
             writer.add_systematic(
                 [
-                    qcd_scales_hel_up[{"ptVgen": bin}],
-                    qcd_scales_hel_down[{"ptVgen": bin}],
+                    var_up[{"ptVgen": bin}],
+                    var_down[{"ptVgen": bin}],
                 ],
                 f"QCDscaleWfine_PtV{ptl}_{pth}helicity_{hel}_",
                 "Wmunu",
@@ -1302,19 +1364,14 @@ if args.fitW:
                 format=False,
             )
 
-        inclusive_pt_binning = [
-            qcd_scales_hel_up.axes["ptVgen"].edges[0],
-            qcd_scales_hel_up.axes["ptVgen"].edges[-1],
-        ]
-        qcd_scales_hel_int_up = hh.rebinHist(
-            qcd_scales_hel_up, "ptVgen", inclusive_pt_binning
+        var_up = h_W_full[{"vars": f"helicity_{hel}_Up", "ptVgen": 0}].project(
+            "absEtaGen", "ptGen", "qGen"
         )
-        qcd_scales_hel_int_down = hh.rebinHist(
-            qcd_scales_hel_down, "ptVgen", inclusive_pt_binning
+        var_down = h_W_full[{"vars": f"helicity_{hel}_Down", "ptVgen": 0}].project(
+            "absEtaGen", "ptGen", "qGen"
         )
-
         writer.add_systematic(
-            [qcd_scales_hel_up[{"ptVgen": 0}], qcd_scales_hel_down[{"ptVgen": 0}]],
+            [var_up, var_down],
             f"QCDscaleWinclusive_PtV{inclusive_pt_binning[0]}_{inclusive_pt_binning[1]}helicity_{hel}_",
             "Wmunu",
             "chW",
@@ -1329,12 +1386,10 @@ directory = args.outfolder
 if directory == "":
     directory = "./"
 filename = args.outname
-if not args.noFitSigmaUL:
-    filename += f"_sigmaUL"
-if args.fitAngularCoeffs:
-    filename += f"_Ais"
-if args.fitW:
-    filename += f"_W"
+if not args.constrainAlphaS:
+    filename += "_alphaS"
+if not args.constrainMW:
+    filename += "_mW"
 if args.postfix:
     filename += f"_{args.postfix}"
 writer.write(outfolder=directory, outfilename=filename)
