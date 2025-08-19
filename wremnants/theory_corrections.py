@@ -454,9 +454,7 @@ def make_theory_helpers(args, procs=["Z", "W"], corrs=["qcdScale", "pdf", "alpha
                 make_qcd_uncertainty_helper_by_helicity(
                     is_z=False,
                     filename=(
-                        f"{common.data_dir}/angularCoefficients/w_z_helicity_xsecs_maxFiles_m1_alphaSunfoldingBinning_helicity.hdf5"
-                        if args.unfolding
-                        else f"{common.data_dir}/angularCoefficients/w_z_moments.hdf5"
+                        f"{common.data_dir}/angularCoefficients/w_z_moments.hdf5"
                     ),
                     rebin_ptVgen=False,
                     return_tensor=True,
