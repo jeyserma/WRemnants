@@ -209,12 +209,12 @@ def build_graph(df, dataset):
         axis_massZgen = hist.axis.Regular(1, 60.0, 120.0, name="massVgen")
     elif args.useCorrByHelicityBinning:
         axis_absYVgen = hist.axis.Variable(
-            common.yll_10quantiles_binning_corr,
+            common.absYVgen_binning_corr,
             name="absYVgen",
             underflow=False,
         )
         axis_ptVgen = hist.axis.Variable(
-            common.ptll_10quantiles_binning_corr,
+            common.ptVgen_binning_corr,
             name="ptVgen",
             underflow=False,
         )

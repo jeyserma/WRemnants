@@ -289,8 +289,8 @@ muon_prefiring_helper, muon_prefiring_helper_stat, muon_prefiring_helper_syst = 
     muon_prefiring.make_muon_prefiring_helpers(era=era)
 )
 
-qcdScaleByHelicity_helpers = (
-    theory_corrections.make_qcd_uncertainty_helpers_by_helicity()
+qcdScaleByHelicity_helpers = theory_corrections.make_theory_helpers(
+    args, corrs=["qcdScale"]
 )
 
 # extra axes which can be used to label tensor_axes
