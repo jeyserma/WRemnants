@@ -180,30 +180,11 @@ absYV_binning = [
 ]
 
 yll_10quantiles_binning = [-2.5, -1.5, -1.0, -0.5, -0.25, 0, 0.25, 0.5, 1.0, 1.5, 2.5]
-yll_10quantiles_binning_corr = [
-    -2.5,
-    -2.25,
-    -2.0,
-    -1.75,
-    -1.5,
-    -1.25,
-    -1.0,
-    -0.75,
-    -0.5,
-    -0.25,
-    0,
-    0.25,
-    0.5,
-    0.75,
-    1,
-    1.25,
-    1.5,
-    1.75,
-    2,
-    2.25,
-    2.5,
-]
-ptll_10quantiles_binning_corr = [
+
+absYVgen_binning_corr = np.concatenate(
+    (np.arange(0, 2.6, 0.25), [2.75, 3.0, 3.25, 3.5, 3.75, 4.0, 5.0])
+)
+ptVgen_binning_corr = [
     0,
     1,
     2,
@@ -243,11 +224,10 @@ ptll_10quantiles_binning_corr = [
     33,
     37,
     44,
-    50,
-    60,
-    70,
-    80,
+    54,
+    75,
     100,
+    1300,
 ]
 
 # categorical axes in python bindings always have an overflow bin, so use a regular axis for the charge

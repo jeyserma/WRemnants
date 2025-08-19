@@ -185,11 +185,26 @@ public:
     const auto uncorr_hel = coeffs_with_angular.chip(0, 1);
     const auto corr_hel = coeffs_with_angular.chip(1, 1);
 
-    const var_tensor_t corr_weight_vars = corr_hel.sum(reduceddims) /
-                                          uncorr_hel.sum(reduceddims) *
-                                          nominal_weight;
+    const var_tensor_t corr_weight_vars =
+        corr_hel.sum(reduceddims) / uncorr_hel.sum(reduceddims);
 
-    return corr_weight_vars;
+    // const var_tensor_t corr_weight_vars_clamped =
+    // corr_weight_vars.cwiseMax(0.9).cwiseMin(1.1) * nominal_weight;
+
+    // return corr_weight_vars_clamped; // dimensions: {nvars}
+
+    // Replace NaNs with 1.0 before clamping
+    const var_tensor_t corr_weight_vars_no_nan = corr_weight_vars.select(
+        corr_weight_vars.isnan().select(var_tensor_t().setConstant(1.0),
+                                        corr_weight_vars),
+        corr_weight_vars // needed for shape matching
+    );
+
+    // Clamp to [0.9, 1.1] and apply nominal weight
+    const var_tensor_t corr_weight_vars_clamped =
+        corr_weight_vars_no_nan.cwiseMax(0.9).cwiseMin(1.1) * nominal_weight;
+
+    return corr_weight_vars_clamped; // dimensions: {nvars}
   }
 };
 
