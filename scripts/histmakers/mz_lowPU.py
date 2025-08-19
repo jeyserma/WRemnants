@@ -28,7 +28,6 @@ logger = logging.setup_logger(__file__, args.verbose, args.noColorLogger)
 import hist
 
 import narf
-import wremnants
 import wremnants.lowpu as lowpu
 from wremnants import (
     muon_selections,
@@ -109,11 +108,9 @@ axis_wlike_met = hist.axis.Regular(200, 0, 200, name="WlikeMET")
 axes_mt = [axis_mt]
 cols_mt = ["transverseMass"]
 
-qcdScaleByHelicity_helpers = (
-    wremnants.theory_corrections.make_qcd_uncertainty_helpers_by_helicity()
-)
-axis_ptVgen = qcdScaleByHelicity_helpers["Z"].hist.axes["ptVgen"]
-axis_chargeVgen = qcdScaleByHelicity_helpers["Z"].hist.axes["chargeVgen"]
+theory_helpers_procs = theory_corrections.make_theory_helpers(args)
+axis_ptVgen = theory_helpers_procs["Z"]["qcdScale"].hist.axes["ptVgen"]
+axis_chargeVgen = theory_helpers_procs["Z"]["qcdScale"].hist.axes["chargeVgen"]
 
 if args.unfolding:
 
@@ -161,7 +158,7 @@ def build_graph(df, dataset):
     isZ = dataset.name in common.zprocs_lowpu
 
     if dataset.name in common.vprocs_lowpu:
-        qcdScaleByHelicity_helper = qcdScaleByHelicity_helpers[dataset.name[0]]
+        theory_helpers = theory_helpers_procs[dataset.name[0]]
 
     if dataset.is_data:
         df = df.DefinePerSample("weight", "1.0")
@@ -176,7 +173,7 @@ def build_graph(df, dataset):
 
     if args.unfolding and dataset.name in sigProcs:
         df = unfolder_z.add_gen_histograms(
-            args, df, results, dataset, corr_helpers, qcdScaleByHelicity_helper
+            args, df, results, dataset, corr_helpers, theory_helpers
         )
 
         if not unfolder_z.poi_as_noi:
@@ -547,7 +544,7 @@ def build_graph(df, dataset):
                     args,
                     dataset.name,
                     corr_helpers,
-                    qcdScaleByHelicity_helper,
+                    theory_helpers,
                     a,
                     c,
                     base_name=n,
