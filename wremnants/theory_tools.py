@@ -832,20 +832,19 @@ def define_pdf_columns(df, dataset_name, pdfs, noAltUnc):
     return df
 
 
-def define_central_smooth_pdf_weight(df, dataset_name, pdf, pdf_helper={}):
+def define_central_boson_pdf_weight(df, dataset_name, pdf, pdf_helper={}):
 
     proc = dataset_name[0]
-    print(pdf_helper)
     if type(pdf_helper) is not dict or proc not in pdf_helper.keys():
         logger.warning(
             f"Did not find sample {proc} in the given pdf_helper! Using nominal PDF in sample."
         )
-        return df.DefinePerSample("central_smooth_pdf_weight", "1.0")
+        return df.DefinePerSample("central_boson_pdf_weight", "1.0")
     if pdf not in pdf_helper[proc].keys():
         logger.warning(
             f"Did not find PDF {pdf} for sample {proc}! Using nominal PDF in sample."
         )
-        return df.DefinePerSample("central_smooth_pdf_weight", "1.0")
+        return df.DefinePerSample("central_boson_pdf_weight", "1.0")
 
     tensorName = f"helicity{pdf}Weight_tensor"
     df = df.Define(
@@ -860,8 +859,8 @@ def define_central_smooth_pdf_weight(df, dataset_name, pdf, pdf_helper={}):
         ],
     )
     return df.Define(
-        "central_smooth_pdf_weight",
-        f"std::clamp<float>(helicityPDFWeight_tensor[0], -theory_weight_truncate, theory_weight_truncate)",
+        "central_boson_pdf_weight",
+        f"std::clamp<float>({tensorName}[0], -theory_weight_truncate, theory_weight_truncate)",
     )
 
 

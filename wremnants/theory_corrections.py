@@ -412,66 +412,43 @@ def make_corr_by_helicity(
 
 def make_theory_helpers(args, procs=["Z", "W"], corrs=["qcdScale", "pdf", "alphaS"]):
 
-    theory_helpers_procs = {}
+    theory_helpers_procs = {p: {} for p in procs}
 
-    if "Z" in procs:
-        theory_helpers_procs["Z"] = {}
+    if "Z" in procs and "qcdScale" in corrs:
+        theory_helpers_procs["Z"]["qcdScale"] = make_qcd_uncertainty_helper_by_helicity(
+            is_z=True,
+            filename=(
+                f"{common.data_dir}/angularCoefficients/w_z_helicity_xsecs_maxFiles_m1_alphaSunfoldingBinning_helicity.hdf5"
+                if args.unfolding
+                else f"{common.data_dir}/angularCoefficients/w_z_moments.hdf5"
+            ),
+            rebin_ptVgen=False,
+            return_tensor=True,
+        )
+    if "W" in procs and "qcdScale" in corrs:
+        theory_helpers_procs["W"]["qcdScale"] = make_qcd_uncertainty_helper_by_helicity(
+            is_z=False,
+            filename=(f"{common.data_dir}/angularCoefficients/w_z_moments.hdf5"),
+            rebin_ptVgen=False,
+            return_tensor=True,
+        )
 
-        if "qcdScale" in corrs:
-            theory_helpers_procs["Z"]["qcdScale"] = (
-                make_qcd_uncertainty_helper_by_helicity(
-                    is_z=True,
-                    filename=(
-                        f"{common.data_dir}/angularCoefficients/w_z_helicity_xsecs_maxFiles_m1_alphaSunfoldingBinning_helicity.hdf5"
-                        if args.unfolding
-                        else f"{common.data_dir}/angularCoefficients/w_z_moments.hdf5"
-                    ),
-                    rebin_ptVgen=False,
-                    return_tensor=True,
-                )
-            )
+    for proc in theory_helpers_procs.keys():
+
         if "pdf" in corrs:
-            theory_helpers_procs["Z"]["pdf"] = (
+            theory_helpers_procs[proc]["pdf"] = (
                 make_pdfs_uncertanties_helper_by_helicity(
-                    proc="Z",
+                    proc=proc,
                     pdfs=[theory_tools.pdfMap[pdf]["name"] for pdf in args.pdfs],
                     filename=f"{common.data_dir}/angularCoefficients/w_z_gen_dists_maxFiles_m1_pdfsByHelicity.hdf5",
                 )
             )
         if "alphaS" in corrs:
-            theory_helpers_procs["Z"]["alphaS"] = (
-                make_pdfAlphaS_uncertainty_helper_by_helicity(
-                    proc="Z",
-                    filename=f"{common.data_dir}/angularCoefficients/w_z_gen_dists_scetlib_dyturboCorr_maxFiles_m1_asByHelicity.hdf5",
-                )
-            )
-
-    if "W" in procs:
-        theory_helpers_procs["W"] = {}
-
-        if "qcdScale" in corrs:
-            theory_helpers_procs["W"]["qcdScale"] = (
-                make_qcd_uncertainty_helper_by_helicity(
-                    is_z=False,
-                    filename=(
-                        f"{common.data_dir}/angularCoefficients/w_z_moments.hdf5"
-                    ),
-                    rebin_ptVgen=False,
-                    return_tensor=True,
-                )
-            )
-        if "pdf" in corrs:
-            theory_helpers_procs["W"]["pdf"] = (
-                make_pdfs_uncertanties_helper_by_helicity(
-                    proc="W",
-                    pdfs=[theory_tools.pdfMap[pdf]["name"] for pdf in args.pdfs],
-                    filename=f"{common.data_dir}/angularCoefficients/w_z_gen_dists_maxFiles_m1_pdfsByHelicity.hdf5",
-                )
-            )
-        if "alphaS" in corrs:
-            theory_helpers_procs["W"]["alphaS"] = (
-                make_pdfAlphaS_uncertainty_helper_by_helicity(
-                    proc="W",
+            theory_helpers_procs[proc]["alphaS"] = (
+                make_pdf_uncertainty_helper_by_helicity(
+                    proc=proc,
+                    pdf="scetlib_dyturboCT18Z_pdfasCorr",
+                    var_ax_name="vars",
                     filename=f"{common.data_dir}/angularCoefficients/w_z_gen_dists_scetlib_dyturboCorr_maxFiles_m1_asByHelicity.hdf5",
                 )
             )
@@ -625,6 +602,7 @@ def make_pdf_uncertainty_helper_by_helicity(
     proc,
     pdf,
     filename=f"{common.data_dir}/angularCoefficients/w_z_gen_dists_maxFiles_m1_alphaSunfoldingBinning_helicity.hdf5",
+    var_ax_name="pdfVar",
     return_tensor=True,
 ):
 
@@ -654,83 +632,17 @@ def make_pdf_uncertainty_helper_by_helicity(
 
     # construct the correction tensor
     corr_ax = hist.axis.Boolean(name="corr")
-    vars_ax = pdf_vars.axes["pdfVar"]
+    vars_ax = pdf_vars.axes[var_ax_name]
     axes_no_scale = pdf_vars.axes[:-1]
     corr_coeffs = hist.Hist(*axes_no_scale, corr_ax, vars_ax)
 
-    # set all helicity_xsecs, including overflow/underflow to default safe value (leads to weight of 1.0 by construction)
-    corr_coeffs.values(flow=True)[...] = 1.0
-
     # set all helicity_xsecs equal to nominal
-    corr_coeffs.values(flow=True)[...] = pdf_vars[{"pdfVar": 0}].values(flow=True)[
+    corr_coeffs.values(flow=True)[...] = pdf_vars[{var_ax_name: 0}].values(flow=True)[
         ..., None, None
     ]
 
     # set the variations
     corr_coeffs.values(flow=True)[..., 1, :] = pdf_vars.values(flow=True)
-
-    if return_tensor:
-        helper = makeCorrectionsTensor(
-            corr_coeffs, ROOT.wrem.CentralCorrByHelicityHelper, tensor_rank=3
-        )
-
-        # override tensor_axes since the output is different here
-        helper.tensor_axes = [vars_ax]
-
-        return helper
-    else:
-        return corr_coeffs
-
-
-def make_pdfAlphaS_uncertainty_helper_by_helicity(
-    proc,
-    filename=f"{common.data_dir}/angularCoefficients/w_z_gen_dists_maxFiles_m1_alphaSunfoldingBinning_helicity.hdf5",
-    return_tensor=True,
-):
-
-    # load helicity cross sections from file
-    with h5py.File(filename, "r") as h5file:
-        results = input_tools.load_results_h5py(h5file)
-        if proc == "Z":
-            pdf_vars = results["ZmumuPostVFP"]["output"][
-                "nominal_gen_scetlib_dyturboCT18Z_pdfasCorr"
-            ].get()
-        elif proc == "W":
-            pdf_vars_Wp = results["WplusmunuPostVFP"]["output"][
-                "nominal_gen_scetlib_dyturboCT18Z_pdfasCorr"
-            ].get()
-            pdf_vars_Wm = results["WminusmunuPostVFP"]["output"][
-                "nominal_gen_scetlib_dyturboCT18Z_pdfasCorr"
-            ].get()
-            pdf_vars = hh.addHists(pdf_vars_Wp, pdf_vars_Wm)
-
-    # construct the correction tensor
-    corr_ax = hist.axis.Boolean(name="corr")
-    # vars_ax = pdf_vars.axes['alphasVar']
-    vars_ax = pdf_vars.axes["vars"]
-    axes_no_scale = pdf_vars.axes[:-1]
-    corr_coeffs = hist.Hist(*axes_no_scale, corr_ax, vars_ax)
-
-    # set all helicity_xsecs, including overflow/underflow to default safe value (leads to weight of 1.0 by construction)
-    corr_coeffs.values(flow=True)[...] = 1.0
-
-    # set all helicity_xsecs equal to nominal
-    corr_coeffs.values(flow=True)[...] = pdf_vars[{"vars": 0}].values(flow=True)[
-        ..., None, None
-    ]
-
-    # set the variations
-    corr_coeffs.values(flow=True)[..., 1, :] = pdf_vars.values(flow=True)
-
-    # if proc == 'W':
-    #     print()
-    #     print(corr_coeffs.values(flow=True))
-    #     print(np.isnan(pdf_vars.values(flow=True)))
-    #     print(np.isnan(np.sum(pdf_vars.values(flow=True))))
-    #     print(np.isnan(np.sum(corr_coeffs.values(flow=True))))
-    #     print(proc)
-    #     print()
-    #     exit()
 
     if return_tensor:
         helper = makeCorrectionsTensor(

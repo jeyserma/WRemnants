@@ -157,6 +157,7 @@ def build_graph(df, dataset):
     isW = dataset.name in common.wprocs_lowpu
     isZ = dataset.name in common.zprocs_lowpu
 
+    theory_helpers = None
     if dataset.name in common.vprocs_lowpu:
         theory_helpers = theory_helpers_procs[dataset.name[0]]
 

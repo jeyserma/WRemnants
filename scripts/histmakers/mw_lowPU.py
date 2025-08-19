@@ -190,6 +190,7 @@ def build_graph(df, dataset):
     results = []
     isQCDMC = dataset.group == "QCD"
 
+    theory_helpers = None
     if dataset.name in common.vprocs_lowpu:
         theory_helpers = theory_helpers_procs[dataset.name[0]]
 
