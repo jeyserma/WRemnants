@@ -181,6 +181,55 @@ absYV_binning = [
 
 yll_10quantiles_binning = [-2.5, -1.5, -1.0, -0.5, -0.25, 0, 0.25, 0.5, 1.0, 1.5, 2.5]
 
+absYVgen_binning_corr = np.concatenate(
+    (np.arange(0, 2.6, 0.25), [2.75, 3.0, 3.25, 3.5, 3.75, 4.0, 5.0])
+)
+ptVgen_binning_corr = [
+    0,
+    1,
+    2,
+    2.5,
+    3,
+    3.5,
+    4,
+    4.5,
+    5,
+    5.5,
+    6,
+    6.5,
+    7,
+    7.5,
+    8,
+    8.5,
+    9,
+    9.5,
+    10,
+    10.5,
+    11,
+    11.5,
+    12,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18,
+    19,
+    20,
+    22,
+    24,
+    26,
+    28,
+    30,
+    33,
+    37,
+    44,
+    54,
+    75,
+    100,
+    1300,
+]
+
 # categorical axes in python bindings always have an overflow bin, so use a regular axis for the charge
 axis_charge = hist.axis.Regular(
     2, -2.0, 2.0, underflow=False, overflow=False, name="charge"

@@ -948,6 +948,46 @@ unsigned int get_dummy_run_by_lumi_quantile(const unsigned int run,
   return run_vals[bin];
 }
 
+template <typename TensorType>
+TensorType clamp_tensor_safe(const TensorType &tensor, double min_val,
+                             double max_val) {
+  static_assert(std::is_same_v<typename TensorType::Scalar, double>,
+                "Tensor must have double scalar type");
+
+  // Create result tensor with same dimensions
+  TensorType result = tensor;
+
+  // Apply element-wise operation: only clamp, preserve NaN
+  result = result.unaryExpr([min_val, max_val](double x) {
+    if (std::isnan(x)) {
+      return x; // Keep NaN as is
+    }
+    return std::max(min_val, std::min(max_val, x));
+  });
+
+  return result;
+}
+// Overload with NaN replacement
+template <typename TensorType>
+TensorType clamp_tensor_safe(const TensorType &tensor, double min_val,
+                             double max_val, double nan_replacement) {
+  static_assert(std::is_same_v<typename TensorType::Scalar, double>,
+                "Tensor must have double scalar type");
+
+  // Create result tensor with same dimensions
+  TensorType result = tensor;
+
+  // Apply element-wise operation: replace NaN, then clamp
+  result = result.unaryExpr([min_val, max_val, nan_replacement](double x) {
+    if (std::isnan(x)) {
+      return nan_replacement;
+    }
+    return std::max(min_val, std::min(max_val, x));
+  });
+
+  return result;
+}
+
 } // namespace wrem
 
 #endif
