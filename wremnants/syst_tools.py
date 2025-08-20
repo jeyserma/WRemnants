@@ -1697,12 +1697,8 @@ def add_qcdScaleByHelicityUnc_hist(
             "nominal_weight",
         ],
     )
-    safeTensorName = f"{tensorName}_clamped"
-    df = df.Define(
-        safeTensorName, f"wrem::clamp_tensor_safe({tensorName}, 0.9, 1.1, 1.0)"
-    )
     add_syst_hist(
-        results, df, name, axes, cols, safeTensorName, helper.tensor_axes, **kwargs
+        results, df, name, axes, cols, tensorName, helper.tensor_axes, **kwargs
     )
 
 
@@ -1751,8 +1747,12 @@ def add_pdfAlphaSByHelicity_hist(
             "nominal_weight",
         ],
     )
+    safeTensorName = f"{tensorName}_clamped"
+    df = df.Define(
+        safeTensorName, f"wrem::clamp_tensor_safe({tensorName}, 0.9, 1.1, 1.0)"
+    )
     add_syst_hist(
-        results, df, name, axes, cols, tensorName, helper.tensor_axes, **kwargs
+        results, df, name, axes, cols, safeTensorName, helper.tensor_axes, **kwargs
     )
 
 
