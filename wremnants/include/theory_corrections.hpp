@@ -168,7 +168,7 @@ public:
   using base_t::base_t;
 
   var_tensor_t operator()(double mV, double yV, double ptV, int qV,
-                          const CSVars &csvars, double nominal_weight) {
+                          const CSVars &csvars, double nominal_weight = 1.0) {
     static_assert(sizes.size() == 3);
     static_assert(nhelicity == NHELICITY);
     static_assert(ncorrs == 2);
@@ -185,8 +185,9 @@ public:
     const auto uncorr_hel = coeffs_with_angular.chip(0, 1);
     const auto corr_hel = coeffs_with_angular.chip(1, 1);
 
-    const var_tensor_t corr_weight_vars =
-        corr_hel.sum(reduceddims) / uncorr_hel.sum(reduceddims);
+    const var_tensor_t corr_weight_vars = corr_hel.sum(reduceddims) /
+                                          uncorr_hel.sum(reduceddims) *
+                                          nominal_weight;
 
     return corr_weight_vars; // dimensions: {nvars}
   }
