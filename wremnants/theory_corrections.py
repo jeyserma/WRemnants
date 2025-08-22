@@ -457,7 +457,9 @@ def make_theory_helpers(
         if "pdf_central" in corrs:
             theory_helpers_procs[proc]["pdf_central"] = (
                 make_pdf_weight_helper_by_helicity(
-                    proc=proc, pdf=theory_tools.pdfMap[args.pdfs[0]]["name"]
+                    proc=proc,
+                    pdf=theory_tools.pdfMap[args.pdfs[0]]["name"],
+                    filename=f"{common.data_dir}/angularCoefficients/w_z_gen_dists_maxFiles_m1_pdfsByHelicity.hdf5",
                 )
             )
 
@@ -668,7 +670,7 @@ def make_pdf_uncertainty_helper_by_helicity(
 def make_pdf_weight_helper_by_helicity(
     proc,
     pdf,
-    filename=f"/ceph/submit/data/group/cms/store/user/lavezzo/alphaS/250821_gen_pdfsByHelicity/w_z_gen_dists_maxFiles_m1_pdfsByHelicity.hdf5",
+    filename=f"{common.data_dir}/angularCoefficients/w_z_gen_dists_maxFiles_m1_pdfsByHelicity.hdf5",
     var_ax_name="pdfVar",
     return_tensor=True,
 ):
