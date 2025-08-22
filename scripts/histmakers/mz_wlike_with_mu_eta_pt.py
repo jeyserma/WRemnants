@@ -447,6 +447,7 @@ def build_graph(df, dataset):
     isZ = dataset.name in common.zprocs
     isWorZ = isW or isZ
 
+    theory_helpers = None
     if isWorZ:
         theory_helpers = theory_helpers_procs[dataset.name[0]]
 
@@ -883,7 +884,7 @@ def build_graph(df, dataset):
         logger.debug(f"Exp weight defined: {weight_expr}")
         df = df.Define("exp_weight", weight_expr)
         df = theory_tools.define_theory_weights_and_corrs(
-            df, dataset.name, corr_helpers, args
+            df, dataset.name, corr_helpers, args, theory_helpers=theory_helpers
         )
 
     results.append(
