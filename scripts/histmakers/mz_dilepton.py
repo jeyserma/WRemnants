@@ -568,7 +568,7 @@ def build_graph(df, dataset):
         df_gen = df
         df_gen = df_gen.DefinePerSample("exp_weight", "1.0")
         df_gen = theory_tools.define_theory_weights_and_corrs(
-            df_gen, dataset.name, corr_helpers, args
+            df_gen, dataset.name, corr_helpers, args, theory_helpers=theory_helpers
         )
 
         for obs in auxiliary_gen_axes:
