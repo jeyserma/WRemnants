@@ -902,7 +902,7 @@ def define_theory_weights_and_corrs(df, dataset_name, helpers, args, theory_help
         df = define_ew_vars(df)
 
     df = df.DefinePerSample("theory_weight_truncate", "10.")
-    if "pdf_central" in theory_helpers.keys():
+    if theory_helpers and "pdf_central" in theory_helpers.keys():
         df = define_central_boson_pdf_weight(
             df,
             dataset_name,

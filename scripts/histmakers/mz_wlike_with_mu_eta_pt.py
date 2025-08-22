@@ -446,6 +446,7 @@ def build_graph(df, dataset):
     isZ = dataset.name in common.zprocs
     isWorZ = isW or isZ
 
+    theory_helpers = None
     if isWorZ:
         theory_helpers = theory_helpers_procs[dataset.name[0]]
 
