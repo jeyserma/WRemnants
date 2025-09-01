@@ -290,8 +290,8 @@ muon_prefiring_helper, muon_prefiring_helper_stat, muon_prefiring_helper_syst = 
     muon_prefiring.make_muon_prefiring_helpers(era=era)
 )
 
-qcdScaleByHelicity_helpers = (
-    theory_corrections.make_qcd_uncertainty_helpers_by_helicity()
+theory_helpers_procs = theory_corrections.make_theory_helpers(
+    args, corrs=["qcdScale", "alphaS", "pdf"]
 )
 
 # extra axes which can be used to label tensor_axes
@@ -447,8 +447,9 @@ def build_graph(df, dataset):
     isZ = dataset.name in common.zprocs
     isWorZ = isW or isZ
 
+    theory_helpers = None
     if isWorZ:
-        qcdScaleByHelicity_helper = qcdScaleByHelicity_helpers[dataset.name[0]]
+        theory_helpers = theory_helpers_procs[dataset.name[0]]
 
     if dataset.is_data:
         df = df.DefinePerSample("weight", "1.0")
@@ -560,7 +561,7 @@ def build_graph(df, dataset):
                     args,
                     dataset.name,
                     corr_helpers,
-                    qcdScaleByHelicity_helper,
+                    theory_helpers,
                     [a for a in unfolding_axes[level] if a.name != "acceptance"],
                     [c for c in unfolding_cols[level] if c != f"{level}_acceptance"],
                     base_name=level,
@@ -883,7 +884,7 @@ def build_graph(df, dataset):
         logger.debug(f"Exp weight defined: {weight_expr}")
         df = df.Define("exp_weight", weight_expr)
         df = theory_tools.define_theory_weights_and_corrs(
-            df, dataset.name, corr_helpers, args
+            df, dataset.name, corr_helpers, args, theory_helpers=theory_helpers
         )
 
     results.append(
@@ -1393,7 +1394,7 @@ def build_graph(df, dataset):
                 args,
                 dataset.name,
                 corr_helpers,
-                qcdScaleByHelicity_helper,
+                theory_helpers,
                 axes,
                 cols,
                 for_wmass=False,

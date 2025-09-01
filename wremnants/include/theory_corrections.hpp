@@ -189,7 +189,7 @@ public:
                                           uncorr_hel.sum(reduceddims) *
                                           nominal_weight;
 
-    return corr_weight_vars;
+    return corr_weight_vars; // dimensions: {nvars}
   }
 };
 
