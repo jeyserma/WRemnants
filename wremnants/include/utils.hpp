@@ -654,10 +654,74 @@ auto scalar_select(const ArgTypeIf &cond, const ArgTypeThen &arg0,
 // Breit-Wigner mass weights
 const double MZ_GEN_ = 91153.509740726733;
 const double GAMMAZ_GEN_ = 2493.2018986110700;
-const double MW_GEN_ = 80351.812293789408;
-const double GAMMAW_GEN_ = 2090.4310808144846;
+const double MW_GEN_ = 80351.812293;    // 80379; //80351.812293789408;
+const double GAMMAW_GEN_ = 2090.431080; // 2091.1; // 2090.4310808144846;
 
 double computeBreitWignerWeight(double massVgen, double offset, int type) {
+  // calculate ratio of BW(massVgen, MV_GEN_+offset)/BW(massVgen, MV_GEN_)
+  //
+  // parameters:
+  // massVgen = generated mass of the V boson in GeV
+  // offset = mass shift in GeV
+  // type = 0 for Z, 1 for W
+  //
+  // returns:
+  // weight = BW(massVgen, MV_GEN_+offset)/BW(massVgen, MV_GEN_)
+  //
+  // formula:
+  // BW(m,mGen) = k / ( s^2 + Gamma^2 M^2 )
+  // where
+  // s = m^2 - mGen^2
+  // k = 2*sqrt(2)/pi * M*Gamma*gamma / sqrt(M^2 + gamma)
+  // gamma = sqrt(mGen^2(mGen^2 + Gamma^2))
+  // m = mass of the V boson in GeV (can be offshell)
+  // mGen = true mass parameters of the V boson in GeV
+  //
+  // Notes:
+  // Gamma = width of V boson, which scales like mGen^3 at LO
+  // so Gamma(MV_GEN_+offset) = Gamma(MV_GEN_) * ( (MV_GEN_+offset)/MV_GEN_ )^3
+
+  double MV_GEN_ = 0;
+  double GAMMAV_GEN_ = 0;
+  if (type == 0) {
+    MV_GEN_ = MZ_GEN_;
+    GAMMAV_GEN_ = GAMMAZ_GEN_;
+  } else {
+    MV_GEN_ = MW_GEN_;
+    GAMMAV_GEN_ = GAMMAW_GEN_;
+  }
+
+  double targetMass = MV_GEN_ + offset;
+  double targetGamma = GAMMAW_GEN_ * std::pow(targetMass / MW_GEN_, 3);
+
+  double gamma = std::sqrt(MV_GEN_ * MV_GEN_ *
+                           (MV_GEN_ * MV_GEN_ + GAMMAV_GEN_ * GAMMAV_GEN_));
+  double gamma_offset =
+      std::sqrt(targetMass * targetMass *
+                (targetMass * targetMass + targetGamma * targetGamma));
+
+  // willfully leaving out 2*sqrt(2)/pi since it cancels in the ratio anyways
+  double k =
+      MV_GEN_ * GAMMAV_GEN_ * gamma / std::sqrt(MV_GEN_ * MV_GEN_ + gamma);
+  double k_offset = targetMass * targetGamma * gamma_offset /
+                    std::sqrt(targetMass * targetMass + gamma_offset);
+
+  double s_hat = massVgen * massVgen * 1000 * 1000;
+  double offshell = s_hat - MV_GEN_ * MV_GEN_;
+  double offshell_offset = s_hat - targetMass * targetMass;
+
+  double bw =
+      k / (offshell * offshell + GAMMAV_GEN_ * GAMMAV_GEN_ * MV_GEN_ * MV_GEN_);
+  double bw_offset =
+      k_offset / (offshell_offset * offshell_offset +
+                  targetGamma * targetGamma * targetMass * targetMass);
+
+  double weight = bw_offset / bw;
+
+  return weight;
+}
+
+double computeBreitWignerWeightOLD(double massVgen, double offset, int type) {
 
   double MV_GEN_ = 0;
   double GAMMAV_GEN_ = 0;
@@ -695,7 +759,6 @@ Vec_f breitWignerWeights(double massVgen, int type = 0) {
 
     offset = -100 + i * 10;
     res[i] = computeBreitWignerWeight(massVgen, offset, type);
-    // cout << i << " " << offset << " " << res[i] << endl;
   }
 
   return res;
