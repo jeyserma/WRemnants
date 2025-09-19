@@ -58,12 +58,10 @@ def load_corr_helpers(
             logger.debug(f"Make theory correction helper for file: {fname}")
             corrh = load_corr_hist(fname, proc[0], get_corr_name(generator))
             numh = None
-            if generator in [
-                "scetlib_nnlojet_N3p0LLN2LOUnsmoothed",
-                "scetlib_nnlojet_N4p0LLN3LOUnsmoothed",
-                "scetlib_nnlojet_N4p0LLN3LOUnsmoothed_N3pLLFixed",
-                "scetlib_nnlojet_N3p1LLN3LOUnsmoothed",
-            ]:
+            if generator == generators[0] and "nnlojet" in generator:
+                logger.info(
+                    f"Adding statistical uncertainties for correction {generator}"
+                )
                 numh = load_corr_hist(fname, proc[0], f"{generator}_hist")
 
             corrh = postprocess_corr_hist(corrh, numh)

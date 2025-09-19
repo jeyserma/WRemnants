@@ -41,6 +41,14 @@ class TheoryHelper(object):
         self.datagroups = datagroups
         corr_hists = self.datagroups.args_from_metadata("theoryCorr")
         self.corr_hist_name = (corr_hists[0] + "Corr") if corr_hists else None
+
+        # Special case for dataPtll corr
+        if "data" in self.corr_hist_name and "scetlib_dyturbo" in corr_hists:
+            logger.warning(
+                f"Using uncertainties from scetlib_dyturboCorr for corr {self.corr_hist_name}"
+            )
+            self.corr_hist_name = "scetlib_dyturboCorr"
+
         self.syst_ax = "vars"
         self.corr_hist = None
         self.resumUnc = None
@@ -104,7 +112,8 @@ class TheoryHelper(object):
         self.helicity_fit_unc = helicity_fit_unc
         self.add_nonpert_unc(model=self.np_model)
         self.add_resum_unc(scale=self.tnp_scale)
-        self.add_stat_unc()
+        if "nnlojet" in self.corr_hist_name:
+            self.add_stat_unc()
         # additional uncertainty for effect of shower and intrinsic kt on angular coeffs
         self.add_helicity_shower_kt_uncertainty()
 
@@ -476,16 +485,9 @@ class TheoryHelper(object):
         self.propagate_to_fakes = to_fakes
 
     def add_stat_unc(self):
-        processesZ = ["single_v_samples"]
-        processesW = ["single_v_samples"]
-        processes = processesW if self.label == "W" else processesZ
-        var_names = [
-            f"per_bin_stat_unc_theory_corr_bin{i}{direction}"
-            for i in range(1600)
-            for direction in ["Up", "Down"]
-        ]
+        processes = ["signal_samples"]
         logger.debug(
-            f"Adding theory-correction statistical uncertainties from syst entries {var_names}"
+            f"Adding theory-correction statistical uncertainties from syst entries"
         )
 
         self.datagroups.addSystematic(
@@ -494,8 +496,15 @@ class TheoryHelper(object):
             groups=["theory"],
             systAxes=[self.syst_ax],
             passToFakes=self.propagate_to_fakes,
-            preOp=lambda h: h[{self.syst_ax: var_names}],
-            outNames=var_names,
+            preOp=lambda h: h[
+                {
+                    self.syst_ax: [
+                        v
+                        for v in self.corr_hist.axes[self.syst_ax]
+                        if "per_bin_stat_unc_theory_corr" in v
+                    ]
+                }
+            ],
             name="theoryCorrStat",
         )
 

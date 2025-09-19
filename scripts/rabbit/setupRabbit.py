@@ -4,10 +4,10 @@ import math
 
 import hist
 import numpy as np
+
 import rabbit.debugdata
 import rabbit.io_tools
 from rabbit import tensorwriter
-
 from utilities import common, parsing
 from wremnants import (
     combine_helpers,
@@ -2541,6 +2541,7 @@ if __name__ == "__main__":
     outnames = []
     for i, ifile in enumerate(args.inputFile):
         fitvar = args.fitvar[i].split("-")
+        print(fitvar)
         genvar = (
             args.genAxes[i].split("-")
             if hasattr(args, "genAxes") and len(args.genAxes)
