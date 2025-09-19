@@ -4,9 +4,9 @@ import re
 
 import numpy as np
 import pandas as pd
-import rabbit.io_tools
 from matplotlib.patches import Polygon
 
+import rabbit.io_tools
 from scripts.plotting import plot_decorr_params as pdp
 from utilities import parsing
 from wums import logging, output_tools, plot_tools
@@ -394,7 +394,12 @@ if __name__ == "__main__":
             central = 0
 
         plot_tools.add_cms_decor(
-            ax1, args.cmsDecor, data=True, lumi=lumi, loc=args.logoPos
+            ax1,
+            args.cmsDecor,
+            data=True,
+            lumi=lumi,
+            loc=args.logoPos,
+            text_size=args.cmsDecorSize,
         )
         plot_tools.addLegend(
             ax1,
