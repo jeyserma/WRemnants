@@ -241,9 +241,8 @@ def add_xnorm_histograms(
 
 
 def reweight_to_fitresult(filename, result=None, channel="ch0", flow=True):
-    from rabbit.io_tools import get_fitresult
-
     import wums.boostHistHelpers as hh
+    from rabbit.io_tools import get_fitresult
 
     fitresult, meta = get_fitresult(filename, result, meta=True)
 
