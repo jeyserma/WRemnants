@@ -150,6 +150,9 @@ logger = logging.setup_logger(__file__, args.verbose, args.noColorLogger)
 
 useGlobalOrTrackerVeto = args.useGlobalOrTrackerVeto
 
+if args.randomizeDataByRun and not args.addRunAxis:
+    raise ValueError("Options --randomizeDataByRun only works with --addRunAxis.")
+
 if args.selectNonPromptFromLightMesonDecay and args.selectNonPromptFromSV:
     raise ValueError(
         "Options --selectNonPromptFromSV and --selectNonPromptFromLightMesonDecay cannot be used together."
@@ -1877,16 +1880,27 @@ def build_graph(df, dataset):
                         cols,
                         storage_type=storage_type,
                     )
-
-            df = syst_tools.add_L1Prefire_unc_hists(
-                results,
-                df,
-                axes,
-                cols,
-                helper_stat=muon_prefiring_helper_stat,
-                helper_syst=muon_prefiring_helper_syst,
-                storage_type=storage_type,
-            )
+            if era == "2016PostVFP" and args.addRunAxis and not args.randomizeDataByRun:
+                # to simplify the code, use helper with largest uncertainty for all eras when splitting data
+                df = syst_tools.add_L1Prefire_unc_hists(
+                    results,
+                    df,
+                    axes,
+                    cols,
+                    helper_stat=muon_prefiring_helper_stat_BG,
+                    helper_syst=muon_prefiring_helper_syst_BG,
+                    storage_type=storage_type,
+                )
+            else:
+                df = syst_tools.add_L1Prefire_unc_hists(
+                    results,
+                    df,
+                    axes,
+                    cols,
+                    helper_stat=muon_prefiring_helper_stat,
+                    helper_syst=muon_prefiring_helper_syst,
+                    storage_type=storage_type,
+                )
 
         # n.b. this is the W analysis so mass weights shouldn't be propagated
         # on the Z samples (but can still use it for dummy muon scale)
