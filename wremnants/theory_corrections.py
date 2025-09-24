@@ -9,6 +9,7 @@ import hist
 import lz4.frame
 import numpy as np
 import ROOT
+from scipy.interpolate import make_smoothing_spline
 
 from utilities import common
 from utilities.io_tools import input_tools
@@ -59,7 +60,14 @@ def load_corr_helpers(
             corrh = load_corr_hist(
                 fname, proc[0], get_corr_name(generator, minnlo_ratio=minnlo_ratio)
             )
-            corrh = postprocess_corr_hist(corrh)
+            numh = None
+            if generator == generators[0] and "nnlojet" in generator:
+                logger.info(
+                    f"Adding statistical uncertainties for correction {generator}"
+                )
+                numh = load_corr_hist(fname, proc[0], f"{generator}_hist")
+
+            corrh = postprocess_corr_hist(corrh, numh)
             if not make_tensor:
                 corr_helpers[proc][generator] = corrh
             elif "Helicity" in generator:
@@ -157,7 +165,7 @@ def compute_envelope(
     return res
 
 
-def postprocess_corr_hist(corrh):
+def postprocess_corr_hist(corrh, numh=None):
     # extend variations with some envelopes and special kinematic slices
 
     if (
@@ -168,10 +176,11 @@ def postprocess_corr_hist(corrh):
 
     additional_var_hists = {}
 
-    renorm_scale_vars = ["pdf0", "kappaFO0.5-kappaf2.", "kappaFO2.-kappaf0.5"]
+    central_var = corrh.axes["vars"][0]
+    renorm_scale_vars = [central_var, "kappaFO0.5-kappaf2.", "kappaFO2.-kappaf0.5"]
 
     renorm_fact_scale_vars = [
-        "pdf0",
+        central_var,
         "kappaFO0.5-kappaf2.",
         "kappaFO2.-kappaf0.5",
         "mufdown",
@@ -186,7 +195,7 @@ def postprocess_corr_hist(corrh):
         for var in corrh.axes["vars"]
         if any(resum_scale in var for resum_scale in resum_scales)
     ]
-    resum_scale_vars = ["pdf0"] + resum_scale_vars_exclusive
+    resum_scale_vars = [central_var] + resum_scale_vars_exclusive
 
     if len(renorm_fact_scale_vars) == 1:
         return corrh
@@ -261,6 +270,39 @@ def postprocess_corr_hist(corrh):
             compute_envelope(corrh, "resum_scale_envelope", resum_scale_vars)
         )
 
+    # add per-bin stat unc from correction (~= only the numerator, MiNNLO has very small stat uncs)
+    if numh is not None:
+        numh_nom = numh[{"vars": 0}]
+        var_relative = np.sqrt(numh_nom.variances()) / numh_nom.values()
+        nom_vals = corrh[{"vars": 0}].values()
+
+        shape = var_relative.shape
+        nbins = var_relative.size
+
+        # nbins copies of the original histogram with shape `shape`
+        base_up = np.broadcast_to(nom_vals, (nbins,) + shape).copy()
+        base_dn = base_up.copy()
+
+        linear_idx = np.arange(nbins)  # 1-dim array ennumerating all bins
+        multi_idx = np.unravel_index(linear_idx, shape)  # n-d idx for each bin
+        flat_var_rel = var_relative.ravel()  # 1-dim array of variations
+
+        # address n-th copy of histograms (to hold the variation in the n-th bin [and no other]).
+        # In that n-th copy, modify the corresponding bin in the n-dim hist
+        base_up[(linear_idx,) + multi_idx] *= 1.0 + flat_var_rel
+        base_dn[(linear_idx,) + multi_idx] *= 1.0 - flat_var_rel
+
+        template = corrh[{"vars": 0}]
+
+        for i in range(nbins):
+            h_up = template.copy()
+            h_dn = template.copy()
+            h_up.values()[...] = base_up[i]
+            h_dn.values()[...] = base_dn[i]
+
+            additional_var_hists[f"per_bin_stat_unc_theory_corr_bin{i}Up"] = h_up
+            additional_var_hists[f"per_bin_stat_unc_theory_corr_bin{i}Down"] = h_dn
+
     if not additional_var_hists:
         return corrh
 
@@ -319,6 +361,35 @@ def rebin_corr_hists(hists, ndim=-1, binning=None):
     return hists
 
 
+# Apply an iterative smoothing in 2D (effectively assumed to be Y, the qT)
+def smooth_theory_corr(corrh, minnloh, numh, ax2_start=5):
+    if corrh.ndim != 5:
+        raise NotImplementedError(
+            f"Currently only dimension 5 hists are supported for smoothing. Found ndim={corrh.ndim} ({corrh.axes.name})"
+        )
+
+    nc = corrh.axes["charge"].size
+
+    # First smooth in 1D (should be rapidity)
+    corrh1D = hh.divideHists(numh[{"vars": 0}].project(1), minnloh.project(1))
+    ax1 = corrh.axes[1]
+    spl = make_smoothing_spline(ax1.centers, corrh1D.values())
+    smooth = spl(ax1.centers) / corrh1D.values()
+    corrh.values()[...] = (corrh.values().T * smooth[:, np.newaxis]).T
+
+    # This should be qT
+    ax2 = corrh.axes[2]
+    for i1 in range(ax1.size):
+        for ic in range(corrh.axes["charge"].size):
+            for iv in range(corrh.axes["vars"].size):
+                spl = make_smoothing_spline(
+                    ax2.centers[ax2_start:], corrh[0, i1, ax2_start:, ic, iv].values()
+                )
+                corrh.values()[0, i1, ax2_start:, ic, iv] = spl(ax2.centers[ax2_start:])
+
+    return corrh
+
+
 # Assuming the 3 physics variable dimensions are first
 def set_corr_ratio_flow(corrh):
     # Probably there's a better way to do this...
@@ -343,10 +414,23 @@ def set_corr_ratio_flow(corrh):
     return corrh
 
 
-def make_corr_from_ratio(denom_hist, num_hist, rebin=False):
+def make_corr_from_ratio(denom_hist, num_hist, rebin=None, smooth="numerator"):
     denom_hist, num_hist = rebin_corr_hists([denom_hist, num_hist], binning=rebin)
 
+    if smooth == "numerator":
+        logger.info(
+            "Applying spline-based smoothing to numerator before making correction hist"
+        )
+        num_hist = hh.smooth_hist(
+            hh.smooth_hist(num_hist, "absY", exclude_axes=["qT"]), "qT", start_bin=4
+        )
+
     corrh = hh.divideHists(num_hist, denom_hist, flow=False, by_ax_name=False)
+
+    if smooth == "ratio":
+        logger.info("Applying spline-based smoothing to correction hist ratio")
+        corrh = smooth_theory_corr(corrh, denom_hist, num_hist, ax2_start=5)
+
     return set_corr_ratio_flow(corrh), denom_hist, num_hist
 
 
