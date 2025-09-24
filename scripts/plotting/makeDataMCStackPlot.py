@@ -56,7 +56,7 @@ parser.add_argument(
 )
 parser.add_argument(
     "--axlim",
-    type=float,
+    type=parsing.str_to_complex_or_int,
     default=[],
     nargs="*",
     help="Restrict axis to this range (assumes pairs of values by axis, with trailing axes optional)",
