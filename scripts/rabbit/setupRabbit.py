@@ -475,7 +475,7 @@ def make_parser(parser=None):
         "--resumUnc",
         default="tnp",
         type=str,
-        choices=["scale", "tnp", "tnp_minnlo", "minnlo", "none"],
+        choices=["scale", "binned_scale", "tnp", "tnp_minnlo", "minnlo", "none"],
         help="Include SCETlib uncertainties",
     )
     parser.add_argument(
@@ -782,6 +782,12 @@ def make_parser(parser=None):
         type=float,
         default=1.26,
         help="scaling of bin by bin statistical uncertainty for W mass analysis",
+    )
+    parser.add_argument(
+        "--binByBinStatScaleForDilepton",
+        type=float,
+        default=1.0,
+        help="scaling of bin by bin statistical uncertainty for Z-dilepton analysis",
     )
     parser.add_argument(
         "--exponentialTransform",
@@ -1272,7 +1278,11 @@ def setup(
     datagroups.addNominalHistograms(
         real_data=args.realData,
         exclude_bin_by_bin_stat="signal_samples" if args.explicitSignalMCstat else None,
-        bin_by_bin_stat_scale=args.binByBinStatScaleForMW if wmass else 1.0,
+        bin_by_bin_stat_scale=(
+            args.binByBinStatScaleForMW
+            if wmass
+            else args.binByBinStatScaleForDilepton if dilepton else 1.0
+        ),
         fitresult_data=fitresult_data,
         masked=xnorm and fitresult_data is None,
     )
@@ -2650,6 +2660,7 @@ if __name__ == "__main__":
     outnames = []
     for i, ifile in enumerate(args.inputFile):
         fitvar = args.fitvar[i].split("-")
+        print(fitvar)
         genvar = (
             args.genAxes[i].split("-")
             if hasattr(args, "genAxes") and len(args.genAxes)
