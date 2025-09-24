@@ -1,11 +1,10 @@
-import argparse
 import os
 import pickle
 import re
 
 import lz4.frame
 
-from utilities import common
+from utilities import common, parsing
 from wremnants import theory_corrections
 from wums import boostHistHelpers as hh
 from wums import logging, output_tools
@@ -20,34 +19,27 @@ def corr_name(corrf):
 
 
 def parse_args():
-    parser = argparse.ArgumentParser()
+    parser = parsing.base_parser()
     parser.add_argument(
         "-c",
-        "--ref-corr",
+        "--refCorr",
         type=str,
         help="Reference corr (usually a correction to another prediction+unc.)",
         required=True,
     )
     parser.add_argument(
         "-r",
-        "--rescale-corr",
+        "--rescaleCorr",
         type=str,
         help="Correction to rescale to",
         required=True,
     )
     parser.add_argument(
         "-n",
-        "--new-corr-name",
+        "--newCorrName",
         type=str,
         help="Name of the new correction",
         required=True,
-    )
-    parser.add_argument("--debug", action="store_true", help="Print debug output")
-    parser.add_argument(
-        "--noColorLogger",
-        action="store_true",
-        default=False,
-        help="Do not use logging with colors",
     )
     parser.add_argument(
         "--outpath",
@@ -66,19 +58,17 @@ def parse_args():
 
 def main():
     args = parse_args()
-    logger = logging.setup_logger(
-        "make_rescaled_theory_corr", 4 if args.debug else 3, args.noColorLogger
-    )
+    logger = logging.setup_logger(__file__, args.verbose, args.noColorLogger)
 
-    ref = pickle.load(lz4.frame.open(args.ref_corr))
-    rescale = pickle.load(lz4.frame.open(args.rescale_corr))
+    ref = pickle.load(lz4.frame.open(args.refCorr))
+    rescale = pickle.load(lz4.frame.open(args.rescaleCorr))
 
-    proc = "Z" if "CorrZ" in args.ref_corr else "W"
+    proc = "Z" if "CorrZ" in args.refCorr else "W"
 
-    refcorr = ref[proc][corr_name(args.ref_corr) + "_minnlo_ratio"]
+    refcorr = ref[proc][corr_name(args.refCorr) + "_minnlo_ratio"]
 
-    ref_hist = ref[proc][corr_name(args.ref_corr) + "_hist"]
-    rescale_hist = rescale[proc][corr_name(args.rescale_corr) + "_hist"]
+    ref_hist = ref[proc][corr_name(args.refCorr) + "_hist"]
+    rescale_hist = rescale[proc][corr_name(args.rescaleCorr) + "_hist"]
 
     if ref_hist.shape[:-1] != rescale_hist.shape[:-1]:
         raise ValueError(
@@ -94,7 +84,7 @@ def main():
         )
 
     output_dict = {
-        args.new_corr_name + "_minnlo_ratio": new_corr,
+        args.newCorrName + "_minnlo_ratio": new_corr,
         **ref[proc],
         **rescale[proc],
     }
@@ -102,7 +92,7 @@ def main():
         "ref_file": ref["file_meta_data"],
         "rescale_file": rescale["file_meta_data"],
     }
-    outfile = f"{args.outpath}/{args.new_corr_name}Corr{proc}.pkl.lz4"
+    outfile = f"{args.outpath}/{args.newCorrName}Corr{proc}.pkl.lz4"
 
     output_tools.write_lz4_pkl_output(
         outfile, proc, output_dict, common.base_dir, args, meta_dict

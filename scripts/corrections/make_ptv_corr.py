@@ -1,15 +1,13 @@
-import argparse
-
 import hist
 import numpy as np
 
-from utilities import common
+from utilities import common, parsing
 from utilities.io_tools import input_tools, output_tools
 from wremnants.datasets.datagroups import Datagroups
 from wums import boostHistHelpers as hh
 from wums import logging
 
-parser = argparse.ArgumentParser()
+parser = parsing.base_parser()
 parser.add_argument("-i", "--inputFile", type=str, required=True)
 parser.add_argument(
     "--outpath",
@@ -17,7 +15,6 @@ parser.add_argument(
     default=f"{common.data_dir}/TheoryCorrections",
     help="Output path",
 )
-parser.add_argument("--debug", action="store_true", help="Print debug output")
 parser.add_argument(
     "-p", "--postfix", type=str, default=None, help="Postfix for output file name"
 )
@@ -40,7 +37,7 @@ parser.add_argument(
 )
 args = parser.parse_args()
 
-logger = logging.setup_logger("make_ptv_corr", 4 if args.debug else 3)
+logger = logging.setup_logger(__file__, args.verbose)
 
 nominalName = "nominal"
 syst = "uncorr"

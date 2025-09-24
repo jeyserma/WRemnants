@@ -1,4 +1,3 @@
-import argparse
 import os
 import pathlib
 
@@ -6,7 +5,7 @@ import hist
 import matplotlib.pyplot as plt
 import numpy as np
 
-from utilities import common
+from utilities import common, parsing
 from utilities.io_tools import input_tools
 from wremnants import theory_corrections
 from wums import boostHistHelpers as hh
@@ -14,17 +13,17 @@ from wums import logging, output_tools, plot_tools
 
 
 def parse_args():
-    parser = argparse.ArgumentParser()
+    parser = parsing.base_parser()
     parser.add_argument(
         "-m",
-        "--minnlo_file",
+        "--minnloFile",
         type=str,
         default="w_z_gen_dists.pkl.lz4",
         help="MiNNLO gen file, denominator in ratio",
     )
     parser.add_argument(
         "-c",
-        "--corr_files",
+        "--corrFiles",
         type=str,
         nargs="+",
         required=True,
@@ -77,7 +76,7 @@ def parse_args():
         help="Use only specified axes in hist",
     )
     parser.add_argument(
-        "--integrate-axis",
+        "--integrateAxis",
         type=str,
         default=None,
         help="Integrate over this axis after reading hist",
@@ -89,15 +88,8 @@ def parse_args():
         nargs="*",
         help="Restrict axis to this range. Assumes pairs of values by axis (same order), with trailing axes optional",
     )
-    parser.add_argument("--debug", action="store_true", help="Print debug output")
     parser.add_argument(
         "--selectVars", type=str, nargs="*", help="Select variations from corr hist"
-    )
-    parser.add_argument(
-        "--noColorLogger",
-        action="store_true",
-        default=False,
-        help="Do not use logging with colors",
     )
     parser.add_argument("-o", "--plotdir", type=str, help="Output directory for plots")
     parser.add_argument(
@@ -122,16 +114,16 @@ def parse_args():
     return args
 
 
-def read_corr(procName, generator, corr_files, axes, smooth=None):
+def read_corr(procName, generator, corrFiles, axes, smooth=None):
     logger = logging.child_logger("read_corr")
     charge = 0 if procName[0] == "Z" else (1 if "Wplus" in procName else -1)
-    corr_file = corr_files[0]
+    corr_file = corrFiles[0]
     if "scetlib" in generator:
 
         tools = generator.split("_")
         if len(tools) > 1:
             fo_generator = tools[1]
-            scetlib_files = [x for x in corr_files if pathlib.Path(x).suffix == ".pkl"]
+            scetlib_files = [x for x in corrFiles if pathlib.Path(x).suffix == ".pkl"]
             if len(scetlib_files) != 2:
                 raise ValueError(
                     f"scetlib_dyturbo correction requires two SCETlib files (resummed and FO singular). Found {len(scetlib_files)}"
@@ -142,8 +134,7 @@ def read_corr(procName, generator, corr_files, axes, smooth=None):
             resumf = scetlib_files[~nnlo_sing_idx]
             nnlo_singf = scetlib_files[nnlo_sing_idx]
 
-            print("Corrfiles are", corr_files)
-            fo_files = [x for x in corr_files if pathlib.Path(x).suffix != ".pkl"]
+            fo_files = [x for x in corrFiles if pathlib.Path(x).suffix != ".pkl"]
             if len(fo_files) != 1:
                 raise ValueError(
                     f"{generator} correction requires one fixed order file! found {len(fo_files)}"
@@ -183,7 +174,7 @@ def read_corr(procName, generator, corr_files, axes, smooth=None):
             axnames = axes
             if not axnames:
                 axnames = ("Y", "qT") if "2d" in corr_file else ("qT")
-            h = input_tools.read_dyturbo_hist(corr_files, axes=axnames, charge=charge)
+            h = input_tools.read_dyturbo_hist(corrFiles, axes=axnames, charge=charge)
             if "Y" in h.axes.name:
                 h = hh.makeAbsHist(h, "Y")
 
@@ -203,9 +194,7 @@ def read_corr(procName, generator, corr_files, axes, smooth=None):
 def main():
     args = parse_args()
 
-    logger = logging.setup_logger(
-        "make_theory_corr", 4 if args.debug else 3, args.noColorLogger
-    )
+    logger = logging.setup_logger(__file__, args.verbose, args.noColorLogger)
 
     ax_map = {
         "ptVgen": "qT",
@@ -218,24 +207,22 @@ def main():
     }
 
     if args.proc == "z":
-        filesByProc = {"ZmumuPostVFP": args.corr_files}
+        filesByProc = {"ZmumuPostVFP": args.corrFiles}
     elif args.proc == "w":
         wpfiles = list(
             filter(
                 lambda x: "wp" in os.path.basename(x).lower() or "Wp" in x,
-                args.corr_files,
+                args.corrFiles,
             )
         )
         wmfiles = list(
             filter(
                 lambda x: "wm" in os.path.basename(x).lower() or "Wm" in x,
-                args.corr_files,
+                args.corrFiles,
             )
         )
-        if len(wmfiles + wpfiles) != len(args.corr_files):
+        if len(wmfiles + wpfiles) != len(args.corrFiles):
             raise ValueError("Did not consistently match all files to W+ or W-")
-        print("Corr", args.corr_files)
-        print(wmfiles)
         if len(wpfiles) != len(wmfiles):
             if args.duplicateWminus:
                 logger.warning("Using W- correction as a proxy for W+!")
@@ -252,7 +239,7 @@ def main():
 
     minnloh = hh.sumHists(
         [
-            input_tools.read_mu_hist_combine_tau(args.minnlo_file, proc, args.minnloh)
+            input_tools.read_mu_hist_combine_tau(args.minnloFile, proc, args.minnloh)
             for proc in filesByProc.keys()
         ]
     )
@@ -309,21 +296,21 @@ def main():
 
         numh = hist.Hist(*axes, storage=numh.storage_type(), data=data)
 
-    if args.integrate_axis:
-        if args.integrate_axis not in minnloh.axes.name:
+    if args.integrateAxis:
+        if args.integrateAxis not in minnloh.axes.name:
             raise ValueError(
-                f"Did not find axis {args.integrate_axis} in hist! Valid choices are {minnloh.axes.name}"
+                f"Did not find axis {args.integrateAxis} in hist! Valid choices are {minnloh.axes.name}"
             )
 
         minnloh = hh.rebinHist(
             minnloh,
-            args.integrate_axis,
-            minnloh.axes[args.integrate_axis].edges[np.array((0, -1))],
+            args.integrateAxis,
+            minnloh.axes[args.integrateAxis].edges[np.array((0, -1))],
         )
         numh = hh.rebinHist(
             numh,
-            args.integrate_axis,
-            numh.axes[args.integrate_axis].edges[np.array((0, -1))],
+            args.integrateAxis,
+            numh.axes[args.integrateAxis].edges[np.array((0, -1))],
         )
 
     corrh_unc, minnloh, numh = theory_corrections.make_corr_from_ratio(
@@ -351,7 +338,7 @@ def main():
     outfile = f"{args.outpath}/{generator}Corr{args.proc.upper()}.pkl.lz4"
 
     meta_dict = {}
-    for f in [args.minnlo_file] + args.corr_files:
+    for f in [args.minnloFile] + args.corrFiles:
         label = os.path.basename(f)
         try:
             meta = input_tools.get_metadata(f)

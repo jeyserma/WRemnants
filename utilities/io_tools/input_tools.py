@@ -239,9 +239,11 @@ def read_nnlojet_file(
     edges = np.append(data[:, 0], data[-1, 2])
     step = data[0, 2] - data[0, 0]
     if np.all(edges[1:] - edges[:-1] == step):
-        ax = hist.axis.Regular(len(edges) - 1, edges[0], edges[-1], name=axnames[0])
+        ax = hist.axis.Regular(
+            len(edges) - 1, edges[0], edges[-1], name=axnames[0], flow=False
+        )
     else:
-        ax = hist.axis.Variable(edges, name=axnames[0])
+        ax = hist.axis.Variable(edges, name=axnames[0], flow=False)
 
     # NOTE: The order of the scale variations in NNLOjet is set in the config file.
     # This assumes that the "desired" order has been set there
@@ -304,7 +306,6 @@ def read_nnlojet_pty_hist(
     h = read_nnlojet_ybin(reffile, ybins[:2], charge=charge)
 
     for pair in zip(ybins[1:-1], ybins[2:]):
-        yax = hist.axis.Variable(pair, name="Y")
         h = hh.concatenateHists(
             h, read_nnlojet_ybin(reffile, pair, charge=charge), allowBroadcast=False
         )
@@ -584,7 +585,7 @@ def read_matched_scetlib_nnlojet_hist(
     )
 
     if not axes:
-        axes = hresum.axes[:-1]
+        axes = hresum.axes[:-1].name
 
     if "Y" in axes and "qT" in axes:
         nnlojeth = read_nnlojet_pty_hist(

@@ -136,7 +136,7 @@ class TheoryHelper(object):
                 "Cannot add resummation uncertainties. No theory correction was applied!"
             )
 
-        if False and self.datagroups.args_from_metadata("theoryCorrAltOnly"):
+        if self.datagroups.args_from_metadata("theoryCorrAltOnly"):
             raise ValueError(
                 "The theory correction was only applied as an alternate hist. Using it for systs isn't well defined!"
             )
