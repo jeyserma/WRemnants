@@ -5,6 +5,7 @@ from scipy import ndimage
 
 import narf.clingutils
 from utilities import common
+from wremnants import theory_tools
 from wums import boostHistHelpers as hh
 from wums import logging
 
@@ -773,6 +774,10 @@ def pdf_info_map(dataset, pdfset):
 
 
 def define_pdf_columns(df, dataset_name, pdfs, noAltUnc):
+    df = df.Define(
+        f"nominal_weight_pdf_uncorr",
+        build_weight_expr(df, exclude_weights=["central_pdf_weight"]),
+    )
     if (
         len(pdfs) == 0
         or dataset_name not in common.vprocs_all
@@ -832,7 +837,35 @@ def define_pdf_columns(df, dataset_name, pdfs, noAltUnc):
     return df
 
 
+def define_central_boson_pdf_weight(df, dataset_name, pdf, theory_helpers):
+
+    logger.info("Using boson-parametrized PDF weights for the central PDF weight")
+    pdf_name = theory_tools.pdfMap[pdf]["name"]
+
+    tensorName = f"helicity{pdf_name}CentralWeight_tensor"
+    if "unity" not in df.GetColumnNames():
+        df = df.DefinePerSample("unity", "1.")
+    df = df.Define(
+        tensorName,
+        theory_helpers["pdf_central"],
+        [
+            "massVgen",
+            "absYVgen",
+            "ptVgen",
+            "chargeVgen",
+            "csSineCosThetaPhigen",
+            "unity",
+        ],
+    )
+    return df.Define(
+        "central_pdf_weight",
+        f"wrem::clamp_tensor_safe({tensorName}, -theory_weight_truncate, theory_weight_truncate, 1.0)[0]",
+    )
+
+
 def define_central_pdf_weight(df, dataset_name, pdf):
+
+    logger.info("Using event PDF weights for the central PDF weight")
     try:
         pdfInfo = pdf_info_map(dataset_name, pdf)
     except ValueError:
@@ -854,7 +887,7 @@ def define_central_pdf_weight(df, dataset_name, pdf):
     )
 
 
-def define_theory_weights_and_corrs(df, dataset_name, helpers, args):
+def define_theory_weights_and_corrs(df, dataset_name, helpers, args, theory_helpers={}):
     if "LHEPart_status" in df.GetColumnNames():
         df = define_lhe_vars(df)
 
@@ -869,9 +902,17 @@ def define_theory_weights_and_corrs(df, dataset_name, helpers, args):
         df = define_ew_vars(df)
 
     df = df.DefinePerSample("theory_weight_truncate", "10.")
-    df = define_central_pdf_weight(
-        df, dataset_name, args.pdfs[0] if len(args.pdfs) >= 1 else None
-    )
+    if theory_helpers and "pdf_central" in theory_helpers.keys():
+        df = define_central_boson_pdf_weight(
+            df,
+            dataset_name,
+            args.pdfs[0] if len(args.pdfs) >= 1 else None,
+            theory_helpers,
+        )
+    else:  # if no boson-parametrized weights are available
+        df = define_central_pdf_weight(
+            df, dataset_name, args.pdfs[0] if len(args.pdfs) >= 1 else None
+        )
     df = define_theory_corr(
         df,
         dataset_name,
