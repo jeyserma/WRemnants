@@ -83,6 +83,12 @@ parser.add_argument(
     help="Minimum pT for the postFSR gen muon when defining the variation of the veto efficiency",
 )
 parser.add_argument(
+    "--vetoGenPartEta",
+    type=float,
+    default=2.4,
+    help="Maximumabsolute eta for the postFSR gen muon when defining the variation of the veto efficiency",
+)
+parser.add_argument(
     "--selectVetoEventsMC",
     action="store_true",
     help="Select events which fail the veto, by enforcing at least two prompt postFSR muons in acceptance",
@@ -843,6 +849,7 @@ def build_graph(df, dataset):
         df,
         nMuons=1,
         ptCut=args.vetoRecoPt,
+        etaCut=args.vetoRecoEta,
         useGlobalOrTrackerVeto=useGlobalOrTrackerVeto,
     )
     df = muon_selections.select_good_muons(
@@ -957,7 +964,7 @@ def build_graph(df, dataset):
         )
         df = df.Define(
             "postfsrMuons_inAcc",
-            f"postfsrMuons && abs(GenPart_eta) < 2.4 && GenPart_pt > {args.vetoGenPartPt}",
+            f"postfsrMuons && abs(GenPart_eta) < {args.vetoGenPartEta} && GenPart_pt > {args.vetoGenPartPt}",
         )
         if args.selectVetoEventsMC:
             # in principle a gen muon with eta = 2.401 might still be matched to a reco muon with eta < 2.4, same for pt, so this condition is potentially fragile, but it is just for test plots

@@ -501,6 +501,12 @@ def common_parser(analysis_label=""):
             type=float,
             help="Lower threshold for muon pt in the veto definition",
         )
+        parser.add_argument(
+            "--vetoRecoEta",
+            default=2.4,
+            type=float,
+            help="Upper threshold for muon absolute eta in the veto definition",
+        )
         # Options to test splitting of data into subsets
         parser.add_argument(
             "--addRunAxis",
