@@ -56,7 +56,7 @@ parser.add_argument(
 )
 parser.add_argument(
     "--axlim",
-    type=float,
+    type=parsing.str_to_complex_or_int,
     default=[],
     nargs="*",
     help="Restrict axis to this range (assumes pairs of values by axis, with trailing axes optional)",
@@ -573,6 +573,7 @@ for h in args.hists:
         width_scale=1.25 if len(h.split("-")) == 1 else 1,
         legPos=args.legPos,
         leg_padding=args.legPadding,
+        lowerLeg=not args.noLowerLeg,
         lowerLegCols=args.lowerLegCols,
         lowerLegPos=args.lowerLegPos,
         lower_leg_padding=args.lowerLegPadding,

@@ -820,6 +820,11 @@ def plot_parser():
         help="Where to put empty entries in legend",
     )
     parser.add_argument(
+        "--noLowerLeg",
+        action="store_true",
+        help="Don't plot the legend on the lower panel",
+    )
+    parser.add_argument(
         "--lowerLegPos",
         type=str,
         default="upper left",
