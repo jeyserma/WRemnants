@@ -2567,12 +2567,51 @@ def add_theory_hists(
         # TODO: Should have consistent order here with the scetlib correction function
         add_massweights_hist(results, df, axes, cols, proc=dataset_name, **info)
         add_widthweights_hist(results, df, axes, cols, proc=dataset_name, **info)
+        add_breit_wigner_weights_hist(
+            results, df, axes, cols, proc=dataset_name, **info
+        )
         if isZ:
             add_sin2thetaweights_hist(
                 results, df, axes, cols, proc=dataset_name, **info
             )
 
     return df
+
+
+def add_breit_wigner_weights_hist(
+    results,
+    df,
+    axes,
+    cols,
+    proc="W",
+    base_name="nominal",
+    storage=hist.storage.Double(),
+    **kwargs,
+):
+
+    tensorName = f"breitwignerWeights_tensor"
+    bwHistName = Datagroups.histName(base_name, syst="breitwigner")
+    offset = 10
+    names = [f"massShiftW{(offset*i)}MeVDown" for i in range(10, 0, -1)]
+    names += ["massShiftW0MeV"]
+    names += [f"massShiftW{(i*offset)}MeVUp" for i in range(1, 11)]
+    weight_ax = hist.axis.StrCategory(names, name="breitwignerVar")
+    if tensorName not in df.GetColumnNames():
+        logger.warning(
+            f"Breit Wigner weights tensor was not found for sample {proc}. Skipping uncertainty hist!"
+        )
+        return
+
+    add_syst_hist(
+        results,
+        df,
+        bwHistName,
+        axes,
+        cols,
+        tensorName,
+        weight_ax,
+        **kwargs,
+    )
 
 
 def add_helicity_hists(
@@ -2697,3 +2736,40 @@ def scale_hist_up_down_corr_from_file(h, corr_file=None, corr_hist=None):
         [hDown.variances(flow=True), hUp.variances(flow=True)], axis=-1
     )
     return hVar
+
+
+def correct_bw_xsec(h, self, proc, forceToNominal, h_ref_name):
+    """
+    Normalize the Breit-Wigner mass variation histograms
+    to the cross section from the MiNNLO mass variation histograms.
+    Assumes that the histograms have been filled with the same mass variations, in the same order.
+    """
+
+    self.loadHistsForDatagroups(
+        self.nominalName,
+        h_ref_name,
+        label="syst",
+        procsToRead=[proc],
+        forceToNominal=forceToNominal,
+        sumFakesPartial=True,
+    )
+
+    h_ref = self.groups[proc].hists["syst"]
+    try:
+        corrections = np.array(
+            [
+                h_ref[{"massShift": i}].sum().value
+                / h[{"breitwignerVar": i}].sum().value
+                for i in range(len(h.axes["breitwignerVar"]))
+            ]
+        )
+    except AttributeError:
+        corrections = np.array(
+            [
+                h_ref[{"massShift": i}].sum() / h[{"breitwignerVar": i}].sum()
+                for i in range(len(h.axes["breitwignerVar"]))
+            ]
+        )
+    h.values()[...] = h.values()[...] * corrections
+
+    return h

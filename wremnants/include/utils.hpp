@@ -652,10 +652,11 @@ auto scalar_select(const ArgTypeIf &cond, const ArgTypeThen &arg0,
 }
 
 // Breit-Wigner mass weights
-const double MZ_GEN_ = 91153.509740726733;
-const double GAMMAZ_GEN_ = 2493.2018986110700;
-const double MW_GEN_ = 80379;      // 80351.812293789408;
-const double GAMMAW_GEN_ = 2091.1; // 2090.4310808144846;
+// values in running width scheme
+const double MZ_GEN_ = 911876;
+const double GAMMAZ_GEN_ = 24941;
+const double MW_GEN_ = 80379;
+const double GAMMAW_GEN_ = 2091.1;
 
 double convertRunningToFixedWidth(double param, double mass, double width) {
   // converts mass or width from running width scheme to fixed width scheme
