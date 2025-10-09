@@ -2046,7 +2046,6 @@ class Datagroups(object):
 
                     logger.info(f"Write pseudodata {name}")
 
-                    print(pseudoDataAxes[idx], _idx)
                     h = hdata[{pseudoDataAxes[idx]: _idx}]
                     if h.axes.name != self.fit_axes:
                         h = h.project(*self.fit_axes)
