@@ -985,7 +985,7 @@ def define_breit_wigner_weights(df, proc):
     type = 1 if "W" in proc else 0
     entries = 21
     df = df.Define(
-        "breitwignerWeights_tensor",
+        f"breitwignerWeights{proc[0]}_tensor",
         f"auto res = wrem::vec_to_tensor_t<double, {entries}>(wrem::breitWignerWeights(massVgen, {type}));"
         "res = res * nominal_weight;"
         "return res;",

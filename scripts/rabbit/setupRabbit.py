@@ -17,6 +17,7 @@ from wremnants import (
     theory_corrections,
     theory_tools,
 )
+from wremnants.datasets import datagroups
 from wremnants.datasets.datagroups import Datagroups
 from wremnants.histselections import FakeSelectorSimpleABCD
 from wremnants.regression import Regressor
@@ -1357,10 +1358,10 @@ def setup(
 
     decorwidth = args.decorMassWidth or args.fitWidth
     if not (stat_only and constrainMass):
-        if args.breitwignerWMassWeights:
+        if args.breitwignerWMassWeights and label == "W":
             massVariation = 2.1 if (not wmass and constrainMass) else args.massVariation
             datagroups.addSystematic(
-                histname="breitwigner",
+                histname=f"breitwigner{label}",
                 name="massShiftBW",
                 processes=signal_samples_forMass,
                 group=f"massShift",

@@ -658,7 +658,8 @@ const double GAMMAZ_GEN_ = 24941;
 const double MW_GEN_ = 80379;
 const double GAMMAW_GEN_ = 2091.1;
 
-double convertRunningToFixedWidth(double param, double mass, double width) {
+double convertRunningToFixedWidth(const double param, const double mass,
+                                  const double width) {
   // converts mass or width from running width scheme to fixed width scheme
   //
   // parameters:
@@ -669,7 +670,8 @@ double convertRunningToFixedWidth(double param, double mass, double width) {
   return param / std::sqrt(1 + std::pow(width / mass, 2));
 }
 
-double computeBreitWigner(double massVgen, double ref_mass, double ref_Gamma) {
+double computeBreitWigner(const double massVgen, const double ref_mass,
+                          const double ref_Gamma) {
   // Calculates the Breit-Wigner function at a given mass point
   //
   // formula:
@@ -681,19 +683,20 @@ double computeBreitWigner(double massVgen, double ref_mass, double ref_Gamma) {
   // m = mass of the V boson in GeV (can be offshell)
   // mGen = true mass parameters of the V boson in GeV
 
-  double gamma = std::sqrt(ref_mass * ref_mass *
-                           (ref_mass * ref_mass + ref_Gamma * ref_Gamma));
-  double k = (2 * std::sqrt(2) / M_PI) * ref_mass * ref_Gamma * gamma /
-             std::sqrt(ref_mass * ref_mass + gamma);
-  double s_hat = massVgen * massVgen * 1000 * 1000;
-  double offshell = s_hat - ref_mass * ref_mass;
-  double bw =
+  const double gamma =
+      ref_mass * std::sqrt(ref_mass * ref_mass + ref_Gamma * ref_Gamma);
+  const double k = (2 * std::sqrt(2) / M_PI) * ref_mass * ref_Gamma * gamma /
+                   std::sqrt(ref_mass * ref_mass + gamma);
+  const double s_hat = massVgen * massVgen * 1000 * 1000;
+  const double offshell = s_hat - ref_mass * ref_mass;
+  const double bw =
       k / (offshell * offshell + ref_Gamma * ref_Gamma * ref_mass * ref_mass);
 
   return bw;
 }
 
-double computeBreitWignerWeight(double massVgen, double offset, int type) {
+double computeBreitWignerWeight(const double massVgen, const double offset,
+                                const int type) {
   // applies offset to the reference mass and width of the V boson in the
   // running width scheme converts offset and reference mass and width to fixed
   // width scheme and calculates ratio of BW(offset)/BW(reference)
@@ -723,30 +726,31 @@ double computeBreitWignerWeight(double massVgen, double offset, int type) {
 
   // convert reference mass and width to fixed width scheme and compute BW
   // weight
-  double ref_fixed_mass =
+  const double ref_fixed_mass =
       convertRunningToFixedWidth(MV_GEN_, MV_GEN_, GAMMAV_GEN_);
-  double ref_fixed_Gamma =
+  const double ref_fixed_Gamma =
       convertRunningToFixedWidth(GAMMAV_GEN_, MV_GEN_, GAMMAV_GEN_);
-  double bw = computeBreitWigner(massVgen, ref_fixed_mass, ref_fixed_Gamma);
+  const double bw =
+      computeBreitWigner(massVgen, ref_fixed_mass, ref_fixed_Gamma);
 
   // shift the mass and compute the corresponding width in the running width
   // scheme
-  double target_mass = MV_GEN_ + offset;
-  double target_Gamma = GAMMAW_GEN_ * std::pow(target_mass / MW_GEN_, 3);
+  const double target_mass = MV_GEN_ + offset;
+  const double target_Gamma = GAMMAW_GEN_ * std::pow(target_mass / MW_GEN_, 3);
   // convert shifted mass and width to fixed width scheme
-  double target_fixed_mass =
+  const double target_fixed_mass =
       convertRunningToFixedWidth(target_mass, target_mass, target_Gamma);
-  double target_fixed_Gamma =
+  const double target_fixed_Gamma =
       convertRunningToFixedWidth(target_Gamma, target_mass, target_Gamma);
   // compute BW weight for shifted mass and width
-  double bw_offset =
+  const double bw_offset =
       computeBreitWigner(massVgen, target_fixed_mass, target_fixed_Gamma);
 
-  double weight = bw_offset / bw;
+  const double weight = bw_offset / bw;
   return weight;
 }
 
-Vec_f breitWignerWeights(double massVgen, int type = 0) {
+Vec_f breitWignerWeights(const double massVgen, const int type = 0) {
 
   // Z -> type=0
   // W -> type=1
