@@ -12,8 +12,9 @@ BR_TAUToMU = 0.1739
 BR_TAUToE = 0.1782
 # cross sections in pb at sqrt(s)=13Tev
 xsec_DYJetsToMuMu = 2001.9
-xsec_WplusJetsToMuNu = 11765.9
-xsec_WminusJetsToMuNu = 8703.87
+xsec_W_scaleFactor = 0.98
+xsec_WplusJetsToMuNu = 11765.9  # * xsec_W_scaleFactor
+xsec_WminusJetsToMuNu = 8703.87  # * xsec_W_scaleFactor
 xsec_DYJetsToMuMuMass10to50 = 6997.0
 Z_TAU_TO_LEP_RATIO = 1.0 - (1.0 - BR_TAUToMU - BR_TAUToE) ** 2
 
