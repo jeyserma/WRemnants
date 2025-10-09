@@ -812,11 +812,6 @@ def make_parser(parser=None):
         help="scaling of bin by bin statistical uncertainty for Z-dilepton analysis",
     )
     parser.add_argument(
-        "--exponentialTransform",
-        action="store_true",
-        help="apply exponential transformation to yields (useful for gen-level fits to helicity cross sections for example)",
-    )
-    parser.add_argument(
         "--angularCoeffs",
         action="store_true",
         help="convert helicity cross sections to angular coefficients",
@@ -2734,7 +2729,6 @@ if __name__ == "__main__":
 
     writer = tensorwriter.TensorWriter(
         sparse=args.sparse,
-        # exponential_transfor=args.exponentialTransform, #TODO: exponential transform global or per channel?
         allow_negative_expectation=args.allowNegativeExpectation,
         systematic_type=args.systematicType,
         add_bin_by_bin_stat_to_data_cov=args.addMCStatToCovariance,
