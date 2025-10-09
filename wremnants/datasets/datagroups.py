@@ -1297,6 +1297,7 @@ class Datagroups(object):
         action=None,
         actionArgs={},
         actionRequiresNomi=False,
+        actionRequiresSelf=False,
         **kwargs,
     ):
         """
@@ -1391,6 +1392,14 @@ class Datagroups(object):
                 if actionRequiresNomi:
                     hnom = self.groups[proc].hists[self.nominalName]
                     hvar = action(hvar, hnom, **actionArgs)
+                elif actionRequiresSelf:
+                    hvar = action(
+                        hvar,
+                        self,
+                        proc=proc,
+                        forceToNominal=forceToNominal,
+                        **actionArgs,
+                    )
                 else:
                     hvar = action(hvar, **actionArgs)
 
@@ -2021,22 +2030,24 @@ class Datagroups(object):
                     pseudoDataIdxs[idx] = pseudo_axis
 
                 for syst_idx in pseudoDataIdxs[idx]:
-                    idx = 0 if syst_idx is None else syst_idx
+                    _idx = 0 if syst_idx is None else syst_idx
 
                     if type(pseudo_axis) == hist.axis.StrCategory:
                         syst_bin = (
-                            pseudo_axis.bin(idx) if type(idx) == int else str(idx)
+                            pseudo_axis.bin(_idx) if type(_idx) == int else str(_idx)
                         )
                     else:
                         syst_bin = (
-                            str(pseudo_axis.index(idx))
-                            if type(idx) == int
-                            else str(idx)
+                            str(pseudo_axis.index(_idx))
+                            if type(_idx) == int
+                            else str(_idx)
                         )
                     name = f"{p}_{pseudoDataAxes[idx]}{f'_{syst_bin}' if syst_idx not in [None, 0] else ''}"
+
                     logger.info(f"Write pseudodata {name}")
 
-                    h = hdata[{pseudoDataAxes[idx]: idx}]
+                    print(pseudoDataAxes[idx], _idx)
+                    h = hdata[{pseudoDataAxes[idx]: _idx}]
                     if h.axes.name != self.fit_axes:
                         h = h.project(*self.fit_axes)
 

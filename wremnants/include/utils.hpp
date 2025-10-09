@@ -652,12 +652,64 @@ auto scalar_select(const ArgTypeIf &cond, const ArgTypeThen &arg0,
 }
 
 // Breit-Wigner mass weights
-const double MZ_GEN_ = 91153.509740726733;
-const double GAMMAZ_GEN_ = 2493.2018986110700;
-const double MW_GEN_ = 80351.812293789408;
-const double GAMMAW_GEN_ = 2090.4310808144846;
+// values in running width scheme
+const double MZ_GEN_ = 911876;
+const double GAMMAZ_GEN_ = 24941;
+const double MW_GEN_ = 80379;
+const double GAMMAW_GEN_ = 2091.1;
+
+double convertRunningToFixedWidth(double param, double mass, double width) {
+  // converts mass or width from running width scheme to fixed width scheme
+  //
+  // parameters:
+  // param = mass or width in running width scheme
+  // mass = reference mass in running width scheme
+  // width = reference width in running width scheme
+
+  return param / std::sqrt(1 + std::pow(width / mass, 2));
+}
+
+double computeBreitWigner(double massVgen, double ref_mass, double ref_Gamma) {
+  // Calculates the Breit-Wigner function at a given mass point
+  //
+  // formula:
+  // BW(m,mGen,Gamma) = k / ( s^2 + Gamma^2 M^2 )
+  // where
+  // s = m^2 - mGen^2
+  // k = 2*sqrt(2)/pi * M*Gamma*gamma / sqrt(M^2 + gamma)
+  // gamma = sqrt(mGen^2(mGen^2 + Gamma^2))
+  // m = mass of the V boson in GeV (can be offshell)
+  // mGen = true mass parameters of the V boson in GeV
+
+  double gamma = std::sqrt(ref_mass * ref_mass *
+                           (ref_mass * ref_mass + ref_Gamma * ref_Gamma));
+  double k = (2 * std::sqrt(2) / M_PI) * ref_mass * ref_Gamma * gamma /
+             std::sqrt(ref_mass * ref_mass + gamma);
+  double s_hat = massVgen * massVgen * 1000 * 1000;
+  double offshell = s_hat - ref_mass * ref_mass;
+  double bw =
+      k / (offshell * offshell + ref_Gamma * ref_Gamma * ref_mass * ref_mass);
+
+  return bw;
+}
 
 double computeBreitWignerWeight(double massVgen, double offset, int type) {
+  // applies offset to the reference mass and width of the V boson in the
+  // running width scheme converts offset and reference mass and width to fixed
+  // width scheme and calculates ratio of BW(offset)/BW(reference)
+  //
+  // parameters:
+  // massVgen = generated mass of the V boson in GeV
+  // offset = mass shift in GeV
+  // type = 0 for Z, 1 for W
+  //
+  // returns:
+  // weight = BW(offset mass)/BW(reference mass)
+  //
+  // Notes:
+  // Gamma = width of V boson, which scales like mGen^3 at LO
+  // so Gamma(offset mass) = Gamma(reference mass)*(offset mass/reference
+  // mass)^3
 
   double MV_GEN_ = 0;
   double GAMMAV_GEN_ = 0;
@@ -669,18 +721,28 @@ double computeBreitWignerWeight(double massVgen, double offset, int type) {
     GAMMAV_GEN_ = GAMMAW_GEN_;
   }
 
-  double targetMass = MV_GEN_ + offset;
-  // double gamma_cen =
-  // std::sqrt(MV_GEN_*MV_GEN_*(MV_GEN_*MV_GEN_+GAMMAV_GEN_*GAMMAV_GEN_));
-  // double gamma =
-  // std::sqrt(targetMass*targetMass*(targetMass*targetMass+GAMMAV_GEN_*GAMMAV_GEN_));
-  double s_hat = massVgen * massVgen * 1000 * 1000;
-  double offshell = s_hat - MV_GEN_ * MV_GEN_;
-  double offshellOffset = s_hat - targetMass * targetMass;
-  double weight =
-      (offshell * offshell + GAMMAV_GEN_ * GAMMAV_GEN_ * MV_GEN_ * MV_GEN_) /
-      (offshellOffset * offshellOffset +
-       GAMMAV_GEN_ * GAMMAV_GEN_ * targetMass * targetMass);
+  // convert reference mass and width to fixed width scheme and compute BW
+  // weight
+  double ref_fixed_mass =
+      convertRunningToFixedWidth(MV_GEN_, MV_GEN_, GAMMAV_GEN_);
+  double ref_fixed_Gamma =
+      convertRunningToFixedWidth(GAMMAV_GEN_, MV_GEN_, GAMMAV_GEN_);
+  double bw = computeBreitWigner(massVgen, ref_fixed_mass, ref_fixed_Gamma);
+
+  // shift the mass and compute the corresponding width in the running width
+  // scheme
+  double target_mass = MV_GEN_ + offset;
+  double target_Gamma = GAMMAW_GEN_ * std::pow(target_mass / MW_GEN_, 3);
+  // convert shifted mass and width to fixed width scheme
+  double target_fixed_mass =
+      convertRunningToFixedWidth(target_mass, target_mass, target_Gamma);
+  double target_fixed_Gamma =
+      convertRunningToFixedWidth(target_Gamma, target_mass, target_Gamma);
+  // compute BW weight for shifted mass and width
+  double bw_offset =
+      computeBreitWigner(massVgen, target_fixed_mass, target_fixed_Gamma);
+
+  double weight = bw_offset / bw;
   return weight;
 }
 
@@ -695,7 +757,6 @@ Vec_f breitWignerWeights(double massVgen, int type = 0) {
 
     offset = -100 + i * 10;
     res[i] = computeBreitWignerWeight(massVgen, offset, type);
-    // cout << i << " " << offset << " " << res[i] << endl;
   }
 
   return res;
