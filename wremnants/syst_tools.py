@@ -2567,12 +2567,51 @@ def add_theory_hists(
         # TODO: Should have consistent order here with the scetlib correction function
         add_massweights_hist(results, df, axes, cols, proc=dataset_name, **info)
         add_widthweights_hist(results, df, axes, cols, proc=dataset_name, **info)
+        add_breit_wigner_weights_hist(
+            results, df, axes, cols, proc=dataset_name, **info
+        )
         if isZ:
             add_sin2thetaweights_hist(
                 results, df, axes, cols, proc=dataset_name, **info
             )
 
     return df
+
+
+def add_breit_wigner_weights_hist(
+    results,
+    df,
+    axes,
+    cols,
+    proc="W",
+    base_name="nominal",
+    storage=hist.storage.Double(),
+    **kwargs,
+):
+    label = proc[0] if len(proc) else proc
+    tensorName = f"breitwignerWeights{label}_tensor"
+    bwHistName = Datagroups.histName(base_name, syst=f"breitwigner{label}")
+    offset = 10
+    names = [f"massShift{label}{(offset*i)}MeVDown" for i in range(10, 0, -1)]
+    names += [f"massShift{label}0MeV"]
+    names += [f"massShift{label}{(i*offset)}MeVUp" for i in range(1, 11)]
+    weight_ax = hist.axis.StrCategory(names, name="breitwignerVar")
+    if tensorName not in df.GetColumnNames():
+        logger.warning(
+            f"Breit Wigner weights tensor was not found for sample {proc}. Skipping uncertainty hist!"
+        )
+        return
+
+    add_syst_hist(
+        results,
+        df,
+        bwHistName,
+        axes,
+        cols,
+        tensorName,
+        weight_ax,
+        **kwargs,
+    )
 
 
 def add_helicity_hists(
@@ -2697,3 +2736,48 @@ def scale_hist_up_down_corr_from_file(h, corr_file=None, corr_hist=None):
         [hDown.variances(flow=True), hUp.variances(flow=True)], axis=-1
     )
     return hVar
+
+
+def correct_bw_xsec(h, self, proc, forceToNominal, h_ref_name):
+    """
+    Normalize the Breit-Wigner mass variation histograms
+    to the cross section from the MiNNLO mass variation histograms.
+    Assumes that the histograms have been filled with the same mass variations, in the same order.
+    """
+
+    self.loadHistsForDatagroups(
+        self.nominalName,
+        h_ref_name,
+        label="syst",
+        procsToRead=[proc],
+        forceToNominal=forceToNominal,
+        sumFakesPartial=True,
+    )
+
+    h_ref = self.groups[proc].hists["syst"]
+
+    h_axis_labels = [n for n in h.axes["breitwignerVar"]]
+    h_ref_axis_labels = [n for n in h_ref.axes["massShift"]]
+    if (
+        len(h_axis_labels) != len(h_ref_axis_labels)
+        or h_axis_labels != h_ref_axis_labels
+    ):
+        logger.warning(
+            f"Breit-Wigner variations do not match MiNNLO variations: {h_axis_labels} vs {h_ref_axis_labels}."
+            "Cannot apply correction."
+        )
+        return h
+
+    num = np.sum(
+        h_ref.values(flow=True),
+        axis=tuple(i for i, n in enumerate(h_ref.axes.name) if n != "massShift"),
+    )
+    den = np.sum(
+        h.values(flow=True),
+        axis=tuple(i for i, n in enumerate(h.axes.name) if n != "breitwignerVar"),
+    )
+    correction = num / den
+
+    h.values(flow=True)[...] = h.values(flow=True)[...] * correction
+
+    return h
