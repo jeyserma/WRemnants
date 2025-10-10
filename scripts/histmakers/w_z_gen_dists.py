@@ -27,6 +27,11 @@ parser.add_argument(
     help="Skip the conversion of helicity helicity_xsecs to angular coeff fractions",
 )
 parser.add_argument(
+    "--binnedTheoryVars",
+    action="store_true",
+    help="Used binned theory corrections (read from corr files)",
+)
+parser.add_argument(
     "--propagatePDFstoHelicity",
     action="store_true",
     help="Propagate PDF uncertainties to helicity xsecs",
@@ -280,8 +285,26 @@ def build_graph(df, dataset):
     weightsum = df.SumAndCount("weight")
     df = df.Define("isEvenEvent", "event % 2 == 0")
 
+    theory_helpers_procs = (
+        theory_corrections.make_theory_binnedvar_helpers(
+            args,
+            procs=[dataset.name[0]],
+            corrs=(
+                ["qcdScale", "pdf", "alphaS", "pdf_central"]
+                if args.binnedTheoryVars
+                else ["qcdScale"]
+            ),
+        )
+        if args.binnedTheoryVars or args.helicity
+        else {}
+    )
+
+    theory_helpers = {}
+    if theory_helpers_procs:
+        theory_helpers = theory_helpers_procs["Z" if isZ else "W"]
+
     df = theory_tools.define_theory_weights_and_corrs(
-        df, dataset.name, corr_helpers, args
+        df, dataset.name, corr_helpers, args, theory_helpers=theory_helpers
     )
 
     if isZ:
@@ -863,14 +886,6 @@ def build_graph(df, dataset):
         and "LHEScaleWeight" in df.GetColumnNames()
         and "LHEPdfWeight" in df.GetColumnNames()
     ):
-
-        theory_helpers = (
-            theory_corrections.make_theory_helpers(
-                args, procs=[dataset.name[0]], corrs=["qcdScale"]
-            )
-            if args.helicity and args.propagatePDFstoHelicity
-            else {}
-        )
 
         df = syst_tools.add_theory_hists(
             results,

@@ -1732,9 +1732,9 @@ def add_pdfUncertByHelicity_hist(
 
 
 def add_pdfAlphaSByHelicity_hist(
-    results, df, helper, axes, cols, base_name="nominal", **kwargs
+    results, df, helper, axes, cols, name="pdfAlphaS", base_name="nominal", **kwargs
 ):
-    name = Datagroups.histName(base_name, syst="pdfAlphaSByHelicity")
+    name = Datagroups.histName(base_name, syst=f"{name}ByHelicity")
     tensorName = "helicityAlphaSWeight_tensor"
     df = df.Define(
         tensorName,
@@ -2558,9 +2558,8 @@ def add_theory_hists(
             logger.debug(
                 f"Make AlphaS uncertainty by helicity histograms for {dataset_name}"
             )
-            add_pdfAlphaSByHelicity_hist(
-                results, df, theory_helpers.get("alphaS"), axes, cols, **info
-            )
+            for k, v in theory_helpers["alphaS"].items():
+                add_pdfAlphaSByHelicity_hist(results, df, v, axes, cols, name=k, **info)
 
         if "MEParamWeight" not in df.GetColumnNames():
             return df

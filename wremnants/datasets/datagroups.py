@@ -2021,22 +2021,23 @@ class Datagroups(object):
                     pseudoDataIdxs[idx] = pseudo_axis
 
                 for syst_idx in pseudoDataIdxs[idx]:
-                    idx = 0 if syst_idx is None else syst_idx
+                    sysi = 0 if syst_idx is None else syst_idx
 
                     if type(pseudo_axis) == hist.axis.StrCategory:
                         syst_bin = (
-                            pseudo_axis.bin(idx) if type(idx) == int else str(idx)
+                            pseudo_axis.bin(sysi) if type(sysi) == int else str(idx)
                         )
                     else:
                         syst_bin = (
-                            str(pseudo_axis.index(idx))
-                            if type(idx) == int
-                            else str(idx)
+                            str(pseudo_axis.index(sysi))
+                            if type(sysi) == int
+                            else str(sysi)
                         )
+                    print(pseudoDataAxes, idx, sysi, syst_idx)
                     name = f"{p}_{pseudoDataAxes[idx]}{f'_{syst_bin}' if syst_idx not in [None, 0] else ''}"
                     logger.info(f"Write pseudodata {name}")
 
-                    h = hdata[{pseudoDataAxes[idx]: idx}]
+                    h = hdata[{pseudoDataAxes[idx]: sysi}]
                     if h.axes.name != self.fit_axes:
                         h = h.project(*self.fit_axes)
 

@@ -944,14 +944,14 @@ class TheoryHelper(object):
             if asRange == "002"
             else [("0117", "Down"), ("0119", "Up")]
         )
+        asname = (
+            f"{pdfName}alphaS{asRange}"
+            if not self.as_from_corr
+            # else self.corr_hist_name.replace("Corr", "_pdfasCorr")
+            else "scetlib_dyturboCT18Z_pdfasCorr"
+        )
         if from_hels:
-            asname = "pdfAlphaSByHelicity"
-        else:
-            asname = (
-                f"{pdfName}alphaS{asRange}"
-                if not self.as_from_corr
-                else pdf_corr_hist.replace("Vars", "_pdfas")
-            )
+            asname += "ByHelicity"
         as_args = dict(
             histname=asname,
             processes=["single_v_samples"],

@@ -2778,7 +2778,6 @@ if __name__ == "__main__":
     # loop over all files
     for i, ifile in enumerate(args.inputFile):
         fitvar = args.fitvar[i].split("-")
-        print(fitvar)
         genvar = (
             args.genAxes[i].split("-")
             if hasattr(args, "genAxes") and len(args.genAxes)
