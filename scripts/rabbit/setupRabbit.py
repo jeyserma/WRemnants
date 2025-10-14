@@ -650,6 +650,11 @@ def make_parser(parser=None):
         help="If isolation SF was derived from smooth efficiencies instead of direct smoothing",
     )
     parser.add_argument(
+        "--normalize",
+        action="store_true",
+        help="Add normalization uncertainty fully constrained across processes",
+    )
+    parser.add_argument(
         "--logNormalWmunu",
         default=0,
         type=float,
@@ -1301,6 +1306,19 @@ def setup(
             name="dummy",
             processes=["MCnoQCD"],
             norm=1.0001,
+        )
+
+    if args.normalize:
+        name = f"normalization_{datagroups.channel}"
+        datagroups.writer.add_norm_systematic(
+            name,
+            datagroups.predictedProcesses(),
+            datagroups.channel,
+            uncertainty=1.01,
+            noi=False,
+            constrained=False,
+            groups="Normalization",
+            add_to_data_covariance=datagroups.isAbsorbedNuisance(name),
         )
 
     decorwidth = args.decorMassWidth or args.fitWidth
