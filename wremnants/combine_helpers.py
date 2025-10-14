@@ -196,8 +196,6 @@ def add_explicit_BinByBinStat(
             ),
         )
     else:
-        # if args.fitresult: # FIXME
-        #     info["group"] = "binByBinStat"
         datagroups.addSystematic(
             **info,
             systAxes=recovar_syst,
