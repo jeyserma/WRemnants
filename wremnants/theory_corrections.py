@@ -739,9 +739,7 @@ def make_pdf_uncertainty_helper_by_helicity(
                     f"Process {proc} is not supported when building PDF variations."
                 )
                 return None
-            combined = hists[0]
-            for hist_component in hists[1:]:
-                combined = hh.addHists(combined, hist_component)
+            combined = hh.sumHists(hists)
             return combined
 
         pdf_vars = _collect_pdf_hist(pdf)
@@ -777,12 +775,6 @@ def make_pdf_uncertainty_helper_by_helicity(
         corr_coeffs.values(flow=True)[..., 1, :] = pdf_vars.values(flow=True)[..., None]
     else:
         corr_coeffs.values(flow=True)[..., 1, :] = pdf_vars.values(flow=True)
-
-    if central_weights:
-        print("we here")
-        print(
-            corr_coeffs[{"corr": True}].values() / corr_coeffs[{"corr": False}].values()
-        )
 
     if return_tensor:
         helper = makeCorrectionsTensor(
