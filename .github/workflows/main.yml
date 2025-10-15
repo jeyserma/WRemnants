@@ -425,7 +425,7 @@ jobs:
           scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run.sh rabbit_fit.py 
           $WREMNANTS_OUTDIR/WMass_eta_pt_charge_poiAsNoi/WMass_absEtaGen_ptGen_qGen_theoryfit/WMass.hdf5
           -o $WREMNANTS_OUTDIR/WMass_eta_pt_charge_poiAsNoi/WMass_absEtaGen_ptGen_qGen_theoryfit/
-          --doImpacts --globalImpacts --saveHists --computeHistErrors --chisqFit --externalCovariance -t -1 -m Project ch0 ptGen -m Project ch0 absEtaGen
+          --doImpacts --globalImpacts --saveHists --computeHistErrors --covarianceFit -t -1 -m Project ch0 ptGen -m Project ch0 absEtaGen
       
       - name: plot pulls & impacts
         run: >-
@@ -930,7 +930,7 @@ jobs:
           scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run.sh rabbit_fit.py 
           $WREMNANTS_OUTDIR/ZMassDilepton_ptll_yll_poiAsNoi/ZMassDilepton_ptVGen_absYVGen_theoryfit/ZMassDilepton.hdf5
           -o $WREMNANTS_OUTDIR/ZMassDilepton_ptll_yll_poiAsNoi/ZMassDilepton_ptVGen_absYVGen_theoryfit/
-          --doImpacts --globalImpacts --saveHists --computeHistErrors --chisqFit --externalCovariance -t -1 -m Project ch0 ptVGen -m Project ch0 absYVGen
+          --doImpacts --globalImpacts --saveHists --computeHistErrors --covarianceFit -t -1 -m Project ch0 ptVGen -m Project ch0 absYVGen
       
       - name: plot pulls & impacts
         run: >-
@@ -1037,7 +1037,7 @@ jobs:
           scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run.sh rabbit_fit.py 
           $WREMNANTS_OUTDIR/ZMassDilepton_ptll_yll_unfolding/ZMassDilepton_ptVGen_absYVGen_theoryfit/ZMassDilepton.hdf5
           -o $WREMNANTS_OUTDIR/ZMassDilepton_ptll_yll_unfolding/ZMassDilepton_ptVGen_absYVGen_theoryfit/
-          --doImpacts --globalImpacts --saveHists --computeHistErrors --chisqFit --externalCovariance -t -1 -m Project ch0 ptVGen -m Project ch0 absYVGen
+          --doImpacts --globalImpacts --saveHists --computeHistErrors --covarianceFit -t -1 -m Project ch0 ptVGen -m Project ch0 absYVGen
       
       - name: plot pulls & impacts
         run: >-
