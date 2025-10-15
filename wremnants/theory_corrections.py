@@ -526,8 +526,7 @@ def make_theory_helpers(
                 make_pdfs_uncertanties_helper_by_helicity(
                     proc=proc,
                     pdfs=args.pdfs,
-                    # filename=f"{common.data_dir}/angularCoefficients/w_z_gen_dists_maxFiles_m1_pdfsByHelicity.hdf5",
-                    filename="/ceph/submit/data/group/cms/store/user/lavezzo/alphaS//251008_gen_pdfsByHelicity/w_z_gen_dists_maxFiles_m1_pdfsByHelicity.hdf5",
+                    filename=f"{common.data_dir}/angularCoefficients/w_z_gen_dists_maxFiles_m1_pdfsByHelicity.hdf5",
                 )
             )
         if "alphaS" in corrs:
@@ -543,13 +542,11 @@ def make_theory_helpers(
         if "pdf_central" in corrs:
             theory_helpers_procs[proc]["pdf_central"] = (
                 make_pdf_uncertainty_helper_by_helicity(
-                    # make_pdf_weight_helper_by_helicity(
                     proc=proc,
                     pdf=theory_tools.pdfMap[args.pdfs[0]]["name"],
                     pdf_renorm="pdf_uncorr",
                     central_weights=True,
-                    # filename=f"{common.data_dir}/angularCoefficients/w_z_gen_dists_maxFiles_m1_pdfsByHelicity.hdf5",
-                    filename="/ceph/submit/data/group/cms/store/user/lavezzo/alphaS//251008_gen_pdfsByHelicity/w_z_gen_dists_maxFiles_m1_pdfsByHelicity.hdf5",
+                    filename=f"{common.data_dir}/angularCoefficients/w_z_gen_dists_maxFiles_m1_pdfsByHelicity.hdf5",
                 )
             )
 
@@ -786,76 +783,6 @@ def make_pdf_uncertainty_helper_by_helicity(
         print(
             corr_coeffs[{"corr": True}].values() / corr_coeffs[{"corr": False}].values()
         )
-
-    if return_tensor:
-        helper = makeCorrectionsTensor(
-            corr_coeffs, ROOT.wrem.CentralCorrByHelicityHelper, tensor_rank=3
-        )
-
-        # override tensor_axes since the output is different here
-        helper.tensor_axes = [vars_ax]
-
-        return helper
-    else:
-        return corr_coeffs
-
-
-def make_pdf_weight_helper_by_helicity(
-    proc,
-    pdf,
-    filename=f"{common.data_dir}/angularCoefficients/w_z_gen_dists_maxFiles_m1_pdfsByHelicity.hdf5",
-    var_ax_name="pdfVar",
-    return_tensor=True,
-):
-
-    # load helicity cross sections from file
-    with h5py.File(filename, "r") as h5file:
-        results = input_tools.load_results_h5py(h5file)
-        if proc == "Z":
-            if f"nominal_gen_{pdf}" not in results["ZmumuPostVFP"]["output"].keys():
-                logger.warning(
-                    f"Did not find PDF set {pdf} in {filename}. Not creating histogram of PDF variations by helicities for this set."
-                )
-                return None
-            pdf_vars = results["ZmumuPostVFP"]["output"][f"nominal_gen_{pdf}"].get()
-            pdf_central = results["ZmumuPostVFP"]["output"][
-                f"nominal_gen_pdf_uncorr"
-            ].get()
-        elif proc == "W":
-            if f"nominal_gen_{pdf}" not in results["WplusmunuPostVFP"]["output"].keys():
-                logger.warning(
-                    f"Did not find PDF set {pdf} in {filename}. Not creating histogram of PDF variations by helicities for this set."
-                )
-                return None
-            pdf_vars_Wp = results["WplusmunuPostVFP"]["output"][
-                f"nominal_gen_{pdf}"
-            ].get()
-            pdf_vars_Wm = results["WminusmunuPostVFP"]["output"][
-                f"nominal_gen_{pdf}"
-            ].get()
-            pdf_vars = hh.addHists(pdf_vars_Wp, pdf_vars_Wm)
-            pdf_central_Wm = results["WminusmunuPostVFP"]["output"][
-                f"nominal_gen_pdf_uncorr"
-            ].get()
-            pdf_central_Wp = results["WplusmunuPostVFP"]["output"][
-                f"nominal_gen_pdf_uncorr"
-            ].get()
-            pdf_central = hh.addHists(pdf_central_Wp, pdf_central_Wm)
-
-    # construct the correction tensor
-    corr_ax = hist.axis.Boolean(name="corr")
-    vars_ax = pdf_vars.axes[var_ax_name]
-    new_vars_ax = hist.axis.StrCategory(["nominal"], name="vars")
-    axes_no_scale = pdf_vars.axes[:-1]
-    corr_coeffs = hist.Hist(*axes_no_scale, corr_ax, new_vars_ax)
-
-    # set all helicity_xsecs equal to nominal uncorrected
-    corr_coeffs.values(flow=True)[...] = pdf_central.values(flow=True)[..., None, None]
-
-    # set the nominal corrected
-    corr_coeffs.values(flow=True)[..., 1, :] = pdf_vars[{var_ax_name: 0}].values(
-        flow=True
-    )[..., None]
 
     if return_tensor:
         helper = makeCorrectionsTensor(
