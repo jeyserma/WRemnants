@@ -808,6 +808,8 @@ def define_pdf_columns(df, dataset_name, pdfs, noAltUnc):
         except ValueError:
             return df
 
+        logger.info(f"Defining PDF weights for PDF set {pdf}")
+
         pdfName = pdfInfo["name"]
         pdfBranch = pdfInfo["branch"]
         tensorName = f"{pdfName}Weights_tensor"
