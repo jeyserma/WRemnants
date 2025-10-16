@@ -783,20 +783,6 @@ def build_graph(df, dataset):
 
         # for tests to split into number of reconstructed vertices
         if args.addNvtxAxis is not None and args.normWeightNvtx is not None:
-            # df = df.DefinePerSample(
-            #     "nRecoVtxEdges",
-            #     "ROOT::VecOps::RVec<double> res = {"
-            #     + ",".join([str(x) for x in args.addNvtxAxis])
-            #     + "}; return res;",
-            # )
-            # df = df.DefinePerSample(
-            #     "weightVals",
-            #     "ROOT::VecOps::RVec<double> res = {"
-            #     + ",".join([str(x) for x in args.normWeightNvtx])
-            #     + "}; return res;",
-            # )
-            # df = df.Define("weight_nRecoVtx",
-            #                "wrem::get_differential_norm_weight(PV_npvsGood, nRecoVtxEdges, weightVals, 0)")
             df = define_norm_weight_nRecoVtx(
                 df, args.addNvtxAxis, args.normWeightNvtx, flows_to_unit=0
             )
@@ -816,7 +802,7 @@ def build_graph(df, dataset):
             f"{t}Muons_{v}" for t in ["trig", "nonTrig"] for v in muonVarsForSF
         ]
 
-        df = muon_selections.define_muon_uT_variable(
+        df = muon_selections.define_uon_uT_variable(
             df,
             isWorZ,
             smooth3dsf=args.smooth3dsf,
