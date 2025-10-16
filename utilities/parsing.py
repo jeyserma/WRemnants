@@ -539,6 +539,27 @@ def common_parser(analysis_label=""):
             Phi is defined between -pi and +pi
             """,
         )
+        parser.add_argument(
+            "--addNvtxAxis",
+            type=float,
+            default=None,
+            nargs="+",
+            help="""
+            Add another fit axis with the number of reconstructed vertices.
+            Specify a list of bin edges
+            """,
+        )
+        parser.add_argument(
+            "--normWeightNvtx",
+            type=float,
+            default=None,
+            nargs="+",
+            help="""
+            Additional normalization weight differential in number of reconstructed vertices.
+            To be used together with --addNvtxAxis, if desired.
+            Specify a list of weights (one less item than --addNvtxAxis)
+            """,
+        )
 
     commonargs, _ = parser.parse_known_args()
 

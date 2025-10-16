@@ -881,6 +881,28 @@ unsigned int get_dummy_run_by_lumi_quantile(const unsigned int run,
   return run_vals[bin];
 }
 
+double get_differential_norm_weight(const double var_value,
+                                    const Vec_d axis_edges,
+                                    const Vec_d weight_list,
+                                    const int flows_to_unit = 0) {
+
+  unsigned int imax = axis_edges.size() - 1;
+  if (axis_edges[0] <= var_value and var_value < axis_edges[imax]) {
+    for (unsigned int i = 1; i <= imax; i++) {
+      if (var_value < axis_edges[i])
+        return weight_list[i - 1];
+    }
+  } else if (flows_to_unit) {
+    return 1.0;
+  } else {
+    if (var_value < axis_edges[0])
+      return weight_list[0];
+    else
+      return weight_list[imax - 1];
+  }
+  return 1.0;
+}
+
 } // namespace wrem
 
 #endif
