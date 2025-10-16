@@ -8,6 +8,8 @@
 #include <eigen3/unsupported/Eigen/CXX11/Tensor>
 
 #include "defines.hpp"
+#include <algorithm>
+#include <vector>
 
 using namespace ROOT;
 
@@ -882,25 +884,25 @@ unsigned int get_dummy_run_by_lumi_quantile(const unsigned int run,
 }
 
 double get_differential_norm_weight(const double var_value,
-                                    const Vec_d axis_edges,
-                                    const Vec_d weight_list,
-                                    const int flows_to_unit = 0) {
+                                    const Vec_d &axis_edges,
+                                    const Vec_d &weight_list,
+                                    bool flows_to_unit = false) {
 
-  unsigned int imax = axis_edges.size() - 1;
-  if (axis_edges[0] <= var_value and var_value < axis_edges[imax]) {
-    for (unsigned int i = 1; i <= imax; i++) {
-      if (var_value < axis_edges[i])
-        return weight_list[i - 1];
-    }
-  } else if (flows_to_unit) {
-    return 1.0;
-  } else {
-    if (var_value < axis_edges[0])
-      return weight_list[0];
-    else
-      return weight_list[imax - 1];
-  }
-  return 1.0;
+  const size_t imax = axis_edges.size() - 1;
+
+  // Below lower bound
+  if (var_value < axis_edges.front())
+    return flows_to_unit ? 1.0 : weight_list.front();
+
+  // Above upper bound
+  if (var_value >= axis_edges.back())
+    return flows_to_unit ? 1.0 : weight_list.back();
+
+  // Binary search for correct interval
+  auto it = std::lower_bound(axis_edges.begin(), axis_edges.end(), var_value);
+  size_t idx = std::distance(axis_edges.begin(), it) - 1;
+
+  return weight_list[idx];
 }
 
 } // namespace wrem

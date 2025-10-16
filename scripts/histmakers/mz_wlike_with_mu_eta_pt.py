@@ -783,9 +783,7 @@ def build_graph(df, dataset):
 
         # for tests to split into number of reconstructed vertices
         if args.addNvtxAxis is not None and args.normWeightNvtx is not None:
-            df = define_norm_weight_nRecoVtx(
-                df, args.addNvtxAxis, args.normWeightNvtx, flows_to_unit=0
-            )
+            df = define_norm_weight_nRecoVtx(df, args.addNvtxAxis, args.normWeightNvtx)
             weight_expr += "*weight_nRecoVtx"
 
         muonVarsForSF = [

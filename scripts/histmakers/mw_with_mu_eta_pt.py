@@ -87,7 +87,7 @@ parser.add_argument(
     "--vetoGenPartEta",
     type=float,
     default=2.4,
-    help="Maximumabsolute eta for the postFSR gen muon when defining the variation of the veto efficiency",
+    help="Maximum absolute eta for the postFSR gen muon when defining the variation of the veto efficiency",
 )
 parser.add_argument(
     "--selectVetoEventsMC",
@@ -1097,9 +1097,7 @@ def build_graph(df, dataset):
 
         # for tests to split into number of reconstructed vertices
         if args.addNvtxAxis is not None and args.normWeightNvtx is not None:
-            df = define_norm_weight_nRecoVtx(
-                df, args.addNvtxAxis, args.normWeightNvtx, flows_to_unit=0
-            )
+            df = define_norm_weight_nRecoVtx(df, args.addNvtxAxis, args.normWeightNvtx)
             weight_expr += "*weight_nRecoVtx"
 
         # Muon variables used to measure tag-and-probe efficiency SF might not be the final corrected ones

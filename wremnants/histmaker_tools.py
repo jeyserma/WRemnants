@@ -350,25 +350,9 @@ def make_muon_phi_axis(phi_bins, ax_name="phi", flows=False):
     return phi_axis
 
 
-# Next function is not yet used, but it is general and might be useful to have
-# For now it is a python version of wrem::get_differential_norm_weight in wremnants/include/utils.hpp
-def get_differential_norm_weight(
-    var_value, axis_edges, weight_list, flows_to_unit=False
+def define_norm_weight_nRecoVtx(
+    df, vtx_axis_edges, vtx_norm_weight, flows_to_unit=False
 ):
-    if axis_edges[0] <= var_value < axis_edges[-1]:
-        for i, x in enumerate(axis_edges[1:]):
-            if var_value < x:
-                return weight_list[i]
-    elif flows_to_unit:
-        return 1.0
-    else:
-        if var_value < axis_edges[0]:
-            return weight_list[0]
-        else:
-            return weight_list[-1]
-
-
-def define_norm_weight_nRecoVtx(df, vtx_axis_edges, vtx_norm_weight, flows_to_unit=0):
     df = df.DefinePerSample(
         "nRecoVtxEdges",
         "ROOT::VecOps::RVec<double> res = {"
