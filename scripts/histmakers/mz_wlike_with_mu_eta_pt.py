@@ -802,7 +802,7 @@ def build_graph(df, dataset):
             f"{t}Muons_{v}" for t in ["trig", "nonTrig"] for v in muonVarsForSF
         ]
 
-        df = muon_selections.define_uon_uT_variable(
+        df = muon_selections.define_muon_uT_variable(
             df,
             isWorZ,
             smooth3dsf=args.smooth3dsf,
