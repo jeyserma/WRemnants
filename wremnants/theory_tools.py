@@ -808,6 +808,8 @@ def define_pdf_columns(df, dataset_name, pdfs, noAltUnc):
         except ValueError:
             return df
 
+        logger.info(f"Defining PDF weights for PDF set {pdf}")
+
         pdfName = pdfInfo["name"]
         pdfBranch = pdfInfo["branch"]
         tensorName = f"{pdfName}Weights_tensor"
@@ -944,6 +946,7 @@ def define_theory_weights_and_corrs(df, dataset_name, helpers, args, theory_help
         df = df.Define("extra_weight", "MEParamWeightAltSet3[0]")
     df = define_nominal_weight(df)
     df = define_pdf_columns(df, dataset_name, args.pdfs, args.altPdfOnlyCentral)
+    df = define_breit_wigner_weights(df, dataset_name)
 
     return df
 
@@ -984,6 +987,24 @@ def define_nominal_weight(df):
         return df.Define(f"nominal_weight", build_weight_expr(df) + " * central_weight")
     else:
         return df.Define(f"nominal_weight", build_weight_expr(df))
+
+
+def define_breit_wigner_weights(df, proc):
+
+    logger.debug("Defining Breit-Wigner weights")
+    if "massVgen" not in df.GetColumnNames():
+        logger.warning("Did not find massVgen, cannot define Breit-Wigner weights")
+        return df.DefinePerSample("bw_weight", "1.0")
+
+    type = 1 if "W" in proc else 0
+    entries = 21
+    df = df.Define(
+        f"breitwignerWeights{proc[0]}_tensor",
+        f"auto res = wrem::vec_to_tensor_t<double, {entries}>(wrem::breitWignerWeights(massVgen, {type}));"
+        "res = res * nominal_weight;"
+        "return res;",
+    )
+    return df
 
 
 def define_ew_theory_corr(
