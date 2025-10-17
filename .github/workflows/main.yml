@@ -418,7 +418,7 @@ jobs:
           scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/rabbit/setupRabbit.py 
           -i $HIST_FILE -o $WREMNANTS_OUTDIR/WMass_eta_pt_charge_poiAsNoi/ 
           --fitresult $WREMNANTS_OUTDIR/WMass_eta_pt_charge_poiAsNoi/fitresults.hdf5 Select
-          --fitvar absEtaGen-ptGen-qGen --postfix theoryfit --baseName postfsr --correlateSignalMCstat
+          --fitvar absEtaGen-ptGen-qGen --postfix theoryfit --baseName postfsr
       
       - name: run theory fit
         run: >-
@@ -1030,7 +1030,7 @@ jobs:
           scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/rabbit/setupRabbit.py 
           -i $HIST_FILE -o $WREMNANTS_OUTDIR/ZMassDilepton_ptll_yll_unfolding/ 
           --fitresult $WREMNANTS_OUTDIR/ZMassDilepton_ptll_yll_unfolding/fitresults.hdf5 Select
-          --fitAlphaS --fitvar ptVGen-absYVGen --postfix theoryfit --baseName postfsr --correlateSignalMCstat
+          --fitAlphaS --fitvar ptVGen-absYVGen --postfix theoryfit --baseName postfsr
       
       - name: run theory fit
         run: >-
@@ -1113,7 +1113,7 @@ jobs:
         run: >-
           scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run.sh rabbit_fit.py 
           $WREMNANTS_OUTDIR/ZMassDilepton_ptll/ZMassDilepton.hdf5 --saveHists --saveHistsPerProcess --computeHistErrors 
-          --externalPostfit $WREMNANTS_OUTDIR/ZMassWLike_eta_pt_charge/fitresults_uncorr.hdf5 --pseudoData uncorr
+          --externalPostfit $WREMNANTS_OUTDIR/ZMassWLike_eta_pt_charge/fitresults_uncorr.hdf5 --externalPostfitResult uncorr --pseudoData uncorr
           -o $WREMNANTS_OUTDIR/ZMassDilepton_ptll/ --postfix from_ZMassWLike_eta_pt_charge
 
       - name: dilepton ptll from wlike postfit
