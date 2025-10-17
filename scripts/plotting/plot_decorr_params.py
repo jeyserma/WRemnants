@@ -28,7 +28,10 @@ def get_values_and_impacts_as_panda(
     uncertainties = {}
     for poi in poi_names:
         impacts, labels = rabbit.io_tools.read_impacts_poi(
-            fitres, poi, grouped=True, global_impacts=global_impacts
+            fitres,
+            poi,
+            grouped=True,
+            impact_type="global" if global_impacts else "traditional",
         )
         scale_factor = (
             float(re.findall(r"(\d+)MeV", poi.astype(str))[0])
