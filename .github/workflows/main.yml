@@ -1119,7 +1119,7 @@ jobs:
       - name: dilepton ptll from wlike postfit
         run: >- 
           scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run.sh rabbit_plot_hists.py --config utilities/styles/styles.py 
-          $WREMNANTS_OUTDIR/ZMassDilepton_ptll/fitresults_from_ZMassWLike_eta_pt_charge.hdf5 --result uncorr --postfix uncorr_fromWLike 
+          $WREMNANTS_OUTDIR/ZMassDilepton_ptll/fitresults_from_ZMassWLike_eta_pt_charge.hdf5 --result asimov_uncorr --postfix uncorr_fromWLike 
           -o $WEB_DIR/$PLOT_DIR --legCols 1 --yscale 1.2 --rrange 1.03 0.97 --title CMS --subtitle Preliminary -m Basemodel
 
   gen:
