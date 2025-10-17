@@ -348,3 +348,25 @@ def make_muon_phi_axis(phi_bins, ax_name="phi", flows=False):
     )
 
     return phi_axis
+
+
+def define_norm_weight_nRecoVtx(
+    df, vtx_axis_edges, vtx_norm_weight, flows_to_unit=False
+):
+    df = df.DefinePerSample(
+        "nRecoVtxEdges",
+        "ROOT::VecOps::RVec<double> res = {"
+        + ",".join([str(x) for x in vtx_axis_edges])
+        + "}; return res;",
+    )
+    df = df.DefinePerSample(
+        "weightVals",
+        "ROOT::VecOps::RVec<double> res = {"
+        + ",".join([str(x) for x in vtx_norm_weight])
+        + "}; return res;",
+    )
+    df = df.Define(
+        "weight_nRecoVtx",
+        f"wrem::get_differential_norm_weight(PV_npvsGood, nRecoVtxEdges, weightVals, {flows_to_unit})",
+    )
+    return df
