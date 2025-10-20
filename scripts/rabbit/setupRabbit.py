@@ -164,7 +164,7 @@ def make_parser(parser=None):
         type=str,
         nargs="*",
         help="Don't run over processes belonging to these groups (only accepts exact group names)",
-        default=["QCD"],
+        default=["QCD", "WtoNMu_5", "WtoNMu_10", "WtoNMu_50"],
     )
     parser.add_argument(
         "--filterProcGroups",
@@ -1009,6 +1009,11 @@ def setup(
             )
         )
 
+    # if args.addBSMSample:
+    bsm_group = "WtoNMu_5"
+    base_group = [base_group, bsm_group]
+    datagroups.unconstrainedProcesses.append(bsm_group)
+
     if xnorm:
         datagroups.select_xnorm_groups(base_group, inputBaseName)
 
@@ -1209,12 +1214,12 @@ def setup(
     datagroups.addProcessGroup(
         "signal_samples_inctau",
         startsWith=signalMatch,
-        excludeMatch=[*dibosonMatch],
+        excludeMatch=dibosonMatch,
     )
     datagroups.addProcessGroup(
         "nonsignal_samples_inctau",
         startsWith=nonSignalMatch,
-        excludeMatch=[*dibosonMatch],
+        excludeMatch=dibosonMatch,
     )
     datagroups.addProcessGroup(
         "MCnoQCD",
@@ -2736,8 +2741,14 @@ if __name__ == "__main__":
             logger.warning(
                 "Theoryfit for more than one channels is currently experimental"
             )
+
+        if args.fitresultResult is not None:
+            result_key = None if args.realData else "asimov"
+        else:
+            result_key = args.fitresultResult
+
         fitresult, fitresult_meta = rabbit.io_tools.get_fitresult(
-            args.fitresult[0], meta=True, result=None if args.realData else "asimov"
+            args.fitresult[0], meta=True, result=result_key
         )
 
         if len(args.fitresult) > 1:

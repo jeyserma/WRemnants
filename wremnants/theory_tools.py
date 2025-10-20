@@ -402,19 +402,29 @@ def define_lhe_vars(df):
 
     logger.info("Defining LHE variables")
 
+    # SM leptons (11-16) or BSM neutrino (9900012)
     df = df.Define(
         "lheLeps",
-        "LHEPart_status == 1 && abs(LHEPart_pdgId) >= 11 && abs(LHEPart_pdgId) <= 16",
+        "LHEPart_status == 1 && LHEPart_pdgId >= 11 && LHEPart_pdgId <= 16",
     )
-    df = df.Define("lheLep", "lheLeps && LHEPart_pdgId>0")
-    df = df.Define("lheAntiLep", "lheLeps && LHEPart_pdgId<0")
+    df = df.Define(
+        "lheAntiLeps",
+        "LHEPart_status == 1 && LHEPart_pdgId <= -11 && LHEPart_pdgId >= -16",
+    )
+    df = df.Define(
+        "lheBSM",
+        "LHEPart_pdgId == 9900012 && LHEPart_status == 1",
+    )
+
+    df = df.Define("lheLep", "Sum(lheLeps) == 1 ? lheLeps : lheBSM")
+    df = df.Define("lheAntiLep", "Sum(lheAntiLeps) == 1 ? lheAntiLeps : lheBSM")
     df = df.Define(
         "lheLep_idx",
-        'if (Sum(lheLep) != 1) throw std::runtime_error("lhe lepton not found."); return ROOT::VecOps::ArgMax(lheLep);',
+        'if (Sum(lheLep) != 1) throw std::runtime_error("lhe lepton not found, sum = " + std::to_string(Sum(lheAntiLep))); return ROOT::VecOps::ArgMax(lheLep);',
     )
     df = df.Define(
         "lheAntiLep_idx",
-        'if (Sum(lheAntiLep) != 1) throw std::runtime_error("lhe anti-lepton not found."); return ROOT::VecOps::ArgMax(lheAntiLep);',
+        'if (Sum(lheAntiLep) != 1) throw std::runtime_error("lhe anti-lepton not found, sum = " + std::to_string(Sum(lheAntiLep))); return ROOT::VecOps::ArgMax(lheAntiLep);',
     )
 
     df = df.Define("lheVs", "abs(LHEPart_pdgId) >=23 && abs(LHEPart_pdgId)<=24")
@@ -495,7 +505,8 @@ def define_prefsr_vars(df):
     df = df.Define("phiVgen", "genV.Phi()")
     df = df.Define("absYVgen", "std::fabs(yVgen)")
     df = df.Define(
-        "chargeVgen", "GenPart_pdgId[prefsrLeps[0]] + GenPart_pdgId[prefsrLeps[1]]"
+        "chargeVgen",
+        "(GenPart_pdgId[prefsrLeps[0]] % 2) + (GenPart_pdgId[prefsrLeps[1]] % 2)",
     )
     df = df.Define("csSineCosThetaPhigen", "wrem::csSineCosThetaPhi(genlanti, genl)")
     df = df.Define("csCosThetagen", "csSineCosThetaPhigen.costheta")

@@ -50,6 +50,9 @@ process_colors = {
     "Fake_e": "#964A8B",
     "Fake_mu": "#964A8B",
     "Prompt": "#E42536",
+    "WtoNMu_5": "#5790FC",
+    "WtoNMu_10": "#964A8B",
+    "WtoNMu_50": "#7A21DD",
 }
 
 process_supergroups = {
@@ -438,6 +441,11 @@ translate_selection = {
 }
 
 impact_labels = {
+    "WtoNMu_5": "<i>μ</i><sub>W→μN(5GeV)</sub>",
+    "massShiftZ100MeV": "<i>m</i><sub>Z</sub>",
+    "massShiftW100MeV": "<i>m</i><sub>W</sub>",
+    "widthZ": "Γ<i>m</i><sub>Z</sub>",
+    "widthW": "Γ<i>m</i><sub>W</sub>",
     "angularCoeffs": "Angular coefficients",
     "QCDscale": "<i>μ</i><sub>R </sub> <i>μ</i><sub>F </sub> scale",
     "QCDscaleZMiNNLO": "<i>μ</i><sub>R </sub> <i>μ</i><sub>F </sub> scale (Z)",
@@ -489,8 +497,6 @@ impact_labels = {
     "FakeRate": "Fake rate factors",
     "FakeShape": "Fake shape corrections",
     "Fake": "Fakes",
-    "widthW": "W width",
-    "widthZ": "Z width",
     "ZmassAndWidth": "Z mass & width",
     "bcQuarkMass": "b,c quark masses",
     "experiment": "Experiment",
@@ -618,10 +624,7 @@ systematics_labels = {k: translate_html_to_latex(v) for k, v in impact_labels.it
 
 
 # systematics_labels = {
-#     "massShiftZ100MeV": r"$\Delta m_\mathrm{Z} = \pm 100\mathrm{MeV}$",
-#     "massShiftW100MeV": r"$\Delta m_\mathrm{W} = \pm 100\mathrm{MeV}$",
-#     "widthZ": r"$\Delta \Gamma_\mathrm{Z} = \pm 0.8\mathrm{MeV}$",
-#     "widthW": r"$\Delta \Gamma_\mathrm{W} = \pm 0.6\mathrm{MeV}$",
+
 #     # powhegFOEW variations
 #     "weak_no_ew": "no EW",
 #     "weak_no_ho": "no HO",

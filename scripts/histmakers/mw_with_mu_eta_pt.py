@@ -660,7 +660,13 @@ def build_graph(df, dataset):
     logger.info(f"build graph for dataset: {dataset.name}")
     results = []
     isW = dataset.name in common.wprocs
-    isWmunu = dataset.name in ["WplusmunuPostVFP", "WminusmunuPostVFP"]
+    isWmunu = dataset.name in [
+        "WplusmunuPostVFP",
+        "WminusmunuPostVFP",
+        "WtoNMu_MN-5-V-0p001",
+        "WtoNMu_MN-10-V-0p001",
+        "WtoNMu_MN-50-V-0p001",
+    ]
     isZ = dataset.name in common.zprocs
     isZveto = isZ or dataset.name in ["DYJetsToMuMuMass10to50PostVFP"]
     isWorZ = isW or isZ

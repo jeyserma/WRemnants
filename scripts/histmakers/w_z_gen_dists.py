@@ -68,6 +68,7 @@ parser.add_argument(
 parser.add_argument("--signedY", action="store_true", help="use signed Y")
 parser.add_argument(
     "--fiducial",
+    default=None,
     choices=["masswindow", "dilepton", "singlelep"],
     help="Apply selection on leptons (No argument for inclusive)",
 )
@@ -140,8 +141,14 @@ axis_chargeZgen = hist.axis.Integer(
 
 axis_absetal_gen = hist.axis.Regular(24, 0, 2.4, name="absEtaGen")
 axis_ptl_gen = hist.axis.Regular(34, 26.0, 60.0, name="ptGen")
+axis_mt_gen = hist.axis.Regular(10, 0, 100, name="mtGen")
 axis_chargel_gen = hist.axis.Regular(
-    2, -2.0, 2.0, underflow=False, overflow=False, name=f"qGen"
+    2,
+    -2.0,
+    2.0,
+    name=f"qGen",
+    underflow=False,
+    overflow=False,
 )
 
 theory_corrs = [*args.theoryCorr, *args.ewTheoryCorr]
@@ -348,25 +355,33 @@ def build_graph(df, dataset):
         )
 
     if args.singleLeptonHists and (isW or isZ):
+        gen_levels = ["prefsr", "postfsr"]
         df = unfolding_tools.define_gen_level(
-            df, dataset.name, ["prefsr"], mode="w_mass" if isW else "z_wlike"
+            df, dataset.name, gen_levels, mode="w_mass" if isW else "z_wlike"
         )
 
-        lep_cols = ["prefsrLep_absEta", "prefsrLep_pt", "prefsrLep_charge"]
-        lep_axes = [axis_absetal_gen, axis_ptl_gen, axis_chargel_gen]
+        lep_axes = [axis_absetal_gen, axis_ptl_gen, axis_mt_gen, axis_chargel_gen]
 
-        if args.addCharmAxis:
-            lep_axes = [*lep_axes, axis_charm]
-            lep_cols = [*lep_cols, "charm"]
+        for level in gen_levels:
+            lep_cols = [
+                f"{level}Lep_absEta",
+                f"{level}Lep_pt",
+                f"{level}V_mT",
+                f"{level}Lep_charge",
+            ]
 
-        results.append(
-            df.HistoBoost(
-                "prefsr_lep",
-                lep_axes,
-                [*lep_cols, "nominal_weight"],
-                storage=hist.storage.Weight(),
+            if args.addCharmAxis:
+                lep_axes = [*lep_axes, axis_charm]
+                lep_cols = [*lep_cols, "charm"]
+
+            results.append(
+                df.HistoBoost(
+                    f"{level}_lep",
+                    lep_axes,
+                    [*lep_cols, "nominal_weight"],
+                    storage=hist.storage.Weight(),
+                )
             )
-        )
 
     if not args.skipEWHists and (isW or isZ) and "Zmumu_powheg-weak" in dataset.name:
         if isZ:
