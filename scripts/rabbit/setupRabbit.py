@@ -13,6 +13,7 @@ from wremnants import (
     combine_helpers,
     combine_theory_helper,
     combine_theoryAgnostic_helper,
+    histselections,
     syst_tools,
     theory_corrections,
     theory_tools,
@@ -480,7 +481,7 @@ def make_parser(parser=None):
         help="Add the MC statistical uncertainty to the data covariance (as an alternative to Barlow-Beeston lite)",
     )
     parser.add_argument(
-        "--explicitSignalMCstat",
+        "--correlateSignalMCstat",
         action="store_true",
         help="Use explicit parameters for signal MC stat uncertainty. Introduces one nuisance parameter per reco bin.",
     )
@@ -671,6 +672,11 @@ def make_parser(parser=None):
         help="If isolation SF was derived from smooth efficiencies instead of direct smoothing",
     )
     parser.add_argument(
+        "--normalize",
+        action="store_true",
+        help="Add normalization uncertainty fully constrained across processes",
+    )
+    parser.add_argument(
         "--logNormalWmunu",
         default=0,
         type=float,
@@ -813,11 +819,6 @@ def make_parser(parser=None):
         help="scaling of bin by bin statistical uncertainty for Z-dilepton analysis",
     )
     parser.add_argument(
-        "--exponentialTransform",
-        action="store_true",
-        help="apply exponential transformation to yields (useful for gen-level fits to helicity cross sections for example)",
-    )
-    parser.add_argument(
         "--angularCoeffs",
         action="store_true",
         help="convert helicity cross sections to angular coefficients",
@@ -869,7 +870,7 @@ def setup(
     fitresult_data=None,
     unfolding_scalemap=None,
 ):
-    xnorm = inputBaseName in ["xnorm", "prefsr", "postfsr"]
+    xnorm = any(inputBaseName.startswith(x) for x in ["xnorm", "prefsr", "postfsr"])
 
     isUnfolding = args.analysisMode == "unfolding"
     isTheoryAgnostic = args.analysisMode in [
@@ -1341,26 +1342,109 @@ def setup(
                 args.pseudoDataProcsRegexp,
             )
 
-    datagroups.addNominalHistograms(
-        real_data=args.realData,
-        exclude_bin_by_bin_stat=(
-            "signal_samples"
-            if args.explicitSignalMCstat or (xnorm and stat_only)
-            else None
-        ),
-        bin_by_bin_stat_scale=(
-            args.binByBinStatScaleForMW
-            if wmass
-            else args.binByBinStatScaleForDilepton if dilepton else 1.0
-        ),
-        fitresult_data=fitresult_data,
-        masked=xnorm and fitresult_data is None,
-        masked_flow_axes=(
+    if args.correlateSignalMCstat and xnorm:
+        # signal MC stat is correlated between detector level and gen level with explicit parameters
+        #   setting signal histogram variances to 0 in detector level
+        #   subtracting signal histogram variaiances of detector level from gen level to keep only contribution that is not at detector level
+        if wmass:
+            action_sel = lambda h, x: histselections.SignalSelectorABCD(h[x]).get_hist(
+                h[x]
+            )
+        else:
+            action_sel = lambda h, x: h[x]
+
+        # load gen level nominal
+        datagroups.loadHistsForDatagroups(
+            baseName=datagroups.nominalName,
+            syst=datagroups.nominalName,
+            procsToRead=datagroups.groups.keys(),
+            label=datagroups.nominalName,
+            forceNonzero=False,
+            sumFakesPartial=True,
+        )
+
+        # load generator level nominal
+        gen_name = f"{inputBaseName}_yieldsUnfolding_theory_weight"
+        datagroups.loadHistsForDatagroups(
+            baseName="nominal",
+            syst=gen_name,
+            procsToRead=datagroups.groups.keys(),
+            label=gen_name,
+            forceNonzero=False,
+            sumFakesPartial=True,
+        )
+
+        masked = xnorm and fitresult_data is None
+        masked_flow_axes = (
             ["ptGen", "ptVGen"]
             if (xnorm and isUnfolding and args.unfoldingWithFlow)
             else []
-        ),
-    )
+        )
+
+        for i, proc in enumerate(datagroups.predictedProcesses()):
+            logger.info(f"Add process {proc} in channel {datagroups.channel}")
+
+            # nominal histograms of prediction
+            norm_proc_hist_reco = datagroups.groups[proc].hists[gen_name]
+            norm_proc_hist = datagroups.groups[proc].hists[datagroups.nominalName]
+
+            norm_proc_hist_reco = action_sel(norm_proc_hist_reco, {"acceptance": True})
+
+            if norm_proc_hist_reco.axes.name != datagroups.fit_axes:
+                norm_proc_hist_reco = norm_proc_hist_reco.project(*datagroups.fit_axes)
+
+            if norm_proc_hist.axes.name != datagroups.fit_axes:
+                norm_proc_hist = norm_proc_hist.project(*datagroups.fit_axes)
+
+            norm_proc_hist.variances(flow=True)[...] = norm_proc_hist.variances(
+                flow=True
+            ) - norm_proc_hist_reco.variances(flow=True)
+
+            datagroups.groups[proc].hists[datagroups.nominalName]
+
+            if len(masked_flow_axes) > 0:
+                datagroups.axes_disable_flow = [
+                    n
+                    for n in norm_proc_hist.axes.name
+                    if n not in masked_flow_axes and n != "helicitySig"
+                ]
+                norm_proc_hist = hh.disableFlow(
+                    norm_proc_hist, datagroups.axes_disable_flow
+                )
+
+            if datagroups.channel not in datagroups.writer.channels:
+                datagroups.writer.add_channel(
+                    axes=norm_proc_hist.axes,
+                    name=datagroups.channel,
+                    masked=masked,
+                    flow=len(masked_flow_axes) > 0,
+                )
+
+            datagroups.writer.add_process(
+                norm_proc_hist,
+                proc,
+                datagroups.channel,
+                signal=proc in datagroups.unconstrainedProcesses,
+            )
+    else:
+        datagroups.addNominalHistograms(
+            real_data=args.realData,
+            exclude_bin_by_bin_stat=(
+                "signal_samples" if args.correlateSignalMCstat else None
+            ),
+            bin_by_bin_stat_scale=(
+                args.binByBinStatScaleForMW
+                if wmass
+                else args.binByBinStatScaleForDilepton if dilepton else 1.0
+            ),
+            fitresult_data=fitresult_data,
+            masked=xnorm and fitresult_data is None,
+            masked_flow_axes=(
+                ["ptGen", "ptVGen"]
+                if (xnorm and isUnfolding and args.unfoldingWithFlow)
+                else []
+            ),
+        )
 
     if stat_only and isUnfolding and not isPoiAsNoi:
         # At least one nuisance parameter is needed to run combine impacts (e.g. needed for unfolding postprocessing chain)
@@ -1369,6 +1453,19 @@ def setup(
             name="dummy",
             processes=["MCnoQCD"],
             norm=1.0001,
+        )
+
+    if args.normalize:
+        name = f"normalization_{datagroups.channel}"
+        datagroups.writer.add_norm_systematic(
+            name,
+            datagroups.predictedProcesses(),
+            datagroups.channel,
+            uncertainty=1.01,
+            noi=False,
+            constrained=False,
+            groups="Normalization",
+            add_to_data_covariance=datagroups.isAbsorbedNuisance(name),
         )
 
     decorwidth = args.decorMassWidth or args.fitWidth
@@ -1500,10 +1597,10 @@ def setup(
         )
         muRmuFPolVar_helper.add_theoryAgnostic_uncertainty()
 
-    if args.explicitSignalMCstat:
+    if args.correlateSignalMCstat:
         if xnorm and args.fitresult is None:
             # use variations from reco histogram and apply them to xnorm
-            source = ("nominal", f"{inputBaseName}_yieldsUnfolding")
+            source = ("nominal", f"{inputBaseName}_yieldsUnfolding_theory_weight")
             # need to find the reco variables that correspond to the reco fit, reco fit must be done with variables in same order as gen bins
             gen2reco = {
                 "qGen": "charge",
@@ -2767,7 +2864,6 @@ if __name__ == "__main__":
 
     writer = tensorwriter.TensorWriter(
         sparse=args.sparse,
-        # exponential_transfor=args.exponentialTransform, #TODO: exponential transform global or per channel?
         allow_negative_expectation=args.allowNegativeExpectation,
         systematic_type=args.systematicType,
         add_bin_by_bin_stat_to_data_cov=args.addMCStatToCovariance,
@@ -2806,7 +2902,9 @@ if __name__ == "__main__":
         )
 
         fitresult_lumi = [
-            fitresult_meta["meta_info_input"]["channel_info"][c]["lumi"]
+            fitresult_meta["meta_info_input"]["channel_info"][c.replace("_masked", "")][
+                "lumi"
+            ]
             for c in fitresult_channels
         ]
 
@@ -2858,20 +2956,33 @@ if __name__ == "__main__":
         )
 
         if isUnfolding:
-            # add masked channel
-            datagroups_xnorm = setup(
-                writer,
-                args,
-                ifile,
-                args.unfoldingLevel,
-                iLumiScale,
-                genvar,
-                genvar=genvar,
-                stat_only=args.doStatOnly or args.doStatOnlyMasked,
-                channel=f"{channel}_masked",
-                lumi=lumi,
-                unfolding_scalemap=unfolding_scalemap,
-            )
+            for full in (
+                False,  # fiducial phase space
+                # True    # full phase space
+            ):
+                # add masked channels
+                basename = args.unfoldingLevel
+                if full:
+                    basename += "_full"
+                    channel_name = f"{channel}_full_masked"
+                    fitvar = "qGen" if datagroups.mode == "w_mass" else "yield"
+                else:
+                    channel_name = f"{channel}_masked"
+                    fitvar = genvar
+
+                datagroups_xnorm = setup(
+                    writer,
+                    args,
+                    ifile,
+                    basename,
+                    iLumiScale,
+                    fitvar,
+                    genvar=fitvar,
+                    stat_only=args.doStatOnly or args.doStatOnlyMasked,
+                    channel=channel_name,
+                    lumi=lumi,
+                    unfolding_scalemap=unfolding_scalemap,
+                )
 
             if args.unfoldSimultaneousWandZ and datagroups.mode == "w_mass":
                 # for simultaneous unfolding of W and Z we need to add the noi variations on the Z background in the single lepton channel
