@@ -1,6 +1,7 @@
 import itertools
 import re
 
+import numpy as np
 import pandas as pd
 
 import rabbit.io_tools
@@ -9,7 +10,9 @@ from wums import logging
 logger = logging.child_logger(__name__)
 
 
-def read_groupunc_df(filename, uncs, rename_cols={}, name=None):
+def read_groupunc_df(
+    filename, uncs, rename_cols={}, name=None, impact_type="traditional"
+):
     ref_massw = 80379
     ref_massz = 91187.6
 
@@ -17,12 +20,15 @@ def read_groupunc_df(filename, uncs, rename_cols={}, name=None):
     poi = rabbit.io_tools.get_poi_names(meta)
 
     impacts, labels = rabbit.io_tools.read_impacts_poi(
-        fitresult, grouped=True, poi=poi[0], pulls=False
+        fitresult,
+        add_total=False,
+        grouped=True,
+        poi=poi[0],
+        pulls=False,
+        impact_type=impact_type,
     )
-    pulls, pulls_prefit, constraints, constraints_prefit, _, labels_ung = (
-        rabbit.io_tools.read_impacts_poi(
-            fitresult, grouped=False, poi=poi[0], pulls=True
-        )
+    labels_ung, pulls, constraints = rabbit.io_tools.get_pulls_and_constraints(
+        fitresult
     )
 
     info = {
@@ -37,6 +43,10 @@ def read_groupunc_df(filename, uncs, rename_cols={}, name=None):
     df.iloc[0, 1:] = df.iloc[0, 1:] * 100
     df.iloc[0, 1] += ref_massz if poi[0] == "massShiftZ100MeV" else ref_massw
 
+    if impact_type == "nonprofiled":
+        total_unc = np.sqrt(np.sum(df.iloc[:, -2:].values * df.iloc[:, -2:].values))
+        df.loc[:, "err_total"] = total_unc
+
     if rename_cols:
         df.rename(columns=rename_cols, inplace=True)
     if name:
@@ -45,10 +55,12 @@ def read_groupunc_df(filename, uncs, rename_cols={}, name=None):
     return df
 
 
-def read_all_groupunc_df(filenames, uncs, rename_cols={}, names=[]):
+def read_all_groupunc_df(
+    filenames, uncs, rename_cols={}, names=[], impact_type="traditional"
+):
     dfs = [
-        read_groupunc_df(f, uncs, rename_cols, n)
-        for f, n in itertools.zip_longest(filenames, names)
+        read_groupunc_df(f, [u], rename_cols, n, impact_type=impact_type)
+        for f, n, u in itertools.zip_longest(filenames, names, uncs)
     ]
 
     return pd.concat(dfs)

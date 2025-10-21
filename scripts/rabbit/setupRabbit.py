@@ -520,10 +520,16 @@ def make_parser(parser=None):
         help="Scale the minnlo qcd scale uncertainties by this factor",
     )
     parser.add_argument(
-        "--symmetrizeMinnloScale",
+        "--symmetrizeTheoryUnc",
         default="quadratic",
         type=str,
         help="Symmetrization type for minnlo scale variations",
+    )
+    parser.add_argument(
+        "--symmetrizePdfUnc",
+        default="quadratic",
+        type=str,
+        help="Symmetrization type for PDF (and alphas) variations",
     )
     parser.add_argument(
         "--massVariation", type=float, default=100, help="Variation of boson mass"
@@ -1514,7 +1520,8 @@ def setup(
             samples=theorySystSamples,
             minnlo_unc=args.minnloScaleUnc,
             minnlo_scale=args.scaleMinnloScale,
-            minnlo_symmetrize=args.symmetrizeMinnloScale,
+            theory_symmetrize=args.symmetrizeTheoryUnc,
+            pdf_symmetrize=args.symmetrizePdfUnc,
         )
 
         theory_helper.add_pdf_alphas_variation(
