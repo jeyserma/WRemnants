@@ -1473,7 +1473,9 @@ def setup(
     decorwidth = args.decorMassWidth or args.fitWidth
     if not (stat_only and constrainMass) and args.massVariation != 0:
         massVariation = 2.1 if (not wmass and constrainMass) else args.massVariation
-        massWeightName = "massWeight_widthdecor" if decorwidth else "massWeight"
+        massWeightName = (
+            f"massWeight_widthdecor{label}" if decorwidth else f"massWeight{label}"
+        )
         mass_info = dict(
             processes=signal_samples_forMass,
             group=f"massShift",
@@ -1484,26 +1486,35 @@ def setup(
             systAxes=["massShift"],
             passToFakes=passSystToFakes,
         )
+
         if args.breitwignerWMassWeights and label == "W":
+            preOpMap = {}
+            for group in ["Wmunu", "Wtaunu"]:
+                for member in datagroups.groups[group].members:
+                    h_ref = datagroups.readHist(
+                        datagroups.nominalName, member, massWeightName
+                    )
+                    preOpMap[member.name] = (
+                        lambda h, h_ref=h_ref: syst_tools.correct_bw_xsec(h, h_ref)
+                    )
+
             datagroups.addSystematic(
-                histname=f"breitwigner_{massWeightName}{label}",
+                histname=f"breitwigner_{massWeightName}",
                 name=f"massWeight{label}",
-                action=syst_tools.correct_bw_xsec,
-                actionArgs=dict(h_ref_name=f"massWeight{label}"),
-                actionRequiresSelf=True,
+                preOpMap=preOpMap,
                 **mass_info,
             )
         else:
             if len(args.fitMassDecorr) == 0:
                 datagroups.addSystematic(
-                    f"{massWeightName}{label}",
+                    massWeightName,
                     **mass_info,
                 )
             else:
                 suffix = "".join([a.capitalize() for a in args.fitMassDecorr])
                 new_names = [f"{a}_decorr" for a in args.fitMassDecorr]
                 datagroups.addSystematic(
-                    histname=f"{massWeightName}{label}",
+                    histname=massWeightName,
                     processes=signal_samples_forMass,
                     name=f"massDecorr{suffix}{label}",
                     group=f"massDecorr{label}",
@@ -1537,7 +1548,7 @@ def setup(
                 combine_helpers.add_mass_diff_variations(
                     datagroups,
                     fitMassDiff,
-                    name=f"{massWeightName}{label}",
+                    name=massWeightName,
                     processes=signal_samples_forMass,
                     constrain=constrainMass,
                     suffix=suffix,
@@ -1650,11 +1661,18 @@ def setup(
             passToFakes=passSystToFakes,
         )
         if args.breitwignerWMassWeights and label == "W":
+            preOpMap = {}
+            for group in ["Wmunu", "Wtaunu"]:
+                for member in datagroups.groups[group].members:
+                    h_ref = datagroups.readHist(
+                        datagroups.nominalName, member, f"widthWeight{label}"
+                    )
+                    preOpMap[member.name] = (
+                        lambda h, h_ref=h_ref: syst_tools.correct_bw_xsec(h, h_ref)
+                    )
             datagroups.addSystematic(
                 histname=f"breitwigner_widthWeight{label}",
-                action=syst_tools.correct_bw_xsec,
-                actionArgs=dict(h_ref_name=f"widthWeight{label}"),
-                actionRequiresSelf=True,
+                preOpMap=preOpMap,
                 **width_info,
             )
         else:

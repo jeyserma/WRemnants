@@ -50,9 +50,9 @@ process_colors = {
     "Fake_e": "#964A8B",
     "Fake_mu": "#964A8B",
     "Prompt": "#E42536",
-    "WtoNMu_5": "#5790FC",
-    "WtoNMu_10": "#964A8B",
-    "WtoNMu_50": "#7A21DD",
+    "WtoNMu_5": "#409C3D",
+    "WtoNMu_10": "#2BC74D",
+    "WtoNMu_50": "#00FF80",
 }
 
 process_supergroups = {

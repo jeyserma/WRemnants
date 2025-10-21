@@ -2786,27 +2786,12 @@ def scale_hist_up_down_corr_from_file(h, corr_file=None, corr_hist=None):
     return hVar
 
 
-def correct_bw_xsec(h, self, proc, forceToNominal, h_ref_name):
+def correct_bw_xsec(h, h_ref):
     """
     Normalize the Breit-Wigner mass variation histograms
     to the cross section from the MiNNLO mass variation histograms.
     Assumes that the histograms have been filled with the same mass variations, in the same order.
     """
-
-    if proc in ["WtoNMu_5", "WtoNMu_10", "WtoNMu_50"]:
-        # BSM samples don't have the MiNNLO mass weights
-        return h
-
-    self.loadHistsForDatagroups(
-        self.nominalName,
-        h_ref_name,
-        label="syst",
-        procsToRead=[proc],
-        forceToNominal=forceToNominal,
-        sumFakesPartial=True,
-    )
-
-    h_ref = self.groups[proc].hists["syst"]
 
     if "massShift" in h.axes.name:
         var = "massShift"
@@ -2825,16 +2810,7 @@ def correct_bw_xsec(h, self, proc, forceToNominal, h_ref_name):
         )
         return h
 
-    num = np.sum(
-        h_ref.values(flow=True),
-        axis=tuple(i for i, n in enumerate(h_ref.axes.name) if n != var),
-    )
-    den = np.sum(
-        h.values(flow=True),
-        axis=tuple(i for i, n in enumerate(h.axes.name) if n != var),
-    )
-    correction = num / den
-
-    h.values(flow=True)[...] = h.values(flow=True)[...] * correction
+    h_corr = hh.divideHists(h.project(var), h_ref.project(var))
+    h = hh.multiplyHists(h, h_corr)
 
     return h

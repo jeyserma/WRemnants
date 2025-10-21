@@ -44,6 +44,9 @@ wprocs = [
     "Wminusmunu_winhac-nlo",
     "WplusCharmToMuNu",
     "WminusCharmToMuNu",
+    "WtoNMu_MN-5-V-0p001",
+    "WtoNMu_MN-10-V-0p001",
+    "WtoNMu_MN-50-V-0p001",
 ]
 zprocs = [
     "ZmumuPostVFP",
