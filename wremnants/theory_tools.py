@@ -916,7 +916,7 @@ def define_theory_weights_and_corrs(df, dataset_name, helpers, args, theory_help
     if "LHEPart_status" in df.GetColumnNames():
         df = define_lhe_vars(df)
 
-    if not "powheg" in dataset_name:
+    if not any(x in dataset_name for x in ["madgraph", "powheg"]):
         # no preFSR particles in powheg samples
         df = define_prefsr_vars(df)
         df = define_intermediate_gen_vars(df, "hardProcess", 21, 29)
@@ -1008,10 +1008,18 @@ def define_breit_wigner_weights(df, proc):
         return df.DefinePerSample("bw_weight", "1.0")
 
     type = 1 if "W" in proc else 0
-    entries = 21
+    entries = 21 if "W" in proc else 23
     df = df.Define(
-        f"breitwignerWeights{proc[0]}_tensor",
-        f"auto res = wrem::vec_to_tensor_t<double, {entries}>(wrem::breitWignerWeights(massVgen, {type}));"
+        f"breitwigner_massWeight{proc[0]}_tensor",
+        f"auto res = wrem::vec_to_tensor_t<double, {entries}>(wrem::breitWignerMassWeights<{type}>(massVgen));"
+        "res = res * nominal_weight;"
+        "return res;",
+    )
+
+    entries = 5
+    df = df.Define(
+        f"breitwigner_widthWeight{proc[0]}_tensor",
+        f"auto res = wrem::vec_to_tensor_t<double, {entries}>(wrem::breitWignerWidthWeights<{type}>(massVgen));"
         "res = res * nominal_weight;"
         "return res;",
     )

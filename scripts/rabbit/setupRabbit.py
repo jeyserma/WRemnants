@@ -26,6 +26,7 @@ from wremnants.syst_tools import (
     massWeightNames,
     scale_hist_up_down,
     scale_hist_up_down_corr_from_file,
+    widthWeightNames,
 )
 from wums import boostHistHelpers as hh
 from wums import logging
@@ -1022,10 +1023,10 @@ def setup(
             )
         )
 
-    # if args.addBSMSample:
-    bsm_group = "WtoNMu_5"
-    base_group = [base_group, bsm_group]
-    datagroups.unconstrainedProcesses.append(bsm_group)
+    for bsm_signal in filter(
+        lambda x: x.startswith("WtoNMu"), datagroups.allMCProcesses()
+    ):
+        datagroups.unconstrainedProcesses.append(bsm_signal)
 
     if xnorm:
         datagroups.select_xnorm_groups(base_group, inputBaseName)
@@ -1179,6 +1180,7 @@ def setup(
         and (filterGroup == None or datagroups.fakeName in filterGroup)
     )
 
+    bsmMatch = ["WtoNMu"]
     dibosonMatch = ["WW", "WZ", "ZZ"]
     WMatch = [
         "W"
@@ -1469,74 +1471,64 @@ def setup(
         )
 
     decorwidth = args.decorMassWidth or args.fitWidth
-    if not (stat_only and constrainMass):
+    if not (stat_only and constrainMass) and args.massVariation != 0:
+        massVariation = 2.1 if (not wmass and constrainMass) else args.massVariation
+        massWeightName = "massWeight_widthdecor" if decorwidth else "massWeight"
+        mass_info = dict(
+            processes=signal_samples_forMass,
+            group=f"massShift",
+            noi=not constrainMass,
+            skipEntries=massWeightNames(proc=label, exclude=massVariation),
+            mirror=False,
+            noConstraint=not constrainMass,
+            systAxes=["massShift"],
+            passToFakes=passSystToFakes,
+        )
         if args.breitwignerWMassWeights and label == "W":
-            massVariation = 2.1 if (not wmass and constrainMass) else args.massVariation
             datagroups.addSystematic(
-                histname=f"breitwigner{label}",
-                name="massShiftBW",
-                processes=signal_samples_forMass,
-                group=f"massShift",
-                noi=not constrainMass,
-                skipEntries=massWeightNames(proc=label, exclude=massVariation),
-                mirror=False,
-                noConstraint=not constrainMass,
-                systAxes=["breitwignerVar"],
-                passToFakes=passSystToFakes,
+                histname=f"breitwigner_{massWeightName}{label}",
+                name=f"massWeight{label}",
                 action=syst_tools.correct_bw_xsec,
                 actionArgs=dict(h_ref_name=f"massWeight{label}"),
                 actionRequiresSelf=True,
+                **mass_info,
             )
         else:
-            massWeightName = "massWeight_widthdecor" if decorwidth else "massWeight"
-            if args.massVariation != 0:
-                if len(args.fitMassDecorr) == 0:
-                    massVariation = (
-                        2.1 if (not wmass and constrainMass) else args.massVariation
-                    )
-                    datagroups.addSystematic(
-                        f"{massWeightName}{label}",
-                        processes=signal_samples_forMass,
-                        group=f"massShift",
-                        noi=not constrainMass,
-                        skipEntries=massWeightNames(proc=label, exclude=massVariation),
-                        mirror=False,
-                        noConstraint=not constrainMass,
-                        systAxes=["massShift"],
-                        passToFakes=passSystToFakes,
-                    )
-                else:
-                    suffix = "".join([a.capitalize() for a in args.fitMassDecorr])
-                    new_names = [f"{a}_decorr" for a in args.fitMassDecorr]
-                    datagroups.addSystematic(
-                        histname=f"{massWeightName}{label}",
-                        processes=signal_samples_forMass,
-                        name=f"massDecorr{suffix}{label}",
-                        group=f"massDecorr{label}",
-                        # systNameReplace=[("Shift",f"Diff{suffix}")],
-                        skipEntries=[
-                            (x, *[-1] * len(args.fitMassDecorr))
-                            for x in massWeightNames(
-                                proc=label, exclude=args.massVariation
-                            )
-                        ],
-                        noi=not constrainMass,
-                        noConstraint=not constrainMass,
-                        mirror=False,
-                        systAxes=["massShift", *new_names],
-                        passToFakes=passSystToFakes,
-                        # isPoiHistDecorr is a special flag to deal with how the massShift variations are internally formed
-                        isPoiHistDecorr=len(args.fitMassDecorr),
-                        actionRequiresNomi=True,
-                        action=syst_tools.decorrelateByAxes,
-                        actionArgs=dict(
-                            axesToDecorrNames=args.fitMassDecorr,
-                            newDecorrAxesNames=new_names,
-                            axlim=args.decorrAxlim,
-                            rebin=args.decorrRebin,
-                            absval=args.decorrAbsval,
-                        ),
-                    )
+            if len(args.fitMassDecorr) == 0:
+                datagroups.addSystematic(
+                    f"{massWeightName}{label}",
+                    **mass_info,
+                )
+            else:
+                suffix = "".join([a.capitalize() for a in args.fitMassDecorr])
+                new_names = [f"{a}_decorr" for a in args.fitMassDecorr]
+                datagroups.addSystematic(
+                    histname=f"{massWeightName}{label}",
+                    processes=signal_samples_forMass,
+                    name=f"massDecorr{suffix}{label}",
+                    group=f"massDecorr{label}",
+                    # systNameReplace=[("Shift",f"Diff{suffix}")],
+                    skipEntries=[
+                        (x, *[-1] * len(args.fitMassDecorr))
+                        for x in massWeightNames(proc=label, exclude=args.massVariation)
+                    ],
+                    noi=not constrainMass,
+                    noConstraint=not constrainMass,
+                    mirror=False,
+                    systAxes=["massShift", *new_names],
+                    passToFakes=passSystToFakes,
+                    # isPoiHistDecorr is a special flag to deal with how the massShift variations are internally formed
+                    isPoiHistDecorr=len(args.fitMassDecorr),
+                    actionRequiresNomi=True,
+                    action=syst_tools.decorrelateByAxes,
+                    actionArgs=dict(
+                        axesToDecorrNames=args.fitMassDecorr,
+                        newDecorrAxesNames=new_names,
+                        axlim=args.decorrAxlim,
+                        rebin=args.decorrRebin,
+                        absval=args.decorrAbsval,
+                    ),
+                )
 
             fitMassDiff = args.fitMassDiffW if wmass else args.fitMassDiffZ
 
@@ -1634,30 +1626,42 @@ def setup(
             "widthWeightZ",
             name="WidthZ0p8MeV",
             processes=["single_v_nonsig_samples"] if wmass else signal_samples_forMass,
-            action=lambda h: h[{"width": ["widthZ2p49333GeV", "widthZ2p49493GeV"]}],
+            skipEntries=widthWeightNames(proc="Z", exclude=(2.49333, 2.49493)),
             groups=["ZmassAndWidth" if wmass else "widthZ", "theory"],
             mirror=False,
             noi=args.fitWidth if not wmass else False,
             noConstraint=args.fitWidth if not wmass else False,
             systAxes=["width"],
-            outNames=["widthZDown", "widthZUp"],
+            systNameReplace=[["2p49333GeV", "Down"], ["2p49493GeV", "Up"]],
             passToFakes=passSystToFakes,
         )
 
     if wmass and (args.fitWidth or (not stat_only and not args.noTheoryUnc)):
-        datagroups.addSystematic(
-            "widthWeightW",
+        width_info = dict(
             name="WidthW0p6MeV",
             processes=signal_samples_forMass,
-            action=lambda h: h[{"width": ["widthW2p09053GeV", "widthW2p09173GeV"]}],
             groups=["widthW", "theory"],
             mirror=False,
             noi=args.fitWidth,
             noConstraint=args.fitWidth,
+            skipEntries=widthWeightNames(proc="W", exclude=(2.09053, 2.09173)),
             systAxes=["width"],
-            outNames=["widthWDown", "widthWUp"],
+            systNameReplace=[["2p09053GeV", "Down"], ["2p09173GeV", "Up"]],
             passToFakes=passSystToFakes,
         )
+        if args.breitwignerWMassWeights and label == "W":
+            datagroups.addSystematic(
+                histname=f"breitwigner_widthWeight{label}",
+                action=syst_tools.correct_bw_xsec,
+                actionArgs=dict(h_ref_name=f"widthWeight{label}"),
+                actionRequiresSelf=True,
+                **width_info,
+            )
+        else:
+            datagroups.addSystematic(
+                "widthWeightW",
+                **width_info,
+            )
 
     if args.fitSin2ThetaW or (not stat_only and not args.noTheoryUnc):
         datagroups.addSystematic(
