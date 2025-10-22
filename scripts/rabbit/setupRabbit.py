@@ -1636,7 +1636,6 @@ def setup(
         theory_helper.add_pdf_alphas_variation(
             noi=args.fitAlphaS,
             scale=args.scalePdf if not args.fitAlphaS else 1.0,
-            from_hels=not args.noTheoryCorrsViaHelicities,
         )
 
         if not stat_only and not args.noTheoryUnc:
