@@ -1776,18 +1776,6 @@ def build_graph(df, dataset):
                         )
                     )
 
-                    # # for full phase space
-                    # noiAsPoiHistName = Datagroups.histName(
-                    #     "nominal", syst=f"{level}_full_yieldsUnfolding"
-                    # )
-                    # results.append(
-                    #     df.HistoBoost(
-                    #         f"{noiAsPoiHistName}_theory_weight",
-                    #         [*nominal_axes, *unfolding_axes[level]],
-                    #         [*nominal_cols, *unfolding_cols[level], f"theory_weight_{level}"],
-                    #     )
-                    # )
-
             elif dataset.name == "ZmumuPostVFP":
                 unfolder_z.add_poi_as_noi_histograms(
                     df,
