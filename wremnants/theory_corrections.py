@@ -527,7 +527,7 @@ def make_theory_helpers(
                     proc=proc,
                     pdfs=args.pdfs,
                     filename=common.data_dir
-                    / "angularCoefficients/w_z_gen_dists_maxFiles_m1_pdfsByHelicity_skimmed_{process}.hdf5",
+                    + "/angularCoefficients/w_z_gen_dists_maxFiles_m1_pdfsByHelicity_skimmed_{process}.hdf5",
                 )
             )
         if "alphaS" in corrs:
@@ -548,7 +548,7 @@ def make_theory_helpers(
                     pdf_renorm="pdf_uncorr",
                     central_weights=True,
                     filename=common.data_dir
-                    / "angularCoefficients/w_z_gen_dists_maxFiles_m1_pdfsByHelicity_skimmed_{process}.hdf5",
+                    + "/angularCoefficients/w_z_gen_dists_maxFiles_m1_pdfsByHelicity_skimmed_{process}.hdf5",
                 )
             )
 
