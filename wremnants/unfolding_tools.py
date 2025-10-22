@@ -521,3 +521,21 @@ class UnfolderZ:
                         [*yield_cols, "nominal_weight"],
                     )
                 )
+
+                # create corresponding histogram without experimental weights, to correlate stat between gen and reco
+                weight_expr = theory_tools.build_weight_expr(
+                    df,
+                    exclude_weights=[
+                        "exp_weight",
+                    ],
+                )  # May want to exclude "ew_theory_corr_weight" in case of QCD only gen definition
+                logger.info(f"Theory weight is {weight_expr}")
+                df = df.Define(f"theory_weight_{level}", weight_expr)
+
+                results.append(
+                    df.HistoBoost(
+                        f"{noiAsPoiHistName}_theory_weight",
+                        yield_axes,
+                        [*yield_cols, f"theory_weight_{level}"],
+                    )
+                )

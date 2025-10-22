@@ -563,6 +563,9 @@ def build_graph(df, dataset):
                 *unfolder_z.unfolding_cols[unfolder_z.unfolding_levels[-1]],
             ]
 
+    if args.xnormOnly:
+        return results, weightsum
+
     if not args.noAuxiliaryHistograms and isZ and len(auxiliary_gen_axes):
         # gen level variables before selection
         df_gen = df
