@@ -53,6 +53,7 @@ process_colors = {
     "WtoNMu_5": "#409C3D",
     "WtoNMu_10": "#2BC74D",
     "WtoNMu_50": "#00FF80",
+    "BSM": "#409C3D",
 }
 
 process_supergroups = {
@@ -88,6 +89,8 @@ process_supergroups = {
 }
 process_supergroups["z_wlike"] = process_supergroups["z_dilepton"]
 process_supergroups["z_lowpu"] = process_supergroups["z_dilepton"]
+process_supergroups["bsm"] = process_supergroups["w_mass"]
+process_supergroups["bsm"]["BSM"] = (["WtoNMu_5", "WtoNMu_10", "WtoNMu_50"],)
 
 process_labels = {
     "Data": "Data",
