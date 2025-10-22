@@ -1748,6 +1748,28 @@ def build_graph(df, dataset):
                             [*nominal_cols, *unfolding_cols[level], "nominal_weight"],
                         )
                     )
+                    # create corresponding histogram without experimental weights, to correlate stat between gen and reco
+                    weight_expr = theory_tools.build_weight_expr(
+                        df,
+                        exclude_weights=[
+                            "exp_weight",
+                        ],
+                    )  # May want to exclude "ew_theory_corr_weight" in case of QCD only gen definition
+                    logger.info(f"Theory weight is {weight_expr}")
+                    df = df.Define(f"theory_weight_{level}", weight_expr)
+
+                    results.append(
+                        df.HistoBoost(
+                            f"{noiAsPoiHistName}_theory_weight",
+                            [*nominal_axes, *unfolding_axes[level]],
+                            [
+                                *nominal_cols,
+                                *unfolding_cols[level],
+                                f"theory_weight_{level}",
+                            ],
+                        )
+                    )
+
             elif dataset.name == "ZmumuPostVFP":
                 unfolder_z.add_poi_as_noi_histograms(
                     df,

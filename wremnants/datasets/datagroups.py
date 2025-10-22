@@ -1560,6 +1560,10 @@ class Datagroups(object):
             # Check if the entry in the hist matches one of the entries in entries_to_skip, across all axes
             # Can use -1 to exclude all values of an axis
             def match_entry(curr_entry, to_skip):
+                if isinstance(to_skip, list) and all(
+                    isinstance(x, str) for x in to_skip
+                ):
+                    return any(match_entry(curr_entry, m) for m in to_skip)
                 return (
                     to_skip == -1
                     or curr_entry == to_skip

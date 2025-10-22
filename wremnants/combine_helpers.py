@@ -196,8 +196,6 @@ def add_explicit_BinByBinStat(
             ),
         )
     else:
-        # if args.fitresult: # FIXME
-        #     info["group"] = "binByBinStat"
         datagroups.addSystematic(
             **info,
             systAxes=recovar_syst,
@@ -209,6 +207,85 @@ def add_explicit_BinByBinStat(
                 scale2=np.sqrt(h.project(*recovar).variances(flow=True))
                 / h.project(*recovar).values(flow=True),
             ),
+        )
+
+
+def add_nominal_with_explicit_BinByBinStat(
+    datagroups, wmass, base_name, masked, masked_flow_axes=[]
+):
+    # signal MC stat is correlated between detector level and gen level with explicit parameters
+    #   setting signal histogram variances to 0 in detector level
+    #   subtracting signal histogram variaiances of detector level from gen level to keep only contribution that is not at detector level
+    if wmass:
+        action_sel = lambda h, x: histselections.SignalSelectorABCD(h[x]).get_hist(h[x])
+    else:
+        action_sel = lambda h, x: h[x]
+
+    # load gen level nominal
+    datagroups.loadHistsForDatagroups(
+        baseName=datagroups.nominalName,
+        syst=datagroups.nominalName,
+        procsToRead=datagroups.groups.keys(),
+        label=datagroups.nominalName,
+        forceNonzero=False,
+        sumFakesPartial=True,
+    )
+
+    # load generator level nominal
+    gen_name = f"{base_name}_yieldsUnfolding_theory_weight"
+    datagroups.loadHistsForDatagroups(
+        baseName="nominal",
+        syst=gen_name,
+        procsToRead=datagroups.groups.keys(),
+        label=gen_name,
+        forceNonzero=False,
+        sumFakesPartial=True,
+    )
+
+    for proc in datagroups.predictedProcesses():
+        logger.info(f"Add process {proc} in channel {datagroups.channel}")
+
+        # nominal histograms of prediction
+        norm_proc_hist_reco = datagroups.groups[proc].hists[gen_name]
+        norm_proc_hist = datagroups.groups[proc].hists[datagroups.nominalName]
+
+        norm_proc_hist_reco = action_sel(norm_proc_hist_reco, {"acceptance": True})
+
+        if norm_proc_hist_reco.axes.name != datagroups.fit_axes:
+            norm_proc_hist_reco = norm_proc_hist_reco.project(*datagroups.fit_axes)
+
+        if norm_proc_hist.axes.name != datagroups.fit_axes:
+            norm_proc_hist = norm_proc_hist.project(*datagroups.fit_axes)
+
+        norm_proc_hist.variances(flow=True)[...] = norm_proc_hist.variances(
+            flow=True
+        ) - norm_proc_hist_reco.variances(flow=True)
+
+        datagroups.groups[proc].hists[datagroups.nominalName]
+
+        if len(masked_flow_axes) > 0:
+            datagroups.axes_disable_flow = [
+                n
+                for n in norm_proc_hist.axes.name
+                if n not in masked_flow_axes and n != "helicitySig"
+            ]
+            norm_proc_hist = hh.disableFlow(
+                norm_proc_hist, datagroups.axes_disable_flow
+            )
+
+        if datagroups.channel not in datagroups.writer.channels:
+            datagroups.writer.add_channel(
+                axes=norm_proc_hist.axes,
+                name=datagroups.channel,
+                masked=masked,
+                flow=len(masked_flow_axes) > 0,
+            )
+
+        datagroups.writer.add_process(
+            norm_proc_hist,
+            proc,
+            datagroups.channel,
+            signal=proc in datagroups.unconstrainedProcesses,
         )
 
 
