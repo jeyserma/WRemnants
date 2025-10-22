@@ -718,17 +718,17 @@ def make_pdf_uncertainty_helper_by_helicity(
 ):
 
     # load helicity cross sections from file
-    with h5py.File(filename, "r") as h5file:
-        proc_map = {
-            "Z": ("ZmumuPostVFP",),
-            "W": ("WplusmunuPostVFP", "WminusmunuPostVFP"),
-        }
+    proc_map = {
+        "Z": ("ZmumuPostVFP",),
+        "W": ("WplusmunuPostVFP", "WminusmunuPostVFP"),
+    }
 
-        def _collect_pdf_hist(pdf_name):
-            hist_key = f"nominal_gen_{pdf_name}"
-            hists = []
-            for process in proc_map.get(proc, ()):
-                results = input_tools.load_results_h5py(h5file.format(process=process))
+    def _collect_pdf_hist(pdf_name):
+        hist_key = f"nominal_gen_{pdf_name}"
+        hists = []
+        for process in proc_map.get(proc, ()):
+            with h5py.File(filename.format(process=process), "r") as h5file:
+                results = input_tools.load_results_h5py(h5file)
                 outputs = results[process]["output"]
                 if hist_key not in outputs:
                     logger.warning(
@@ -736,25 +736,25 @@ def make_pdf_uncertainty_helper_by_helicity(
                     )
                     return None
                 hists.append(outputs[hist_key].get())
-            if not hists:
-                logger.warning(
-                    f"Process {proc} is not supported when building PDF variations."
-                )
-                return None
-            combined = hh.sumHists(hists)
-            return combined
-
-        pdf_vars = _collect_pdf_hist(pdf)
-        if pdf_vars is None:
+        if not hists:
+            logger.warning(
+                f"Process {proc} is not supported when building PDF variations."
+            )
             return None
+        combined = hh.sumHists(hists)
+        return combined
 
-        if pdf_renorm == pdf:
-            pdf_renorm = pdf_vars
-        else:
-            pdf_renorm_hist = _collect_pdf_hist(pdf_renorm)
-            if pdf_renorm_hist is None:
-                return None
-            pdf_renorm = pdf_renorm_hist
+    pdf_vars = _collect_pdf_hist(pdf)
+    if pdf_vars is None:
+        return None
+
+    if pdf_renorm == pdf:
+        pdf_renorm = pdf_vars
+    else:
+        pdf_renorm_hist = _collect_pdf_hist(pdf_renorm)
+        if pdf_renorm_hist is None:
+            return None
+        pdf_renorm = pdf_renorm_hist
 
     # construct the correction tensor
     corr_ax = hist.axis.Boolean(name="corr")
