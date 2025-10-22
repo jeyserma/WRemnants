@@ -122,7 +122,6 @@ class TheoryHelper(object):
         self.add_pdf_uncertainty(
             operation=self.pdf_operation,
             scale=self.scale_pdf_unc,
-            from_hels=self.from_hels,
         )
         try:
             self.add_quark_mass_vars()
@@ -855,16 +854,16 @@ class TheoryHelper(object):
                     name=rename,
                 )
 
-    def add_pdf_uncertainty(self, operation=None, scale=-1.0, from_hels=False):
+    def add_pdf_uncertainty(self, operation=None, scale=-1.0):
         pdf = self.datagroups.args_from_metadata("pdfs")[0]
         pdfInfo = theory_tools.pdf_info_map("ZmumuPostVFP", pdf)
         pdfName = pdfInfo["name"]
         scale = (
             scale
             if scale != -1.0
-            else pdfInfo.get(f"inflation_factor_{self.datagroups.mode}", 1.0)
+            else theory_tools.pdf_inflation_factor(pdfInfo, self.args.noi)
         )
-        if from_hels:
+        if self.from_hels:
             pdf_hist = f"{pdfName}UncertByHelicity"
             pdf_corr_hist = f"{pdfName}UncertByHelicity"
         else:
@@ -936,7 +935,7 @@ class TheoryHelper(object):
                     **tmp_pdf_args,
                 )
 
-    def add_pdf_alphas_variation(self, noi=False, scale=-1.0, from_hels=False):
+    def add_pdf_alphas_variation(self, noi=False, scale=-1.0):
         pdf = self.datagroups.args_from_metadata("pdfs")[0]
         pdfInfo = theory_tools.pdf_info_map("ZmumuPostVFP", pdf)
         pdfName = pdfInfo["name"]
@@ -958,7 +957,7 @@ class TheoryHelper(object):
             if asRange == "002"
             else [("0117", "Down"), ("0119", "Up")]
         )
-        if from_hels:
+        if self.from_hels:
             asname = "pdfAlphaSByHelicity"
         else:
             asname = (
@@ -1038,7 +1037,7 @@ class TheoryHelper(object):
                 name=f"resumTransitionFOScale{name_append}",
             )
 
-    def add_quark_mass_vars(self, from_minnlo=True, from_hels=False):
+    def add_quark_mass_vars(self, from_minnlo=True):
         pdfs = self.datagroups.args_from_metadata("pdfs")
         theory_corrs = self.datagroups.args_from_metadata("theoryCorr")
 
@@ -1073,7 +1072,7 @@ class TheoryHelper(object):
             )
 
         if from_minnlo:
-            if from_hels:
+            if self.from_hels:
                 bhist = "pdfMSHT20mbrangeUncertByHelicity"
             else:
                 bhist = "pdfMSHT20mbrange"
