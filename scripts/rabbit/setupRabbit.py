@@ -286,6 +286,7 @@ def make_parser(parser=None):
     parser.add_argument(
         "--noi",
         type=str,
+        nargs="+",
         choices=[
             "wmass",
             "alphaS",

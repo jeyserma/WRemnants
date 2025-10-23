@@ -526,8 +526,6 @@ def make_theory_helpers(
                 make_pdfs_uncertanties_helper_by_helicity(
                     proc=proc,
                     pdfs=args.pdfs,
-                    filename=common.data_dir
-                    + "/angularCoefficients/w_z_gen_dists_maxFiles_m1_pdfsByHelicity_skimmed_{process}.hdf5",
                 )
             )
         if "alphaS" in corrs:
@@ -548,7 +546,7 @@ def make_theory_helpers(
                     pdf_renorm="pdf_uncorr",
                     central_weights=True,
                     filename=common.data_dir
-                    + "/angularCoefficients/w_z_gen_dists_maxFiles_m1_pdfsByHelicity_skimmed_{process}.hdf5",
+                    + f"/PDFs/w_z_gen_dists_maxFiles_m1_{args.pdfs[0]}_pdfByHelicity_skimmed.hdf5",
                 )
             )
 
@@ -684,7 +682,6 @@ def make_qcd_uncertainty_helper_by_helicity(
 def make_pdfs_uncertanties_helper_by_helicity(
     proc,
     pdfs,
-    filename=f"{common.data_dir}/angularCoefficients/w_z_gen_dists_maxFiles_m1_alphaSunfoldingBinning_helicity.hdf5",
     return_tensor=True,
 ):
     pdf_helpers = {}
@@ -699,7 +696,8 @@ def make_pdfs_uncertanties_helper_by_helicity(
             proc=proc,
             pdf=pdf_name,
             pdf_renorm=pdf_renorm,
-            filename=filename,
+            filename=common.data_dir
+            + f"/PDFs/w_z_gen_dists_maxFiles_m1_{pdf}_pdfByHelicity_skimmed.hdf5",
             return_tensor=return_tensor,
         )
         if pdf_helper is not None:
@@ -727,7 +725,7 @@ def make_pdf_uncertainty_helper_by_helicity(
         hist_key = f"nominal_gen_{pdf_name}"
         hists = []
         for process in proc_map.get(proc, ()):
-            with h5py.File(filename.format(process=process), "r") as h5file:
+            with h5py.File(filename, "r") as h5file:
                 results = input_tools.load_results_h5py(h5file)
                 outputs = results[process]["output"]
                 if hist_key not in outputs:
