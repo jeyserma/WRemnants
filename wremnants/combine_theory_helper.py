@@ -942,7 +942,7 @@ class TheoryHelper(object):
         scale = (
             scale
             if scale != -1.0
-            else pdfInfo.get(f"inflation_factor_{self.datagroups.mode}", 1.0)
+            else theory_tools.pdf_inflation_factor(pdfInfo, self.args.noi)
         )
         pdf_hist = pdfName
         pdf_corr_hist = (
