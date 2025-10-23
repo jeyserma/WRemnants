@@ -930,8 +930,8 @@ class TheoryHelper(object):
                 self.datagroups.addSystematic(
                     pdf_hist.replace("pdfHERAPDF20", "pdfHERAPDF20ext"),
                     skipEntries=[
-                        {pdf_ax: "^(?!pdf[6-9][a-z]*)"}
-                    ],  # exclude everything but 6-9
+                        {pdf_ax: "^(?!pdf[6-8][a-z]*)"}
+                    ],  # exclude everything but 6-8
                     **tmp_pdf_args,
                 )
 
