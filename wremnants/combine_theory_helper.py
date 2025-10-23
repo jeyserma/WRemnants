@@ -858,7 +858,11 @@ class TheoryHelper(object):
         pdf = self.datagroups.args_from_metadata("pdfs")[0]
         pdfInfo = theory_tools.pdf_info_map("ZmumuPostVFP", pdf)
         pdfName = pdfInfo["name"]
-        scale = scale if scale != -1.0 else pdfInfo["inflationFactor"]
+        scale = (
+            scale
+            if scale != -1.0
+            else theory_tools.pdf_inflation_factor(pdfInfo, self.args.noi)
+        )
         if self.from_hels:
             pdf_hist = f"{pdfName}UncertByHelicity"
             pdf_corr_hist = f"{pdfName}UncertByHelicity"
@@ -912,24 +916,34 @@ class TheoryHelper(object):
                 pdf_hist, skipEntries=[{pdf_ax: "^pdf0[a-z]*"}], **pdf_args
             )
             if pdfName == "pdfHERAPDF20":
+
                 self.datagroups.addSystematic(
-                    pdf_hist + "ext",
-                    skipEntries=[{pdf_ax: "^pdf0[a-z]*"}],
-                    processes=processes,
-                    mirror=True,
-                    groups=[pdfName, f"{pdfName}NoAlphaS", "theory", "theory_qcd"],
-                    passToFakes=self.propagate_to_fakes,
-                    preOpMap=operation,
-                    scale=pdfInfo.get("scale", 1) * scale,
-                    symmetrize=symmetrize,
-                    systAxes=[pdf_ax],
+                    pdf_hist.replace("pdfHERAPDF20", "pdfHERAPDF20ext"),
+                    skipEntries=[
+                        {pdf_ax: "^pdf(0|[6-8])[a-z]*"}
+                    ],  # exclude 0, 6 and above
+                    **pdf_args,
+                )
+
+                tmp_pdf_args = pdf_args.copy()
+                tmp_pdf_args["mirror"] = True
+                self.datagroups.addSystematic(
+                    pdf_hist.replace("pdfHERAPDF20", "pdfHERAPDF20ext"),
+                    skipEntries=[
+                        {pdf_ax: "^(?!pdf[6-8][a-z]*)"}
+                    ],  # exclude everything but 6-8
+                    **tmp_pdf_args,
                 )
 
     def add_pdf_alphas_variation(self, noi=False, scale=-1.0):
         pdf = self.datagroups.args_from_metadata("pdfs")[0]
         pdfInfo = theory_tools.pdf_info_map("ZmumuPostVFP", pdf)
         pdfName = pdfInfo["name"]
-        scale = scale if scale != -1.0 else pdfInfo["inflationFactor"]
+        scale = (
+            scale
+            if scale != -1.0
+            else theory_tools.pdf_inflation_factor(pdfInfo, self.args.noi)
+        )
         pdf_hist = pdfName
         pdf_corr_hist = (
             f"scetlib_dyturbo{pdf.upper().replace('AN3LO', 'an3lo')}VarsCorr"
