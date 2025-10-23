@@ -929,7 +929,7 @@ jobs:
       - name: rabbit alphaS setup
         run: >-
           scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/rabbit/setupRabbit.py 
-          -i $HIST_FILE --fitvar ptll-yll --lumiScale $LUMI_SCALE --realData -o $WREMNANTS_OUTDIR --fitAlphaS
+          -i $HIST_FILE --fitvar ptll-yll --lumiScale $LUMI_SCALE --realData -o $WREMNANTS_OUTDIR --noi alphaS
 
       - name: rabbit alphaS fit
         run: >-
@@ -991,7 +991,7 @@ jobs:
           scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/rabbit/setupRabbit.py 
           -i $HIST_FILE -o $WREMNANTS_OUTDIR/ZMassDilepton_ptll_yll_poiAsNoi/ 
           --fitresult $WREMNANTS_OUTDIR/ZMassDilepton_ptll_yll_poiAsNoi/fitresults.hdf5 Select
-          --fitAlphaS --fitvar ptVGen-absYVGen --postfix theoryfit --baseName prefsr
+          --noi alphaS --fitvar ptVGen-absYVGen --postfix theoryfit --baseName prefsr
       
       - name: run theory fit
         run: >-
@@ -1098,7 +1098,7 @@ jobs:
           scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/rabbit/setupRabbit.py 
           -i $HIST_FILE -o $WREMNANTS_OUTDIR/ZMassDilepton_ptll_yll_unfolding/ 
           --fitresult $WREMNANTS_OUTDIR/ZMassDilepton_ptll_yll_unfolding/fitresults.hdf5 Select
-          --fitAlphaS --fitvar ptVGen-absYVGen --postfix theoryfit --baseName postfsr
+          --noi alphaS --fitvar ptVGen-absYVGen --postfix theoryfit --baseName postfsr
       
       - name: run theory fit
         run: >-

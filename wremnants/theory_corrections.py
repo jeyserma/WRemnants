@@ -526,7 +526,6 @@ def make_theory_helpers(
                 make_pdfs_uncertanties_helper_by_helicity(
                     proc=proc,
                     pdfs=args.pdfs,
-                    filename=f"{common.data_dir}/angularCoefficients/w_z_gen_dists_maxFiles_m1_pdfsByHelicity.hdf5",
                 )
             )
         if "alphaS" in corrs:
@@ -546,7 +545,8 @@ def make_theory_helpers(
                     pdf=theory_tools.pdfMap[args.pdfs[0]]["name"],
                     pdf_renorm="pdf_uncorr",
                     central_weights=True,
-                    filename=f"{common.data_dir}/angularCoefficients/w_z_gen_dists_maxFiles_m1_pdfsByHelicity.hdf5",
+                    filename=common.data_dir
+                    + f"/PDFs/w_z_gen_dists_maxFiles_m1_{args.pdfs[0]}_pdfByHelicity_skimmed.hdf5",
                 )
             )
 
@@ -682,7 +682,6 @@ def make_qcd_uncertainty_helper_by_helicity(
 def make_pdfs_uncertanties_helper_by_helicity(
     proc,
     pdfs,
-    filename=f"{common.data_dir}/angularCoefficients/w_z_gen_dists_maxFiles_m1_alphaSunfoldingBinning_helicity.hdf5",
     return_tensor=True,
 ):
     pdf_helpers = {}
@@ -697,7 +696,8 @@ def make_pdfs_uncertanties_helper_by_helicity(
             proc=proc,
             pdf=pdf_name,
             pdf_renorm=pdf_renorm,
-            filename=filename,
+            filename=common.data_dir
+            + f"/PDFs/w_z_gen_dists_maxFiles_m1_{pdf}_pdfByHelicity_skimmed.hdf5",
             return_tensor=return_tensor,
         )
         if pdf_helper is not None:
@@ -716,43 +716,43 @@ def make_pdf_uncertainty_helper_by_helicity(
 ):
 
     # load helicity cross sections from file
-    with h5py.File(filename, "r") as h5file:
-        results = input_tools.load_results_h5py(h5file)
-        proc_map = {
-            "Z": ("ZmumuPostVFP",),
-            "W": ("WplusmunuPostVFP", "WminusmunuPostVFP"),
-        }
+    proc_map = {
+        "Z": ("ZmumuPostVFP",),
+        "W": ("WplusmunuPostVFP", "WminusmunuPostVFP"),
+    }
 
-        def _collect_pdf_hist(pdf_name):
-            hist_key = f"nominal_gen_{pdf_name}"
-            hists = []
-            for output_key in proc_map.get(proc, ()):
-                outputs = results[output_key]["output"]
+    def _collect_pdf_hist(pdf_name):
+        hist_key = f"nominal_gen_{pdf_name}"
+        hists = []
+        for process in proc_map.get(proc, ()):
+            with h5py.File(filename, "r") as h5file:
+                results = input_tools.load_results_h5py(h5file)
+                outputs = results[process]["output"]
                 if hist_key not in outputs:
                     logger.warning(
                         f"Did not find {pdf_name} in {filename}. Not creating histogram of PDF variations by helicities for this set."
                     )
                     return None
                 hists.append(outputs[hist_key].get())
-            if not hists:
-                logger.warning(
-                    f"Process {proc} is not supported when building PDF variations."
-                )
-                return None
-            combined = hh.sumHists(hists)
-            return combined
-
-        pdf_vars = _collect_pdf_hist(pdf)
-        if pdf_vars is None:
+        if not hists:
+            logger.warning(
+                f"Process {proc} is not supported when building PDF variations."
+            )
             return None
+        combined = hh.sumHists(hists)
+        return combined
 
-        if pdf_renorm == pdf:
-            pdf_renorm = pdf_vars
-        else:
-            pdf_renorm_hist = _collect_pdf_hist(pdf_renorm)
-            if pdf_renorm_hist is None:
-                return None
-            pdf_renorm = pdf_renorm_hist
+    pdf_vars = _collect_pdf_hist(pdf)
+    if pdf_vars is None:
+        return None
+
+    if pdf_renorm == pdf:
+        pdf_renorm = pdf_vars
+    else:
+        pdf_renorm_hist = _collect_pdf_hist(pdf_renorm)
+        if pdf_renorm_hist is None:
+            return None
+        pdf_renorm = pdf_renorm_hist
 
     # construct the correction tensor
     corr_ax = hist.axis.Boolean(name="corr")
