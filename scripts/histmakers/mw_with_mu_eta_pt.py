@@ -660,13 +660,16 @@ def build_graph(df, dataset):
     logger.info(f"build graph for dataset: {dataset.name}")
     results = []
     isW = dataset.name in common.wprocs
-    isWmunu = dataset.name in [
-        "WplusmunuPostVFP",
-        "WminusmunuPostVFP",
+    isBSM = dataset.name in [
         "WtoNMu_MN-5-V-0p001",
         "WtoNMu_MN-10-V-0p001",
         "WtoNMu_MN-50-V-0p001",
     ]
+    isWmunu = isBSM or dataset.name in [
+        "WplusmunuPostVFP",
+        "WminusmunuPostVFP",
+    ]
+
     isZ = dataset.name in common.zprocs
     isZveto = isZ or dataset.name in ["DYJetsToMuMuMass10to50PostVFP"]
     isWorZ = isW or isZ
@@ -754,6 +757,20 @@ def build_graph(df, dataset):
                 "wrem::get_dummy_run_by_lumi_quantile(run, luminosityBlock, event, lumiEdges, runVals)",
             )
         cols = [*cols, "run4axis"]
+
+    if isBSM:
+        # to compute inclusive cross section
+        unfolding_tools.add_xnorm_histograms(
+            results,
+            df,
+            args,
+            dataset.name,
+            corr_helpers,
+            theory_helpers,
+            [],
+            [],
+            base_name="gen",
+        )
 
     if args.unfolding:
         if isWmunu:

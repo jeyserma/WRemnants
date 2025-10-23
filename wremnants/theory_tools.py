@@ -916,12 +916,15 @@ def define_theory_weights_and_corrs(df, dataset_name, helpers, args, theory_help
     if "LHEPart_status" in df.GetColumnNames():
         df = define_lhe_vars(df)
 
-    if not any(x in dataset_name for x in ["madgraph", "powheg"]):
+    if "powheg" not in dataset_name:
         # no preFSR particles in powheg samples
         df = define_prefsr_vars(df)
-        df = define_intermediate_gen_vars(df, "hardProcess", 21, 29)
-        df = define_intermediate_gen_vars(df, "postShower", 21, 59)
-        df = define_intermediate_gen_vars(df, "postBeamRemnants", 21, 69)
+        if not dataset_name.startswith("WtoNMu_MN"):
+            # no intermediate bosons in some events in madgraph samples
+            logger.debug(f"Define intermediate gen variables for {dataset_name}")
+            df = define_intermediate_gen_vars(df, "hardProcess", 21, 29)
+            df = define_intermediate_gen_vars(df, "postShower", 21, 59)
+            df = define_intermediate_gen_vars(df, "postBeamRemnants", 21, 69)
 
     if "GenPart_status" in df.GetColumnNames():
         df = define_ew_vars(df)
@@ -1078,6 +1081,7 @@ def define_ew_theory_corr(
             )
 
     if "ew_theory_corr_weight" not in df.GetColumnNames():
+        logger.debug("Define 'ew_theory_corr_weight'=1.0")
         df = df.DefinePerSample("ew_theory_corr_weight", "1.0")
 
     return df
@@ -1097,6 +1101,7 @@ def define_theory_corr(df, dataset_name, helpers, generators, modify_central_wei
         or not generators
         or generators[0] not in dataset_helpers
     ):
+        logger.debug("Define 'theory_corr_weight'=1.0")
         df = df.DefinePerSample("theory_corr_weight", "1.0")
 
     for i, generator in enumerate(generators):

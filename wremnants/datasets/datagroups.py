@@ -40,7 +40,7 @@ class Datagroups(object):
         "2018": 1.025,
     }
 
-    def __init__(self, infile, mode=None, **kwargs):
+    def __init__(self, infile, mode=None, xnorm=False, **kwargs):
         if infile.endswith(".pkl.lz4"):
             with lz4.frame.open(infile) as f:
                 self.results = pickle.load(f)
@@ -111,6 +111,9 @@ class Datagroups(object):
         self.absorbSyst = None
         self.explicitSyst = None
         self.customSystMapping = {}
+
+        # if the histograms should be normalized to cross section (otherwise expected events)
+        self.xnorm = xnorm
 
         self.writer = None
 
@@ -384,7 +387,10 @@ class Datagroups(object):
     def processScaleFactor(self, proc):
         if proc.is_data or proc.xsec is None:
             return 1
-        return self.lumi * 1000 * proc.xsec / proc.weight_sum
+        scale = proc.xsec / proc.weight_sum
+        if not self.xnorm:
+            scale *= self.lumi * 1000
+        return scale
 
     def getMetaInfo(self):
         if "meta_info" not in self.results and "meta_data" not in self.results:
