@@ -102,6 +102,12 @@ parser.add_argument(
     action="store_true",
     help="Use 1 GeV binning for ptVgen (e.g., for theory corrections)",
 )
+parser.add_argument(
+    "--centralBosonPDFWeight",
+    action="store_true",
+    help="Apply PDF reweighting using boson parameterized corrections",
+)
+
 
 parser = parsing.set_parser_default(parser, "filterProcs", common.vprocs)
 args = parser.parse_args()
@@ -159,6 +165,15 @@ axis_chargel_gen = hist.axis.Regular(
 theory_corrs = [*args.theoryCorr, *args.ewTheoryCorr]
 corr_helpers = theory_corrections.load_corr_helpers(common.vprocs, theory_corrs)
 
+corrs = []
+if args.helicity and args.propagatePDFstoHelicity:
+    corrs.append("qcdScale")
+if args.centralBosonPDFWeight:
+    corrs.append("pdf_central")
+theory_helpers_procs = theory_corrections.make_theory_helpers(
+    args, procs=["Z", "W"], corrs=corrs
+)
+
 
 def build_graph(df, dataset):
     logger.info("build graph")
@@ -176,6 +191,11 @@ def build_graph(df, dataset):
         "W",
         "Z",
     ]  # in common.zprocs
+
+    if isW or isZ:
+        theory_helpers = theory_helpers_procs[dataset.name[0]]
+    else:
+        theory_helpers = {}
 
     if args.addCharmAxis:
         axis_massWgen = hist.axis.Variable(
@@ -288,7 +308,7 @@ def build_graph(df, dataset):
     df = df.Define("isEvenEvent", "event % 2 == 0")
 
     df = theory_tools.define_theory_weights_and_corrs(
-        df, dataset.name, corr_helpers, args
+        df, dataset.name, corr_helpers, args, theory_helpers
     )
 
     if isZ:
@@ -879,14 +899,6 @@ def build_graph(df, dataset):
         and "LHEPdfWeight" in df.GetColumnNames()
     ):
 
-        theory_helpers = (
-            theory_corrections.make_theory_helpers(
-                args, procs=[dataset.name[0]], corrs=["qcdScale"]
-            )
-            if args.helicity and args.propagatePDFstoHelicity
-            else {}
-        )
-
         df = syst_tools.add_theory_hists(
             results,
             df,
@@ -900,22 +912,23 @@ def build_graph(df, dataset):
             propagateToHelicity=args.propagatePDFstoHelicity,
         )
 
-        helicity_axes = nominal_axes[:-1] if args.addHelicityAxis else nominal_axes
-        helicity_cols = nominal_cols[:-2] if args.addHelicityAxis else nominal_cols
+        if not dataset.name.startswith("WtoNMu_MN"):
+            helicity_axes = nominal_axes[:-1] if args.addHelicityAxis else nominal_axes
+            helicity_cols = nominal_cols[:-2] if args.addHelicityAxis else nominal_cols
 
-        if args.addCharmAxis:
-            helicity_axes = helicity_axes[:-1]
-            helicity_cols = helicity_cols[:-1]
+            if args.addCharmAxis:
+                helicity_axes = helicity_axes[:-1]
+                helicity_cols = helicity_cols[:-1]
 
-        df = syst_tools.add_helicity_hists(
-            results,
-            df,
-            dataset.name,
-            helicity_axes,
-            helicity_cols,
-            base_name="nominal_gen",
-            storage=hist.storage.Weight(),
-        )
+            df = syst_tools.add_helicity_hists(
+                results,
+                df,
+                dataset.name,
+                helicity_axes,
+                helicity_cols,
+                base_name="nominal_gen",
+                storage=hist.storage.Weight(),
+            )
 
     nominal_gen = df.HistoBoost(
         "nominal_gen",
