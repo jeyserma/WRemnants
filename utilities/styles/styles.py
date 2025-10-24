@@ -459,6 +459,8 @@ translate_selection = {
 
 impact_labels = {
     "WtoNMu_5": "<i>μ</i><sub>W→μN(5GeV)</sub>",
+    "WtoNMu_10": "<i>μ</i><sub>W→μN(10GeV)</sub>",
+    "WtoNMu_50": "<i>μ</i><sub>W→μN(50GeV)</sub>",
     "massShiftZ100MeV": "<i>m</i><sub>Z</sub>",
     "massShiftW100MeV": "<i>m</i><sub>W</sub>",
     "widthZ": "Γ<i>m</i><sub>Z</sub>",

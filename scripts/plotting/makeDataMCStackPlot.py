@@ -80,9 +80,9 @@ parser.add_argument(
     help="Exclude processes matched by group name or (subset) of name",
     default=[
         "QCD",
-        "WtoNMu_MN-5-V-0p001",
-        "WtoNMu_MN-10-V-0p001",
-        "WtoNMu_MN-50-V-0p001",
+        "WtoNMu_5",
+        "WtoNMu_10",
+        "WtoNMu_50",
     ],
 )
 parser.add_argument("--noData", action="store_true", help="Don't plot data")

@@ -210,7 +210,7 @@ def add_explicit_BinByBinStat(
         )
 
 
-def add_nominal_with_explicit_BinByBinStat(
+def add_nominal_with_correlated_BinByBinStat(
     datagroups, wmass, base_name, masked, masked_flow_axes=[]
 ):
     # signal MC stat is correlated between detector level and gen level with explicit parameters

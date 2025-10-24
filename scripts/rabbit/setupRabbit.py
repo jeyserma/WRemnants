@@ -873,7 +873,6 @@ def setup(
     stat_only=False,
     genvar=None,
     channel="ch0",
-    lumi=None,
     fitresult_data=None,
     unfolding_scalemap=None,
     base_group=None,
@@ -922,9 +921,6 @@ def setup(
             inputBaseName.startswith(x) for x in ["gen", "xnorm", "prefsr", "postfsr"]
         ),
     )
-    if lumi is not None:
-        logger.info(f"Set integrated luminosity to: {lumi}/fb")
-        datagroups.lumi = lumi
 
     datagroups.fit_axes = fitvar
     datagroups.channel = channel
@@ -1036,13 +1032,15 @@ def setup(
             )
         )
 
+    bsm_signals = []
     for bsm_signal in filter(
         lambda x: x.startswith("WtoNMu"), datagroups.allMCProcesses()
     ):
         datagroups.unconstrainedProcesses.append(bsm_signal)
+        bsm_signals.append(bsm_signal)
 
     if datagroups.xnorm:
-        datagroups.select_xnorm_groups(base_group, inputBaseName)
+        datagroups.select_xnorm_groups([base_group, *bsm_signals], inputBaseName)
 
     if datagroups.xnorm or isUnfolding or isPoiAsNoi:
         datagroups.setGenAxes(
@@ -1052,7 +1050,6 @@ def setup(
         )
 
     if isPoiAsNoi:
-        constrainMass = False if isTheoryAgnostic else True
         poi_axes = datagroups.gen_axes_names if genvar is None else genvar
         # remove specified gen axes from set of gen axes in datagroups so that those are integrated over
         datagroups.setGenAxes(
@@ -1107,6 +1104,8 @@ def setup(
                 datagroups.deleteGroup(
                     f"{base_group}OOA"
                 )  # remove out of acceptance signal
+        else:
+            constrainMass = True
     elif isUnfolding or isTheoryAgnostic:
         constrainMass = False if isTheoryAgnostic else True
         datagroups.sum_gen_axes = [
@@ -2863,13 +2862,6 @@ if __name__ == "__main__":
             )
         )
 
-        fitresult_lumi = [
-            fitresult_meta["meta_info_input"]["channel_info"][c.replace("_masked", "")][
-                "lumi"
-            ]
-            for c in fitresult_channels
-        ]
-
         writer.add_data_covariance(fitresult_cov)
 
     dgs = {}  # keep datagroups for across channel definitions
@@ -2891,10 +2883,8 @@ if __name__ == "__main__":
         channel = f"ch{i}"
 
         if args.fitresult is not None:
-            lumi = fitresult_lumi[i]
             fitresult_data = fitresult_hist[i]
         else:
-            lumi = None
             fitresult_data = None
 
         if args.analysisMode == "unfolding" and len(args.unfoldingScalemap) > i:
@@ -2912,7 +2902,6 @@ if __name__ == "__main__":
             genvar=genvar,
             stat_only=args.doStatOnly,
             channel=channel,
-            lumi=lumi,
             fitresult_data=fitresult_data,
             unfolding_scalemap=unfolding_scalemap,
         )
@@ -2933,7 +2922,6 @@ if __name__ == "__main__":
                 genvar=["count"],
                 stat_only=args.doStatOnly or args.doStatOnlyMasked,
                 channel=f"{bsm_signal}_masked",
-                lumi=lumi,
                 base_group=bsm_signal,
             )
         # args.filterProcGroups = filterProcGroups_tmp
@@ -2950,7 +2938,6 @@ if __name__ == "__main__":
                 genvar=genvar,
                 stat_only=args.doStatOnly or args.doStatOnlyMasked,
                 channel=f"{channel}_masked",
-                lumi=lumi,
                 unfolding_scalemap=unfolding_scalemap,
             )
 

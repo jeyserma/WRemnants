@@ -316,28 +316,30 @@ jobs:
         run: >-
           scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/rabbit/setupRabbit.py 
           -i $HIST_FILE --lumiScale $LUMI_SCALE --excludeProcGroups QCD WtoNMu_10 WtoNMu_50 --breitwignerWMassWeights
-           --postfix bsm -o $WREMNANTS_OUTDIR
+          --postfix bsm -o $WREMNANTS_OUTDIR
 
       - name: bsm rabbit fit
         run: >- 
           scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run.sh rabbit_fit.py 
-          $WREMNANTS_OUTDIR/WMass_eta_pt_charge_uncorr/WMass.hdf5 -o $WREMNANTS_OUTDIR/WMass_eta_pt_charge_uncorr/ 
+          $WREMNANTS_OUTDIR/WMass_eta_pt_charge_bsm/WMass.hdf5 -o $WREMNANTS_OUTDIR/WMass_eta_pt_charge_bsm/ 
           -t -1 --doImpacts --globalImpacts --saveHists --computeHistErrors --saveHistsPerProcess --computeVariations 
-          --expectSignal WtoNMu_5 0 --allowNegativePOI --binByBinStatMode full
-          -m Project ch0 pt -m Project ch0 eta -m Normalize ch0 pt -m Select WtoNMu_5_masked --scan 'WtoNMu_5'
+          --expectSignal 0 --allowNegativePOI --binByBinStatMode full
+          -m Project ch0 pt -m Project ch0 eta -m Normalize ch0 pt -m Select WtoNMu_5_masked 
+          
+      #--scan 'WtoNMu_5'
 
       - name: bsm plot postfit variations
         run: >- 
-          scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run.sh rabbit_plot_hists.py '$WREMNANTS_OUTDIR/WMass_eta_pt_charge_uncorr/fitresults.hdf5' 
+          scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run.sh rabbit_plot_hists.py '$WREMNANTS_OUTDIR/WMass_eta_pt_charge_bsm/fitresults.hdf5' 
           -o $WEB_DIR/$PLOT_DIR/BSM -m Project -m Normalize --title CMS --subtitle Preliminary --titlePos 0 --yscale '1.3' 
           --result asimov --lowerLegCols 3 --rrange 0.98 1.02
-          --varNames massShiftW100MeV 'WtoNMu_5' --varLabels '$\Delta m_{W}$' '$\Delta \mu_{W\to\mu N}$' --varColors red blue
+          --varNames massShiftW100MeV 'WtoNMu_5' --varColors red blue
 
-      - name: bsm plot parameter correlations
-        run: >- 
-          scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run.sh rabbit_plot_hists_cov.py '$WREMNANTS_OUTDIR/rabbit_plot_hists_cov/fitresults.hdf5' 
-          -o $WEB_DIR/$PLOT_DIR/BSM --params 'WtoNMu_5' massShiftW100MeV 
-          --title CMS --subtitle Preliminary --titlePos 0 --config 'utilities/styles/styles.py' --correlation --showNumbers
+      # - name: bsm plot parameter correlations
+      #   run: >- 
+      #     scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run.sh rabbit_plot_hists_cov.py '$WREMNANTS_OUTDIR/rabbit_plot_hists_cov/fitresults.hdf5' 
+      #     -o $WEB_DIR/$PLOT_DIR/BSM --params 'WtoNMu_5' massShiftW100MeV 
+      #     --title CMS --subtitle Preliminary --titlePos 0 --config 'utilities/styles/styles.py' --correlation --showNumbers
 
       - name: bsm plot pulls and impacts
         run: >- 
@@ -345,10 +347,10 @@ jobs:
           -o $WEB_DIR/$PLOT_DIR/BSM --title CMS --subtitle Preliminary --config 'utilities/styles/styles.py' 
           --oneSidedImpacts --otherExtensions pdf png -n 50 -m Select --showNumbers
 
-      - name: bsm likelihood scan
-        run: >- 
-          scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run.sh rabbit_plot_likelihood_scan.py '$WREMNANTS_OUTDIR/rabbit_plot_hists_cov/fitresults.hdf5' 
-          -o $WEB_DIR/$PLOT_DIR/BSM --params 'WtoNMu_5' --title CMS --subtitle Preliminary --titlePos 0 --config 'utilities/styles/styles.py'
+      # - name: bsm likelihood scan
+      #   run: >- 
+      #     scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run.sh rabbit_plot_likelihood_scan.py '$WREMNANTS_OUTDIR/rabbit_plot_hists_cov/fitresults.hdf5' 
+      #     -o $WEB_DIR/$PLOT_DIR/BSM --params 'WtoNMu_5' --title CMS --subtitle Preliminary --titlePos 0 --config 'utilities/styles/styles.py'
 
   w-plotting:
     # The type of runner that the job will run on
