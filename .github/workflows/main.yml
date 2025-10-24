@@ -324,7 +324,7 @@ jobs:
           $WREMNANTS_OUTDIR/WMass_eta_pt_charge_uncorr/WMass.hdf5 -o $WREMNANTS_OUTDIR/WMass_eta_pt_charge_uncorr/ 
           -t -1 --doImpacts --globalImpacts --saveHists --computeHistErrors --saveHistsPerProcess --computeVariations 
           --expectSignal WtoNMu_5 0 --allowNegativePOI --binByBinStatMode full
-          -m Project ch0 pt -m Project ch0 eta -m Normalize ch0 pt --scan 'WtoNMu_5'
+          -m Project ch0 pt -m Project ch0 eta -m Normalize ch0 pt -m Select WtoNMu_5_masked --scan 'WtoNMu_5'
 
       - name: bsm plot postfit variations
         run: >- 
@@ -343,7 +343,7 @@ jobs:
         run: >- 
           scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run.sh rabbit_plot_pulls_and_impacts.py '$WREMNANTS_OUTDIR/rabbit_plot_hists_cov/fitresults.hdf5'
           -o $WEB_DIR/$PLOT_DIR/BSM --title CMS --subtitle Preliminary --config 'utilities/styles/styles.py' 
-          --oneSidedImpacts --otherExtensions pdf png -n 50 --scaleImpacts 100 --showNumbers
+          --oneSidedImpacts --otherExtensions pdf png -n 50 -m Select --showNumbers
 
       - name: bsm likelihood scan
         run: >- 

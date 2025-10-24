@@ -529,7 +529,7 @@ def define_prefsr_vars(df):
     df = df.Define("absYVgen", "std::fabs(yVgen)")
     df = df.Define(
         "chargeVgen",
-        "(GenPart_pdgId[prefsrLeps[0]] % 2) + (GenPart_pdgId[prefsrLeps[1]] % 2)",
+        "-1 * (GenPart_pdgId[prefsrLeps[0]] % 2 + GenPart_pdgId[prefsrLeps[1]] % 2)",
     )
     df = df.Define("csSineCosThetaPhigen", "wrem::csSineCosThetaPhi(genlanti, genl)")
     df = df.Define("csCosThetagen", "csSineCosThetaPhigen.costheta")

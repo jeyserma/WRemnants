@@ -90,7 +90,7 @@ process_supergroups = {
 process_supergroups["z_wlike"] = process_supergroups["z_dilepton"]
 process_supergroups["z_lowpu"] = process_supergroups["z_dilepton"]
 process_supergroups["bsm"] = process_supergroups["w_mass"]
-process_supergroups["bsm"]["BSM"] = (["WtoNMu_5", "WtoNMu_10", "WtoNMu_50"],)
+process_supergroups["bsm"]["BSM"] = ["WtoNMu_5", "WtoNMu_10", "WtoNMu_50"]
 
 process_labels = {
     "Data": "Data",
@@ -112,6 +112,9 @@ process_labels = {
     "Fake_e": "Nonprompt (e)",
     "Fake_mu": r"Nonprompt ($\mu$)",
     "Prompt": "Prompt",
+    "WtoNMu_5": r"W$^{\pm}\to\mathrm{N}\mu (5GeV)$",
+    "WtoNMu_10": r"W$^{\pm}\to\mathrm{N}\mu (10GeV)$",
+    "WtoNMu_50": r"W$^{\pm}\to\mathrm{N}\mu (50GeV)$",
 }
 
 axis_labels = {
@@ -129,6 +132,7 @@ axis_labels = {
     "abseta": r"$|\mathit{\eta}^{\mu}|$",
     "absEta": r"$|\mathit{\eta}^{\mu}|$",
     "absEtaGen": r"$|\mathit{\eta}^{\mu}|$",
+    "mtGen": {"label": r"$\mathit{m}_{T}^{\mu+MET}$", "unit": "GeV"},
     "ptll": {"label": r"$\mathit{p}_{\mathrm{T}}^{\mu\mu}$", "unit": "GeV"},
     "yll": r"$\mathit{y}^{\mu\mu}$",
     "absYVGen": r"|$\mathit{Y}^\mathrm{V}$|",
