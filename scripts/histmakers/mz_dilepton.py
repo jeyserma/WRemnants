@@ -355,9 +355,7 @@ if args.unfolding:
 muon_prefiring_helper, muon_prefiring_helper_stat, muon_prefiring_helper_syst = (
     muon_prefiring.make_muon_prefiring_helpers(era=era)
 )
-theory_helpers_procs = theory_corrections.make_theory_binnedvar_helpers(
-    args, procs=["Z", "W"]
-)
+theory_helpers_procs = theory_corrections.make_theory_helpers(args, procs=["Z", "W"])
 
 # extra axes which can be used to label tensor_axes
 if args.binnedScaleFactors:
@@ -564,6 +562,9 @@ def build_graph(df, dataset):
                 *nominal_cols,
                 *unfolder_z.unfolding_cols[unfolder_z.unfolding_levels[-1]],
             ]
+
+    if args.xnormOnly:
+        return results, weightsum
 
     if not args.noAuxiliaryHistograms and isZ and len(auxiliary_gen_axes):
         # gen level variables before selection

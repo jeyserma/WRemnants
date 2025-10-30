@@ -17,7 +17,6 @@ parser = parsing.plot_parser()
 parser.add_argument("--unfolded", type=str, required=False)
 parser.add_argument("--gen", type=str, default=None)
 parser.add_argument("-w", action="store_true")
-parser.add_argument("--logx", action="store_true")
 parser.add_argument("--etapt-fit", type=str, default=None)
 parser.add_argument("--ptll-fit", type=str, default=None)
 parser.add_argument("--ptll-yll-fit", type=str, default=None)
@@ -80,7 +79,7 @@ def load_hist(filename, fittype="postfit", helicity=False):
                 f"hist_{fittype}_inclusive"
             ]
         else:
-            model_key = list(fitresult["physics_models"].keys())[0]
+            model_key = "Basemodel"
         h = fitresult["physics_models"][model_key]["channels"]["ch0"][
             f"hist_{fittype}_inclusive"
         ]
@@ -90,8 +89,7 @@ def load_hist(filename, fittype="postfit", helicity=False):
         fitresult = fitresult[idx]
         h = fitresult[f"hist_{fittype}_inclusive"]
 
-    scale = 1e-3 if "AngularCoefficients" not in model_key else 1.0
-    return h.get() * scale
+    return h.get() / 1000.0
 
 
 hnom = "nominal_gen"
@@ -268,6 +266,14 @@ linestyles = linestyles + [
 ]
 linestyles = linestyles[: len(labels)]
 
+if args.xlim:
+    hists_nom = [
+        x[complex(0, args.xlim[0]) : complex(0, args.xlim[1])] for x in hists_nom
+    ]
+    hists_err = [
+        x[complex(0, args.xlim[0]) : complex(0, args.xlim[1])] for x in hists_err
+    ]
+
 hists = hists_nom + hists_err
 
 xlabels = {
@@ -335,17 +341,9 @@ else:
 
 select = {}
 if args.slice_helicity is not None:
-    select["ai"] = complex(0, args.slice_helicity)
+    select["helicity"] = complex(0, args.slice_helicity)
 if args.slice_charge is not None:
     select["chargeVgen"] = complex(0, args.slice_charge)
-
-# if args.xlim:
-#    hists_nom = [
-#        x[complex(0, args.xlim[0]) : complex(0, args.xlim[1])] for x in hists_nom
-#    ]
-#    hists_err = [
-#        x[complex(0, args.xlim[0]) : complex(0, args.xlim[1])] for x in hists_err
-#    ]
 
 
 fig = plot_tools.makePlotWithRatioToRef(
@@ -360,7 +358,6 @@ fig = plot_tools.makePlotWithRatioToRef(
     ylabel=ylabel,
     rlabel=rlabel,
     rrange=rrange,
-    logx=args.logx,
     nlegcols=args.legCols,
     leg_padding=args.legPadding,
     lowerLegCols=args.lowerLegCols,
@@ -368,8 +365,8 @@ fig = plot_tools.makePlotWithRatioToRef(
     lower_leg_padding=args.lowerLegPadding,
     yscale=args.yscale,
     ylim=args.ylim,
-    xlim=args.xlim,
-    binwnorm=None,
+    xlim=None,
+    binwnorm=1.0,
     baseline=True,
     yerr=False,
     fill_between=len(hists_err),
@@ -382,8 +379,7 @@ fig = plot_tools.makePlotWithRatioToRef(
     base_size=args.baseSize,
     subplotsizes=subplotsizes,
     no_sci=args.noSciy,
-    # lumi=16.8,
-    lumi=None,
+    lumi=16.8,
     center_rlabels=False,
     swap_ratio_panels=True,
 )

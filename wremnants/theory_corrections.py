@@ -494,7 +494,7 @@ def make_corr_by_helicity(
     return corr_coeffs
 
 
-def make_theory_binnedvar_helpers(
+def make_theory_helpers(
     args, procs=["Z", "W"], corrs=["qcdScale", "pdf", "alphaS", "pdf_central"]
 ):
 
@@ -505,7 +505,7 @@ def make_theory_binnedvar_helpers(
             is_z=True,
             filename=(
                 f"{common.data_dir}/angularCoefficients/w_z_helicity_xsecs_maxFiles_m1_alphaSunfoldingBinning_helicity.hdf5"
-                if hasattr(args, "unfolding") and args.unfolding
+                if args.unfolding
                 else f"{common.data_dir}/angularCoefficients/w_z_moments.hdf5"
             ),
             rebin_ptVgen=False,
@@ -520,40 +520,35 @@ def make_theory_binnedvar_helpers(
         )
 
     for proc in theory_helpers_procs.keys():
-        for corr in corrs:
-            if corr == "qcdScale":
-                continue
 
-            corr_func = (
-                make_pdfs_uncertainties_helper_by_helicity
-                if corr != "pdf_central"
-                else make_pdf_uncertainty_helper_by_helicity
-            )
-
-            func_args = {
-                "proc": proc,
-                "filename": f"{common.data_dir}/angularCoefficients/w_z_gen_dists_maxFiles_m1_byHelicityCorrs.hdf5",
-            }
-
-            if corr == "pdf":
-                func_args["pdfs"] = args.pdfs
-            elif corr == "alphaS":
-                func_args["pdfs"] = [
-                    x + "Corr" for x in args.theoryCorr if "pdfas" in x
-                ]
-            elif corr == "pdf_central":
-                func_args.update(
-                    dict(
-                        pdf=theory_tools.pdfMap[args.pdfs[0]]["name"],
-                        pdf_renorm="pdf_uncorr",
-                        central_weights=True,
-                    )
+        if "pdf" in corrs:
+            theory_helpers_procs[proc]["pdf"] = (
+                make_pdfs_uncertainties_helper_by_helicity(
+                    proc=proc,
+                    pdfs=args.pdfs,
                 )
-
-            else:
-                raise ValueError(f"Unknown theory correction {corr}")
-
-            theory_helpers_procs[proc][corr] = corr_func(**func_args)
+            )
+        if "alphaS" in corrs:
+            theory_helpers_procs[proc]["alphaS"] = (
+                make_pdf_uncertainty_helper_by_helicity(
+                    proc=proc,
+                    pdf=[x + "Corr" for x in args.theoryCorr if "pdfas" in x],
+                    pdf_renorm=[x + "Corr" for x in args.theoryCorr if "pdfas" in x],
+                    var_ax_name="vars",
+                    filename=f"{common.data_dir}/angularCoefficients/w_z_gen_dists_scetlib_dyturboCorr_maxFiles_m1_asByHelicity.hdf5",
+                )
+            )
+        if "pdf_central" in corrs:
+            theory_helpers_procs[proc]["pdf_central"] = (
+                make_pdf_uncertainty_helper_by_helicity(
+                    proc=proc,
+                    pdf=theory_tools.pdfMap[args.pdfs[0]]["name"],
+                    pdf_renorm="pdf_uncorr",
+                    central_weights=True,
+                    filename=common.data_dir
+                    + f"/PDFs/w_z_gen_dists_maxFiles_m1_{args.pdfs[0]}_pdfByHelicity_skimmed.hdf5",
+                )
+            )
 
     return theory_helpers_procs
 
@@ -687,8 +682,6 @@ def make_qcd_uncertainty_helper_by_helicity(
 def make_pdfs_uncertainties_helper_by_helicity(
     proc,
     pdfs,
-    filename=f"{common.data_dir}/angularCoefficients/w_z_gen_dists_maxFiles_m1_alphaSunfoldingBinning_helicity.hdf5",
-    var_ax_name="pdfVar",
     return_tensor=True,
 ):
     pdf_helpers = {}
@@ -703,7 +696,8 @@ def make_pdfs_uncertainties_helper_by_helicity(
             proc=proc,
             pdf=pdf_name,
             pdf_renorm=pdf_renorm,
-            filename=filename,
+            filename=common.data_dir
+            + f"/PDFs/w_z_gen_dists_maxFiles_m1_{pdf}_pdfByHelicity_skimmed.hdf5",
             return_tensor=return_tensor,
         )
         if pdf_helper is not None:
@@ -722,43 +716,43 @@ def make_pdf_uncertainty_helper_by_helicity(
 ):
 
     # load helicity cross sections from file
-    with h5py.File(filename, "r") as h5file:
-        results = input_tools.load_results_h5py(h5file)
-        proc_map = {
-            "Z": ("ZmumuPostVFP",),
-            "W": ("WplusmunuPostVFP", "WminusmunuPostVFP"),
-        }
+    proc_map = {
+        "Z": ("ZmumuPostVFP",),
+        "W": ("WplusmunuPostVFP", "WminusmunuPostVFP"),
+    }
 
-        def _collect_pdf_hist(pdf_name):
-            hist_key = f"nominal_gen_{pdf_name}"
-            hists = []
-            for output_key in proc_map.get(proc, ()):
-                outputs = results[output_key]["output"]
+    def _collect_pdf_hist(pdf_name):
+        hist_key = f"nominal_gen_{pdf_name}"
+        hists = []
+        for process in proc_map.get(proc, ()):
+            with h5py.File(filename, "r") as h5file:
+                results = input_tools.load_results_h5py(h5file)
+                outputs = results[process]["output"]
                 if hist_key not in outputs:
                     logger.warning(
                         f"Did not find {pdf_name} in {filename}. Not creating histogram of PDF variations by helicities for this set."
                     )
                     return None
                 hists.append(outputs[hist_key].get())
-            if not hists:
-                logger.warning(
-                    f"Process {proc} is not supported when building PDF variations."
-                )
-                return None
-            combined = hh.sumHists(hists)
-            return combined
-
-        pdf_vars = _collect_pdf_hist(pdf)
-        if pdf_vars is None:
+        if not hists:
+            logger.warning(
+                f"Process {proc} is not supported when building PDF variations."
+            )
             return None
+        combined = hh.sumHists(hists)
+        return combined
 
-        if pdf_renorm == pdf:
-            pdf_renorm = pdf_vars
-        else:
-            pdf_renorm_hist = _collect_pdf_hist(pdf_renorm)
-            if pdf_renorm_hist is None:
-                return None
-            pdf_renorm = pdf_renorm_hist
+    pdf_vars = _collect_pdf_hist(pdf)
+    if pdf_vars is None:
+        return None
+
+    if pdf_renorm == pdf:
+        pdf_renorm = pdf_vars
+    else:
+        pdf_renorm_hist = _collect_pdf_hist(pdf_renorm)
+        if pdf_renorm_hist is None:
+            return None
+        pdf_renorm = pdf_renorm_hist
 
     # construct the correction tensor
     corr_ax = hist.axis.Boolean(name="corr")
