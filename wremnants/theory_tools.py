@@ -56,7 +56,7 @@ pdfMap = {
         "alphas": ["LHEPdfWeight[0]", "LHEPdfWeight[101]", "LHEPdfWeight[102]"],
         "alphasRange": "002",
         "inflation_factor_wmass": 2.5,
-        "inflation_factor_alphaS": 1.0,
+        "inflation_factor_alphaS": 3.5,
     },
     "ct18": {
         "name": "pdfCT18",
@@ -85,7 +85,7 @@ pdfMap = {
         ],
         "alphasRange": "001",
         "inflation_factor_wmass": 1.0,  # not determined
-        "inflation_factor_alphaS": 1.0,
+        "inflation_factor_alphaS": 1.0,  # not determined
     },
     "nnpdf40": {
         "name": "pdfNNPDF40",
@@ -99,7 +99,7 @@ pdfMap = {
         ],
         "alphasRange": "001",
         "inflation_factor_wmass": 4.0,
-        "inflation_factor_alphaS": 1.0,
+        "inflation_factor_alphaS": 5.0,
     },
     "pdf4lhc21": {
         "name": "pdfPDF4LHC21",
@@ -113,7 +113,7 @@ pdfMap = {
         ],
         "alphasRange": "001",
         "inflation_factor_wmass": 1.0,
-        "inflation_factor_alphaS": 1.0,
+        "inflation_factor_alphaS": 1.2,
     },
     "msht20": {
         "name": "pdfMSHT20",
@@ -127,7 +127,7 @@ pdfMap = {
         ],
         "alphasRange": "002",
         "inflation_factor_wmass": 1.5,
-        "inflation_factor_alphaS": 1.0,
+        "inflation_factor_alphaS": 1.7,
     },
     "msht20mcrange": {
         "name": "pdfMSHT20mcrange",
@@ -171,7 +171,7 @@ pdfMap = {
         ],
         "alphasRange": "002",
         "inflation_factor_wmass": 1.5,
-        "inflation_factor_alphaS": 1.0,
+        "inflation_factor_alphaS": 1.0,  # not determined
     },
     "ct18z": {
         "name": "pdfCT18Z",
@@ -197,7 +197,7 @@ pdfMap = {
         "alphas": ["LHEPdfWeight[0]", "LHEPdfWeight[41]", "LHEPdfWeight[42]"],
         "alphasRange": "002",
         "inflation_factor_wmass": 1.0,  # not determined
-        "inflation_factor_alphaS": 1.0,
+        "inflation_factor_alphaS": 1.0,  # not determined
     },
     "herapdf20": {
         "name": "pdfHERAPDF20",
@@ -211,7 +211,7 @@ pdfMap = {
         ],  # alphas 116-120
         "alphasRange": "002",
         "inflation_factor_wmass": 4.0,
-        "inflation_factor_alphaS": 1.0,
+        "inflation_factor_alphaS": 3.0,
     },
     "herapdf20ext": {
         "name": "pdfHERAPDF20ext",
@@ -225,7 +225,7 @@ pdfMap = {
         ],  # dummy AS
         "alphasRange": "002",
         "inflation_factor_wmass": 4.0,
-        "inflation_factor_alphaS": 1.0,
+        "inflation_factor_alphaS": 3.0,
     },
 }
 
