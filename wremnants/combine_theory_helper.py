@@ -123,10 +123,13 @@ class TheoryHelper(object):
             operation=self.pdf_operation,
             scale=self.scale_pdf_unc,
         )
-        try:
-            self.add_quark_mass_vars()
-        except ValueError as e:
-            logger.warning(e)
+        if (
+            self.datagroups.args_from_metadata("pdfs")[0] != "herapdf20"
+        ):  # already includes mb,mc effects
+            try:
+                self.add_quark_mass_vars()
+            except ValueError as e:
+                logger.warning(e)
 
     def set_minnlo_unc(self, minnloUnc):
         self.minnlo_unc = minnloUnc

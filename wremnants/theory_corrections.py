@@ -687,17 +687,23 @@ def make_pdfs_uncertanties_helper_by_helicity(
     pdf_helpers = {}
     for pdf in pdfs:
         pdf_name = theory_tools.pdfMap[pdf]["name"]
-        pdf_renorm = (
+        pdf_renorm = pdf if theory_tools.pdfMap[pdf].get("renorm", False) else pdfs[0]
+        pdf_renorm_name = (
             pdf_name
             if theory_tools.pdfMap[pdf].get("renorm", False)
             else theory_tools.pdfMap[pdfs[0]]["name"]
         )
+        logger.info(
+            f"Making PDF uncertainty helper for PDF set {pdf} ({pdf_name}) with renorm {pdf_renorm}"
+        )
         pdf_helper = make_pdf_uncertainty_helper_by_helicity(
             proc=proc,
             pdf=pdf_name,
-            pdf_renorm=pdf_renorm,
+            pdf_renorm=pdf_renorm_name,
             filename=common.data_dir
             + f"/PDFs/w_z_gen_dists_maxFiles_m1_{pdf}_pdfByHelicity_skimmed.hdf5",
+            filename_renorm=common.data_dir
+            + f"/PDFs/w_z_gen_dists_maxFiles_m1_{pdf_renorm}_pdfByHelicity_skimmed.hdf5",
             return_tensor=return_tensor,
         )
         if pdf_helper is not None:
@@ -711,9 +717,12 @@ def make_pdf_uncertainty_helper_by_helicity(
     pdf_renorm=None,
     central_weights=False,
     filename=f"{common.data_dir}/angularCoefficients/w_z_gen_dists_maxFiles_m1_alphaSunfoldingBinning_helicity.hdf5",
+    filename_renorm=None,
     var_ax_name="pdfVar",
     return_tensor=True,
 ):
+    if filename_renorm is None:
+        filename_renorm = filename
 
     # load helicity cross sections from file
     proc_map = {
@@ -721,7 +730,7 @@ def make_pdf_uncertainty_helper_by_helicity(
         "W": ("WplusmunuPostVFP", "WminusmunuPostVFP"),
     }
 
-    def _collect_pdf_hist(pdf_name):
+    def _collect_pdf_hist(pdf_name, filename):
         hist_key = f"nominal_gen_{pdf_name}"
         hists = []
         for process in proc_map.get(proc, ()):
@@ -742,14 +751,14 @@ def make_pdf_uncertainty_helper_by_helicity(
         combined = hh.sumHists(hists)
         return combined
 
-    pdf_vars = _collect_pdf_hist(pdf)
+    pdf_vars = _collect_pdf_hist(pdf, filename)
     if pdf_vars is None:
         return None
 
     if pdf_renorm == pdf:
         pdf_renorm = pdf_vars
     else:
-        pdf_renorm_hist = _collect_pdf_hist(pdf_renorm)
+        pdf_renorm_hist = _collect_pdf_hist(pdf_renorm, filename_renorm)
         if pdf_renorm_hist is None:
             return None
         pdf_renorm = pdf_renorm_hist
