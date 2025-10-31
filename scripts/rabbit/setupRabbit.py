@@ -1599,26 +1599,27 @@ def setup(
             systNameReplace=[["2p09053GeV", "Down"], ["2p09173GeV", "Up"]],
             passToFakes=passSystToFakes,
         )
-        if args.breitwignerWMassWeights and label == "W":
+        widthWeightName = f"widthWeight{label}"
+        if args.breitwignerWMassWeights:
             preOpMap = {}
             for group in ["Wmunu", "Wtaunu"]:
                 if group not in datagroups.groups.keys():
                     continue
                 for member in datagroups.groups[group].members:
                     h_ref = datagroups.readHist(
-                        datagroups.nominalName, member, f"widthWeight{label}"
+                        datagroups.nominalName, member, widthWeightName
                     )
                     preOpMap[member.name] = (
                         lambda h, h_ref=h_ref: syst_tools.correct_bw_xsec(h, h_ref)
                     )
             datagroups.addSystematic(
-                histname=f"breitwigner_widthWeight{label}",
+                histname=f"breitwigner_{widthWeightName}",
                 preOpMap=preOpMap,
                 **width_info,
             )
         else:
             datagroups.addSystematic(
-                "widthWeightW",
+                widthWeightName,
                 **width_info,
             )
 
@@ -2906,12 +2907,10 @@ if __name__ == "__main__":
             unfolding_scalemap=unfolding_scalemap,
         )
 
-        # filterProcGroups_tmp = args.filterProcGroups[:]
         for bsm_signal in filter(
             lambda x: x.startswith("WtoNMu"), datagroups.allMCProcesses()
         ):
             # add masked channel for inclusive cross section on BSM signal
-            # args.filterProcGroups = [bsm_signal]
             datagroups_xnorm = setup(
                 writer,
                 args,
@@ -2924,7 +2923,6 @@ if __name__ == "__main__":
                 channel=f"{bsm_signal}_masked",
                 base_group=bsm_signal,
             )
-        # args.filterProcGroups = filterProcGroups_tmp
 
         if isUnfolding:
             # add masked channel
