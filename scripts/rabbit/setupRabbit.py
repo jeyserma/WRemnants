@@ -284,17 +284,24 @@ def make_parser(parser=None):
         default=[],
     )
     parser.add_argument(
-        "--fitXsec", action="store_true", help="Fit signal inclusive cross section"
+        "--noi",
+        type=str,
+        nargs="+",
+        choices=[
+            "wmass",
+            "alphaS",
+            "zmass",
+            "sin2thetaW",
+            "wwidth",
+            "xsec",
+            "massdiffW",
+            "massdiffZ",
+        ],
+        default=["wmass"],
+        help="Select which nuisance(s) of interest to fit. Default: (%default)s",
     )
-    parser.add_argument("--fitWidth", action="store_true", help="Fit boson width")
     parser.add_argument(
-        "--fitSin2ThetaW", action="store_true", help="Fit EW mixing angle"
-    )
-    parser.add_argument(
-        "--fitAlphaS", action="store_true", help="Fit strong coupling constant"
-    )
-    parser.add_argument(
-        "--fitMassDiffW",
+        "--massDiffWVar",
         type=str,
         default=None,
         choices=[
@@ -306,10 +313,10 @@ def make_parser(parser=None):
             "etaRegionSign",
             "etaRegionRange",
         ],
-        help="Fit an additional POI for the difference in the W boson mass",
+        help="For use with --noi massDiffW, select the variable to define the different mass differences",
     )
     parser.add_argument(
-        "--fitMassDiffZ",
+        "--massDiffZVar",
         type=str,
         default=None,
         choices=[
@@ -321,7 +328,7 @@ def make_parser(parser=None):
             "etaRegionSign",
             "etaRegionRange",
         ],
-        help="Fit an additional POI for the difference in the W boson mass",
+        help="For use with --noi massDiffZ, select the variable to define the different mass differences",
     )
     parser.add_argument(
         "--fitMassDecorr",
@@ -480,7 +487,7 @@ def make_parser(parser=None):
         help="Add the MC statistical uncertainty to the data covariance (as an alternative to Barlow-Beeston lite)",
     )
     parser.add_argument(
-        "--explicitSignalMCstat",
+        "--correlateSignalMCstat",
         action="store_true",
         help="Use explicit parameters for signal MC stat uncertainty. Introduces one nuisance parameter per reco bin.",
     )
@@ -818,11 +825,6 @@ def make_parser(parser=None):
         help="scaling of bin by bin statistical uncertainty for Z-dilepton analysis",
     )
     parser.add_argument(
-        "--exponentialTransform",
-        action="store_true",
-        help="apply exponential transformation to yields (useful for gen-level fits to helicity cross sections for example)",
-    )
-    parser.add_argument(
         "--angularCoeffs",
         action="store_true",
         help="convert helicity cross sections to angular coefficients",
@@ -874,7 +876,7 @@ def setup(
     fitresult_data=None,
     unfolding_scalemap=None,
 ):
-    xnorm = inputBaseName in ["xnorm", "prefsr", "postfsr"]
+    xnorm = any(inputBaseName.startswith(x) for x in ["xnorm", "prefsr", "postfsr"])
 
     isUnfolding = args.analysisMode == "unfolding"
     isTheoryAgnostic = args.analysisMode in [
@@ -971,7 +973,9 @@ def setup(
     massConstraintMode = args.massConstraintModeW if wmass else args.massConstraintModeZ
 
     if massConstraintMode == "automatic":
-        constrainMass = args.fitXsec or (dilepton and not "mll" in fitvar) or genfit
+        constrainMass = (
+            "xsec" in args.noi or (dilepton and not "mll" in fitvar) or genfit
+        )
     else:
         constrainMass = True if massConstraintMode == "constrained" else False
     logger.debug(f"constrainMass = {constrainMass}")
@@ -988,7 +992,7 @@ def setup(
         )
         datagroups.deleteGroup(base_group.replace("mu", "tau"))
 
-    if args.fitXsec:
+    if "xsec" in args.noi:
         datagroups.unconstrainedProcesses.append(base_group)
     if args.logNormalFake < 0.0:
         datagroups.unconstrainedProcesses.append(datagroups.fakeName)
@@ -1341,26 +1345,38 @@ def setup(
                 args.pseudoDataProcsRegexp,
             )
 
-    datagroups.addNominalHistograms(
-        real_data=args.realData,
-        exclude_bin_by_bin_stat=(
-            "signal_samples"
-            if args.explicitSignalMCstat or (xnorm and stat_only)
-            else None
-        ),
-        bin_by_bin_stat_scale=(
-            args.binByBinStatScaleForMW
-            if wmass
-            else args.binByBinStatScaleForDilepton if dilepton else 1.0
-        ),
-        fitresult_data=fitresult_data,
-        masked=xnorm and fitresult_data is None,
-        masked_flow_axes=(
+    if args.correlateSignalMCstat and xnorm:
+        masked_flow_axes = (
             ["ptGen", "ptVGen"]
             if (xnorm and isUnfolding and args.unfoldingWithFlow)
             else []
-        ),
-    )
+        )
+        combine_helpers.add_nominal_with_correlated_BinByBinStat(
+            datagroups,
+            wmass,
+            base_name=inputBaseName,
+            masked=xnorm and fitresult_data is None,
+            masked_flow_axes=masked_flow_axes,
+        )
+    else:
+        datagroups.addNominalHistograms(
+            real_data=args.realData,
+            exclude_bin_by_bin_stat=(
+                "signal_samples" if args.correlateSignalMCstat else None
+            ),
+            bin_by_bin_stat_scale=(
+                args.binByBinStatScaleForMW
+                if wmass
+                else args.binByBinStatScaleForDilepton if dilepton else 1.0
+            ),
+            fitresult_data=fitresult_data,
+            masked=xnorm and fitresult_data is None,
+            masked_flow_axes=(
+                ["ptGen", "ptVGen"]
+                if (xnorm and isUnfolding and args.unfoldingWithFlow)
+                else []
+            ),
+        )
 
     if stat_only and isUnfolding and not isPoiAsNoi:
         # At least one nuisance parameter is needed to run combine impacts (e.g. needed for unfolding postprocessing chain)
@@ -1384,7 +1400,7 @@ def setup(
             add_to_data_covariance=datagroups.isAbsorbedNuisance(name),
         )
 
-    decorwidth = args.decorMassWidth or args.fitWidth
+    decorwidth = args.decorMassWidth or ("wwidth" in args.noi)
     if not (stat_only and constrainMass):
         if args.breitwignerWMassWeights and label == "W":
             massVariation = 2.1 if (not wmass and constrainMass) else args.massVariation
@@ -1454,20 +1470,18 @@ def setup(
                         ),
                     )
 
-            fitMassDiff = args.fitMassDiffW if wmass else args.fitMassDiffZ
-
-            if fitMassDiff:
-                suffix = "".join([a.capitalize() for a in fitMassDiff.split("-")])
-                combine_helpers.add_mass_diff_variations(
-                    datagroups,
-                    fitMassDiff,
-                    name=f"{massWeightName}{label}",
-                    processes=signal_samples_forMass,
-                    constrain=constrainMass,
-                    suffix=suffix,
-                    label=label,
-                    passSystToFakes=passSystToFakes,
-                )
+        if "massdiffW" in args.noi:
+            suffix = "".join([a.capitalize() for a in args.massDiffWVar.split("-")])
+            combine_helpers.add_mass_diff_variations(
+                datagroups,
+                args.massDiffWVar,
+                name=f"{massWeightName}{label}",
+                processes=signal_samples_forMass,
+                constrain=constrainMass,
+                suffix=suffix,
+                label=label,
+                passSystToFakes=passSystToFakes,
+            )
 
     # this appears within doStatOnly because technically these nuisances should be part of it
     if isPoiAsNoi:
@@ -1513,10 +1527,10 @@ def setup(
         )
         muRmuFPolVar_helper.add_theoryAgnostic_uncertainty()
 
-    if args.explicitSignalMCstat:
+    if args.correlateSignalMCstat:
         if xnorm and args.fitresult is None:
             # use variations from reco histogram and apply them to xnorm
-            source = ("nominal", f"{inputBaseName}_yieldsUnfolding")
+            source = ("nominal", f"{inputBaseName}_yieldsUnfolding_theory_weight")
             # need to find the reco variables that correspond to the reco fit, reco fit must be done with variables in same order as gen bins
             gen2reco = {
                 "qGen": "charge",
@@ -1540,7 +1554,7 @@ def setup(
             label=label,
         )
 
-    if (args.fitWidth and not wmass) or (
+    if ("wwidth" in args.noi and not wmass) or (
         not xnorm and not stat_only and not args.noTheoryUnc
     ):
         # Experimental range
@@ -1553,14 +1567,14 @@ def setup(
             action=lambda h: h[{"width": ["widthZ2p49333GeV", "widthZ2p49493GeV"]}],
             groups=["ZmassAndWidth" if wmass else "widthZ", "theory"],
             mirror=False,
-            noi=args.fitWidth if not wmass else False,
-            noConstraint=args.fitWidth if not wmass else False,
+            noi="wwidth" in args.noi if not wmass else False,
+            noConstraint="wwidth" in args.noi if not wmass else False,
             systAxes=["width"],
             outNames=["widthZDown", "widthZUp"],
             passToFakes=passSystToFakes,
         )
 
-    if wmass and (args.fitWidth or (not stat_only and not args.noTheoryUnc)):
+    if wmass and ("wwidth" in args.noi or (not stat_only and not args.noTheoryUnc)):
         datagroups.addSystematic(
             "widthWeightW",
             name="WidthW0p6MeV",
@@ -1568,14 +1582,14 @@ def setup(
             action=lambda h: h[{"width": ["widthW2p09053GeV", "widthW2p09173GeV"]}],
             groups=["widthW", "theory"],
             mirror=False,
-            noi=args.fitWidth,
-            noConstraint=args.fitWidth,
+            noi="wwidth" in args.noi,
+            noConstraint="wwidth" in args.noi,
             systAxes=["width"],
             outNames=["widthWDown", "widthWUp"],
             passToFakes=passSystToFakes,
         )
 
-    if args.fitSin2ThetaW or (not stat_only and not args.noTheoryUnc):
+    if "sin2thetaW" in args.noi or (not stat_only and not args.noTheoryUnc):
         datagroups.addSystematic(
             "sin2thetaWeightZ",
             name=f"Sin2thetaZ0p00003",
@@ -1585,14 +1599,14 @@ def setup(
             ],
             group=f"sin2thetaZ",
             mirror=False,
-            noi=args.fitSin2ThetaW,
-            noConstraint=args.fitSin2ThetaW,
+            noi="sin2thetaW" in args.noi,
+            noConstraint="sin2thetaW" in args.noi,
             systAxes=["sin2theta"],
             outNames=[f"sin2thetaZDown", f"sin2thetaZUp"],
             passToFakes=passSystToFakes,
         )
 
-    if args.fitAlphaS or (not stat_only and not args.noTheoryUnc):
+    if "alphaS" in args.noi or (not stat_only and not args.noTheoryUnc):
         theorySystSamples = ["signal_samples_inctau"]
         if wmass:
             if args.helicityFitTheoryUnc:
@@ -1627,9 +1641,8 @@ def setup(
         )
 
         theory_helper.add_pdf_alphas_variation(
-            noi=args.fitAlphaS,
-            scale=args.scalePdf if not args.fitAlphaS else 1.0,
-            from_hels=not args.noTheoryCorrsViaHelicities,
+            noi="alphaS" in args.noi,
+            scale=args.scalePdf if not "alphaS" in args.noi else 1.0,
         )
 
         if not stat_only and not args.noTheoryUnc:
@@ -1667,12 +1680,11 @@ def setup(
                 passToFakes=passSystToFakes,
             )
 
-            fitMassDiff = args.fitMassDiffZ
-            if fitMassDiff:
-                suffix = "".join([a.capitalize() for a in fitMassDiff.split("-")])
+            if "massDiffZ" in args.noi:
+                suffix = "".join([a.capitalize() for a in args.massDiffZVar.split("-")])
                 combine_helpers.add_mass_diff_variations(
                     datagroups,
-                    fitMassDiff,
+                    args.massDiffZVar,
                     name=f"{massWeightName}Z",
                     processes=["single_v_nonsig_samples"],
                     constrain=constrainMass,
@@ -2757,9 +2769,9 @@ if __name__ == "__main__":
     isTheoryAgnosticPolVar = args.analysisMode == "theoryAgnosticPolVar"
     isPoiAsNoi = (isUnfolding or isTheoryAgnostic) and args.poiAsNoi
 
-    if isUnfolding and args.fitXsec:
+    if isUnfolding and "xsec" in args.noi:
         raise ValueError(
-            "Options unfolding and --fitXsec are incompatible. Please choose one or the other"
+            "Options unfolding and fitting the xsec are incompatible. Please choose one or the other"
         )
 
     if isTheoryAgnostic:
@@ -2773,14 +2785,13 @@ if __name__ == "__main__":
                     "This is only needed to properly get the systematic axes"
                 )
 
-    if len(args.inputFile) > 1 and (args.fitWidth or args.decorMassWidth):
+    if len(args.inputFile) > 1 and ("wwidth" in args.noi or args.decorMassWidth):
         raise ValueError(
-            "Fitting multiple channels with fitWidth or decorMassWidth is not currently supported since this can lead to inconsistent treatment of mass variations between channels."
+            "Fitting multiple channels with 'wwidth' or decorMassWidth is not currently supported since this can lead to inconsistent treatment of mass variations between channels."
         )
 
     writer = tensorwriter.TensorWriter(
         sparse=args.sparse,
-        # exponential_transfor=args.exponentialTransform, #TODO: exponential transform global or per channel?
         allow_negative_expectation=args.allowNegativeExpectation,
         systematic_type=args.systematicType,
         add_bin_by_bin_stat_to_data_cov=args.addMCStatToCovariance,
@@ -2813,7 +2824,9 @@ if __name__ == "__main__":
         )
 
         fitresult_lumi = [
-            fitresult_meta["meta_info_input"]["channel_info"][c]["lumi"]
+            fitresult_meta["meta_info_input"]["channel_info"][c.replace("_masked", "")][
+                "lumi"
+            ]
             for c in fitresult_channels
         ]
 

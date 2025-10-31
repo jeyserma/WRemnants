@@ -55,7 +55,8 @@ pdfMap = {
         "entries": 101,
         "alphas": ["LHEPdfWeight[0]", "LHEPdfWeight[101]", "LHEPdfWeight[102]"],
         "alphasRange": "002",
-        "inflationFactor": 2.5,
+        "inflation_factor_wmass": 2.5,
+        "inflation_factor_alphaS": 3.5,
     },
     "ct18": {
         "name": "pdfCT18",
@@ -69,7 +70,8 @@ pdfMap = {
         ],
         "alphasRange": "002",
         "scale": 1 / 1.645,  # Convert from 90% CL to 68%
-        "inflationFactor": 1.0,
+        "inflation_factor_wmass": 1.0,
+        "inflation_factor_alphaS": 1.0,
     },
     "nnpdf30": {
         "name": "pdfNNPDF30",
@@ -82,7 +84,8 @@ pdfMap = {
             "LHEPdfWeightAltSet16[0]",
         ],
         "alphasRange": "001",
-        "inflationFactor": 1.0,  # not determined
+        "inflation_factor_wmass": 1.0,  # not determined
+        "inflation_factor_alphaS": 1.0,  # not determined
     },
     "nnpdf40": {
         "name": "pdfNNPDF40",
@@ -95,7 +98,8 @@ pdfMap = {
             "LHEPdfWeightAltSet3[52]",
         ],
         "alphasRange": "001",
-        "inflationFactor": 4.0,
+        "inflation_factor_wmass": 4.0,
+        "inflation_factor_alphaS": 5.0,
     },
     "pdf4lhc21": {
         "name": "pdfPDF4LHC21",
@@ -108,7 +112,8 @@ pdfMap = {
             "LHEPdfWeightAltSet10[42]",
         ],
         "alphasRange": "001",
-        "inflationFactor": 1.0,
+        "inflation_factor_wmass": 1.0,
+        "inflation_factor_alphaS": 1.2,
     },
     "msht20": {
         "name": "pdfMSHT20",
@@ -121,7 +126,8 @@ pdfMap = {
             "LHEPdfWeightAltSet12[70]",
         ],
         "alphasRange": "002",
-        "inflationFactor": 1.5,
+        "inflation_factor_wmass": 1.5,
+        "inflation_factor_alphaS": 1.7,
     },
     "msht20mcrange": {
         "name": "pdfMSHT20mcrange",
@@ -164,7 +170,8 @@ pdfMap = {
             "LHEPdfWeightAltSet24[111]",
         ],
         "alphasRange": "002",
-        "inflationFactor": 1.5,
+        "inflation_factor_wmass": 1.5,
+        "inflation_factor_alphaS": 1.0,  # not determined
     },
     "ct18z": {
         "name": "pdfCT18Z",
@@ -179,7 +186,8 @@ pdfMap = {
         ],
         "alphasRange": "002",
         "scale": 1 / 1.645,  # Convert from 90% CL to 68%
-        "inflationFactor": 1.0,
+        "inflation_factor_wmass": 1.0,
+        "inflation_factor_alphaS": 1.0,
     },
     "atlasWZj20": {
         "name": "pdfATLASWZJ20",
@@ -188,7 +196,8 @@ pdfMap = {
         "entries": 60,
         "alphas": ["LHEPdfWeight[0]", "LHEPdfWeight[41]", "LHEPdfWeight[42]"],
         "alphasRange": "002",
-        "inflationFactor": 1.0,  # not determined
+        "inflation_factor_wmass": 1.0,  # not determined
+        "inflation_factor_alphaS": 1.0,  # not determined
     },
     "herapdf20": {
         "name": "pdfHERAPDF20",
@@ -201,12 +210,13 @@ pdfMap = {
             "LHEPdfWeightAltSet23[0]",
         ],  # alphas 116-120
         "alphasRange": "002",
-        "inflationFactor": 4.0,
+        "inflation_factor_wmass": 4.0,
+        "inflation_factor_alphaS": 3.0,
     },
     "herapdf20ext": {
         "name": "pdfHERAPDF20ext",
         "branch": "LHEPdfWeightAltSet21",
-        "combine": "symHessian",
+        "combine": "asymHessian",
         "entries": 14,
         "alphas": [
             "LHEPdfWeightAltSet20[0]",
@@ -214,7 +224,8 @@ pdfMap = {
             "LHEPdfWeightAltSet23[0]",
         ],  # dummy AS
         "alphasRange": "002",
-        "inflationFactor": 4.0,
+        "inflation_factor_wmass": 4.0,
+        "inflation_factor_alphaS": 3.0,
     },
 }
 
@@ -785,6 +796,20 @@ def pdf_info_map(dataset, pdfset):
     return infoMap[pdfset]
 
 
+def pdf_inflation_factor(infoMap, nois):
+    """Return the PDF uncertainty inflation factor for given nuisance parameters."""
+
+    if nois == ["wmass"] or nois == ["wmass", "wwidth"]:
+        return infoMap.get("inflation_factor_wmass", 1)
+    elif nois == ["alphaS"]:
+        return infoMap.get("inflation_factor_alphaS", 1)
+    else:
+        logger.debug(
+            f"No inflation factor defined for nuisance parameters {nois}, returning 1."
+        )
+        return 1
+
+
 def define_pdf_columns(df, dataset_name, pdfs, noAltUnc):
     df = df.Define(
         f"nominal_weight_pdf_uncorr",
@@ -1230,12 +1255,18 @@ def pdfNames(cardTool, pdf, skipFirst=True):
 
 def pdfNamesAsymHessian(entries, pdfset=""):
     pdfNames = ["pdf0" + pdfset.replace("pdf", "")]
+    if pdfset == "pdfHERAPDF20ext":
+        entries -= 3
     pdfNames.extend(
         [
             f"pdf{int((j+2)/2)}{pdfset.replace('pdf', '')}{'Up' if j % 2 else 'Down'}"
             for j in range(entries - 1)
         ]
     )
+    if pdfset == "pdfHERAPDF20ext":
+        pdfNames.extend(
+            [f"pdf{entries//2 + j}{pdfset.replace('pdf', '')}" for j in range(1, 4)]
+        )
     return pdfNames
 
 

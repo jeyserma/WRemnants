@@ -122,12 +122,14 @@ class TheoryHelper(object):
         self.add_pdf_uncertainty(
             operation=self.pdf_operation,
             scale=self.scale_pdf_unc,
-            from_hels=self.from_hels,
         )
-        try:
-            self.add_quark_mass_vars()
-        except ValueError as e:
-            logger.warning(e)
+        if (
+            self.datagroups.args_from_metadata("pdfs")[0] != "herapdf20"
+        ):  # already includes mb,mc effects
+            try:
+                self.add_quark_mass_vars()
+            except ValueError as e:
+                logger.warning(e)
 
     def set_minnlo_unc(self, minnloUnc):
         self.minnlo_unc = minnloUnc
@@ -855,12 +857,16 @@ class TheoryHelper(object):
                     name=rename,
                 )
 
-    def add_pdf_uncertainty(self, operation=None, scale=-1.0, from_hels=False):
+    def add_pdf_uncertainty(self, operation=None, scale=-1.0):
         pdf = self.datagroups.args_from_metadata("pdfs")[0]
         pdfInfo = theory_tools.pdf_info_map("ZmumuPostVFP", pdf)
         pdfName = pdfInfo["name"]
-        scale = scale if scale != -1.0 else pdfInfo["inflationFactor"]
-        if from_hels:
+        scale = (
+            scale
+            if scale != -1.0
+            else theory_tools.pdf_inflation_factor(pdfInfo, self.args.noi)
+        )
+        if self.from_hels:
             pdf_hist = f"{pdfName}UncertByHelicity"
             pdf_corr_hist = f"{pdfName}UncertByHelicity"
         else:
@@ -913,24 +919,34 @@ class TheoryHelper(object):
                 pdf_hist, skipEntries=[{pdf_ax: "^pdf0[a-z]*"}], **pdf_args
             )
             if pdfName == "pdfHERAPDF20":
+
                 self.datagroups.addSystematic(
-                    pdf_hist + "ext",
-                    skipEntries=[{pdf_ax: "^pdf0[a-z]*"}],
-                    processes=processes,
-                    mirror=True,
-                    groups=[pdfName, f"{pdfName}NoAlphaS", "theory", "theory_qcd"],
-                    passToFakes=self.propagate_to_fakes,
-                    preOpMap=operation,
-                    scale=pdfInfo.get("scale", 1) * scale,
-                    symmetrize=symmetrize,
-                    systAxes=[pdf_ax],
+                    pdf_hist.replace("pdfHERAPDF20", "pdfHERAPDF20ext"),
+                    skipEntries=[
+                        {pdf_ax: "^pdf(0|[6-8])[a-z]*"}
+                    ],  # exclude 0, 6 and above
+                    **pdf_args,
                 )
 
-    def add_pdf_alphas_variation(self, noi=False, scale=-1.0, from_hels=False):
+                tmp_pdf_args = pdf_args.copy()
+                tmp_pdf_args["mirror"] = True
+                self.datagroups.addSystematic(
+                    pdf_hist.replace("pdfHERAPDF20", "pdfHERAPDF20ext"),
+                    skipEntries=[
+                        {pdf_ax: "^(?!pdf[6-8][a-z]*)"}
+                    ],  # exclude everything but 6-8
+                    **tmp_pdf_args,
+                )
+
+    def add_pdf_alphas_variation(self, noi=False, scale=-1.0):
         pdf = self.datagroups.args_from_metadata("pdfs")[0]
         pdfInfo = theory_tools.pdf_info_map("ZmumuPostVFP", pdf)
         pdfName = pdfInfo["name"]
-        scale = scale if scale != -1.0 else pdfInfo["inflationFactor"]
+        scale = (
+            scale
+            if scale != -1.0
+            else theory_tools.pdf_inflation_factor(pdfInfo, self.args.noi)
+        )
         pdf_hist = pdfName
         pdf_corr_hist = (
             f"scetlib_dyturbo{pdf.upper().replace('AN3LO', 'an3lo')}VarsCorr"
@@ -944,14 +960,14 @@ class TheoryHelper(object):
             if asRange == "002"
             else [("0117", "Down"), ("0119", "Up")]
         )
-        asname = (
-            f"{pdfName}alphaS{asRange}"
-            if not self.as_from_corr
-            # else self.corr_hist_name.replace("Corr", "_pdfasCorr")
-            else "scetlib_dyturboCT18Z_pdfasCorr"
-        )
-        if from_hels:
-            asname += "ByHelicity"
+        if self.from_hels:
+            asname = "pdfAlphaSByHelicity"
+        else:
+            asname = (
+                f"{pdfName}alphaS{asRange}"
+                if not self.as_from_corr
+                else pdf_corr_hist.replace("Vars", "_pdfas")
+            )
         as_args = dict(
             histname=asname,
             processes=["single_v_samples"],
@@ -1024,7 +1040,7 @@ class TheoryHelper(object):
                 name=f"resumTransitionFOScale{name_append}",
             )
 
-    def add_quark_mass_vars(self, from_minnlo=True, from_hels=False):
+    def add_quark_mass_vars(self, from_minnlo=True):
         pdfs = self.datagroups.args_from_metadata("pdfs")
         theory_corrs = self.datagroups.args_from_metadata("theoryCorr")
 
@@ -1059,7 +1075,7 @@ class TheoryHelper(object):
             )
 
         if from_minnlo:
-            if from_hels:
+            if self.from_hels:
                 bhist = "pdfMSHT20mbrangeUncertByHelicity"
             else:
                 bhist = "pdfMSHT20mbrange"
