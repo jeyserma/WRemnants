@@ -521,6 +521,8 @@ def make_theory_helpers(
 
     for proc in theory_helpers_procs.keys():
 
+        print("hereeeeeee", proc, corrs)
+
         if "pdf" in corrs:
             theory_helpers_procs[proc]["pdf"] = (
                 make_pdfs_uncertainties_helper_by_helicity(
@@ -530,14 +532,13 @@ def make_theory_helpers(
             )
         if "alphaS" in corrs:
             theory_helpers_procs[proc]["alphaS"] = (
-                make_pdf_uncertainty_helper_by_helicity(
+                make_alphaS_uncertainties_helper_by_helicity(
                     proc=proc,
-                    pdf=[x + "Corr" for x in args.theoryCorr if "pdfas" in x],
-                    pdf_renorm=[x + "Corr" for x in args.theoryCorr if "pdfas" in x],
-                    var_ax_name="vars",
-                    filename=f"{common.data_dir}/angularCoefficients/w_z_gen_dists_scetlib_dyturboCorr_maxFiles_m1_asByHelicity.hdf5",
+                    theory_corrs=[x + "Corr" for x in args.theoryCorr if "pdfas" in x]
                 )
             )
+            print(theory_helpers_procs[proc]["alphaS"].keys())
+            print(theory_helpers_procs[proc]["alphaS"])
         if "pdf_central" in corrs:
             theory_helpers_procs[proc]["pdf_central"] = (
                 make_pdf_uncertainty_helper_by_helicity(
@@ -704,6 +705,25 @@ def make_pdfs_uncertainties_helper_by_helicity(
             pdf_helpers[pdf_name] = pdf_helper
     return pdf_helpers
 
+
+def make_alphaS_uncertainties_helper_by_helicity(
+    proc,
+    theory_corrs,
+    return_tensor=True,
+):
+    for theory_corr in theory_corrs:
+        as_helper = make_pdf_uncertainty_helper_by_helicity(
+            proc=proc,
+            pdf=theory_corr,
+            pdf_renorm=theory_corr,
+            var_ax_name="vars",
+            filename=f"/ceph/submit/data/group/cms/store/user/lavezzo/alphaS/251030_gen_asByHelicity/w_z_gen_dists_scetlib_dyturboCorr_maxFiles_100_asByHelicity.hdf5",
+            filename_renorm=f"/ceph/submit/data/group/cms/store/user/lavezzo/alphaS/251030_gen_asByHelicity/w_z_gen_dists_scetlib_dyturboCorr_maxFiles_100_asByHelicity.hdf5",
+            return_tensor=return_tensor
+        )
+        if as_helper is not None:
+            return as_helper
+    return None
 
 def make_pdf_uncertainty_helper_by_helicity(
     proc,
