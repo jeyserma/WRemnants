@@ -1270,13 +1270,16 @@ def define_mass_width_sin2theta_weights(df, proc):
 
     if not "massWeight_tensor" in df.GetColumnNames():
         # from -100 to 100 MeV with 10 MeV increment
-        if "MEParamWeight" in df.GetColumnNames():
+        if df.HasColumn("MEParamWeight"):
             df = df.Alias("massWeight_col", "MEParamWeight")
-        else:
+        elif df.HasColumn("LHEReweightingWeight"):
             df = df.Define(
                 "massWeight_col",
                 f"wrem::slice_vec(LHEReweightingWeight,0, {nweights_mass})",
             )
+        else:
+            return df
+
         df = df.Define(
             "massWeight_tensor",
             f"wrem::vec_to_tensor_t<double, {nweights_mass}>(massWeight_col)",
@@ -1292,13 +1295,15 @@ def define_mass_width_sin2theta_weights(df, proc):
             m0, gamma0, massvals, widthvals
         )
 
-        if "MEParamWeightAltSet1" in df.GetColumnNames():
+        if df.HasColumn("MEParamWeightAltSet1"):
             df = df.Alias("widthWeight_col", "MEParamWeightAltSet1")
-        else:
+        elif df.HasColumn("LHEReweightingWeight"):
             df = df.Define(
                 "widthWeight_col",
                 f"wrem::slice_vec(LHEReweightingWeight,{nweights_mass}, {nweights_mass+nweights_width})",
             )
+        else:
+            return df
 
         df = df.Define(
             "massWeight_widthdecor_tensor",
@@ -1320,14 +1325,17 @@ def define_mass_width_sin2theta_weights(df, proc):
         )
 
         if proc in common.zprocs_all:
-            if "MEParamWeightAltSet4" in df.GetColumnNames():
+            if df.HasColumn("MEParamWeightAltSet4"):
                 df = df.Alias("sin2thetaWeight_col", "MEParamWeightAltSet4")
-            else:
+            elif df.HasColumn("LHEReweightingWeight"):
                 logger.warning("sin2theta weights in new format to be defined")
                 df = df.Define(
                     "sin2thetaWeight_col",
-                    f"wrem::slice_vec(LHEReweightingWeight,{nweights_mass+nweights_width}, {nweights_mass+nweights_width+nweights_sin2theta})",
+                    f"wrem::slice_vec(LHEReweightingWeight, {nweights_mass+nweights_width}, {nweights_mass+nweights_width+nweights_sin2theta})",
                 )
+            else:
+                return df
+
             df = df.Define(
                 "sin2thetaWeight_tensor",
                 f"wrem::vec_to_tensor_t<double, {nweights_sin2theta}>(sin2thetaWeight_col)",
@@ -1353,16 +1361,17 @@ def add_massweights_hist(
     add_syst_hist(
         results, df, name, axes, cols, "massWeight_tensor_wnom", mass_axis, **kwargs
     )
-    add_syst_hist(
-        results,
-        df,
-        name_widthdecor,
-        axes,
-        cols,
-        "massWeight_widthdecor_tensor_wnom",
-        mass_axis,
-        **kwargs,
-    )
+    if df.HasColumn("massWeight_widthdecor_tensor_wnom"):
+        add_syst_hist(
+            results,
+            df,
+            name_widthdecor,
+            axes,
+            cols,
+            "massWeight_widthdecor_tensor_wnom",
+            mass_axis,
+            **kwargs,
+        )
 
 
 def massWeightNames(matches=None, proc="", exclude=[]):
@@ -1397,7 +1406,11 @@ def add_widthweights_hist(
     )
 
 
-def widthWeightNames(matches=None, proc=""):
+def widthWeightNames(matches=None, proc="", exclude=[]):
+    if isinstance(exclude, (int, float)):
+        exclude = [
+            exclude,
+        ]
     if proc[0] == "Z":
         widths = (2.49333, 2.49493, 2.4929, 2.4952, 2.4975)
     elif proc[0] == "W":
@@ -1406,7 +1419,11 @@ def widthWeightNames(matches=None, proc=""):
         raise RuntimeError(f"No width found for process {proc}")
     # 0 and 1 are Up, Down from mass uncertainty EW fit (already accounted for in mass variations)
     # 2, 3, and 4 are PDG width Down, Central, Up
-    names = [f"width{proc[0]}{str(width).replace('.','p')}GeV" for width in widths]
+    names = [
+        f"width{proc[0]}{str(width).replace('.','p')}GeV"
+        for width in widths
+        if width not in exclude
+    ]
 
     return [x if not matches or any(y in x for y in matches) else "" for x in names]
 
@@ -2489,12 +2506,9 @@ def add_theory_hists(
 
     df = theory_tools.define_scale_tensor(df)
 
-    if (
-        "MEParamWeight" not in df.GetColumnNames()
-        and "LHEReweightingWeight" not in df.GetColumnNames()
-    ):
+    if not df.HasColumn("MEParamWeight") and not df.HasColumn("LHEReweightingWeight"):
         logger.warning(
-            "MEParamWeight not in list of columns, mass, width, and sin2theta weight tensors can not be defined"
+            "'MEParamWeight' and 'LHEReweightingWeight' not in list of columns, mass, width, and sin2theta weight tensors can not be defined"
         )
     else:
         df = define_mass_width_sin2theta_weights(df, dataset_name)
@@ -2562,15 +2576,19 @@ def add_theory_hists(
                 results, df, theory_helpers.get("alphaS"), axes, cols, **info
             )
 
-        if "MEParamWeight" not in df.GetColumnNames():
-            return df
-        # TODO: Should have consistent order here with the scetlib correction function
-        add_massweights_hist(results, df, axes, cols, proc=dataset_name, **info)
-        add_widthweights_hist(results, df, axes, cols, proc=dataset_name, **info)
-        add_breit_wigner_weights_hist(
+        add_breit_wigner_mass_weights_hist(
             results, df, axes, cols, proc=dataset_name, **info
         )
-        if isZ:
+        add_breit_wigner_width_weights_hist(
+            results, df, axes, cols, proc=dataset_name, **info
+        )
+
+        # TODO: Should have consistent order here with the scetlib correction function
+        if df.HasColumn("massWeight_tensor_wnom"):
+            add_massweights_hist(results, df, axes, cols, proc=dataset_name, **info)
+        if df.HasColumn("widthWeight_tensor_wnom"):
+            add_widthweights_hist(results, df, axes, cols, proc=dataset_name, **info)
+        if isZ and df.HasColumn("sin2thetaWeight_tensor_wnom"):
             add_sin2thetaweights_hist(
                 results, df, axes, cols, proc=dataset_name, **info
             )
@@ -2578,7 +2596,7 @@ def add_theory_hists(
     return df
 
 
-def add_breit_wigner_weights_hist(
+def add_breit_wigner_mass_weights_hist(
     results,
     df,
     axes,
@@ -2589,16 +2607,13 @@ def add_breit_wigner_weights_hist(
     **kwargs,
 ):
     label = proc[0] if len(proc) else proc
-    tensorName = f"breitwignerWeights{label}_tensor"
-    bwHistName = Datagroups.histName(base_name, syst=f"breitwigner{label}")
-    offset = 10
-    names = [f"massShift{label}{(offset*i)}MeVDown" for i in range(10, 0, -1)]
-    names += [f"massShift{label}0MeV"]
-    names += [f"massShift{label}{(i*offset)}MeVUp" for i in range(1, 11)]
-    weight_ax = hist.axis.StrCategory(names, name="breitwignerVar")
+    tensorName = f"breitwigner_massWeight{label}_tensor"
+    bwHistName = Datagroups.histName(base_name, syst=f"breitwigner_massWeight{label}")
+    mass_axis = hist.axis.StrCategory(massWeightNames(proc=proc), name="massShift")
+
     if tensorName not in df.GetColumnNames():
         logger.warning(
-            f"Breit Wigner weights tensor was not found for sample {proc}. Skipping uncertainty hist!"
+            f"Breit Wigner mass weights tensor was not found for sample {proc}. Skipping uncertainty hist!"
         )
         return
 
@@ -2609,7 +2624,40 @@ def add_breit_wigner_weights_hist(
         axes,
         cols,
         tensorName,
-        weight_ax,
+        mass_axis,
+        **kwargs,
+    )
+
+
+def add_breit_wigner_width_weights_hist(
+    results,
+    df,
+    axes,
+    cols,
+    proc="W",
+    base_name="nominal",
+    storage=hist.storage.Double(),
+    **kwargs,
+):
+    label = proc[0] if len(proc) else proc
+    tensorName = f"breitwigner_widthWeight{label}_tensor"
+    bwHistName = Datagroups.histName(base_name, syst=f"breitwigner_widthWeight{label}")
+    axis_width = hist.axis.StrCategory(widthWeightNames(proc=proc), name="width")
+
+    if tensorName not in df.GetColumnNames():
+        logger.warning(
+            f"Breit Wigner width weights tensor was not found for sample {proc}. Skipping uncertainty hist!"
+        )
+        return
+
+    add_syst_hist(
+        results,
+        df,
+        bwHistName,
+        axes,
+        cols,
+        tensorName,
+        axis_width,
         **kwargs,
     )
 
@@ -2738,26 +2786,20 @@ def scale_hist_up_down_corr_from_file(h, corr_file=None, corr_hist=None):
     return hVar
 
 
-def correct_bw_xsec(h, self, proc, forceToNominal, h_ref_name):
+def correct_bw_xsec(h, h_ref):
     """
     Normalize the Breit-Wigner mass variation histograms
     to the cross section from the MiNNLO mass variation histograms.
     Assumes that the histograms have been filled with the same mass variations, in the same order.
     """
 
-    self.loadHistsForDatagroups(
-        self.nominalName,
-        h_ref_name,
-        label="syst",
-        procsToRead=[proc],
-        forceToNominal=forceToNominal,
-        sumFakesPartial=True,
-    )
+    if "massShift" in h.axes.name:
+        var = "massShift"
+    elif "width" in h.axes.name:
+        var = "width"
 
-    h_ref = self.groups[proc].hists["syst"]
-
-    h_axis_labels = [n for n in h.axes["breitwignerVar"]]
-    h_ref_axis_labels = [n for n in h_ref.axes["massShift"]]
+    h_axis_labels = [n for n in h.axes[var]]
+    h_ref_axis_labels = [n for n in h_ref.axes[var]]
     if (
         len(h_axis_labels) != len(h_ref_axis_labels)
         or h_axis_labels != h_ref_axis_labels
@@ -2768,16 +2810,7 @@ def correct_bw_xsec(h, self, proc, forceToNominal, h_ref_name):
         )
         return h
 
-    num = np.sum(
-        h_ref.values(flow=True),
-        axis=tuple(i for i, n in enumerate(h_ref.axes.name) if n != "massShift"),
-    )
-    den = np.sum(
-        h.values(flow=True),
-        axis=tuple(i for i, n in enumerate(h.axes.name) if n != "breitwignerVar"),
-    )
-    correction = num / den
-
-    h.values(flow=True)[...] = h.values(flow=True)[...] * correction
+    h_corr = hh.divideHists(h.project(var), h_ref.project(var))
+    h = hh.multiplyHists(h, h_corr)
 
     return h

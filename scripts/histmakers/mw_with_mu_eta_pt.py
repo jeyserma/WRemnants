@@ -660,7 +660,16 @@ def build_graph(df, dataset):
     logger.info(f"build graph for dataset: {dataset.name}")
     results = []
     isW = dataset.name in common.wprocs
-    isWmunu = dataset.name in ["WplusmunuPostVFP", "WminusmunuPostVFP"]
+    isBSM = dataset.name in [
+        "WtoNMu_MN-5-V-0p001",
+        "WtoNMu_MN-10-V-0p001",
+        "WtoNMu_MN-50-V-0p001",
+    ]
+    isWmunu = isBSM or dataset.name in [
+        "WplusmunuPostVFP",
+        "WminusmunuPostVFP",
+    ]
+
     isZ = dataset.name in common.zprocs
     isZveto = isZ or dataset.name in ["DYJetsToMuMuMass10to50PostVFP"]
     isWorZ = isW or isZ
@@ -748,6 +757,20 @@ def build_graph(df, dataset):
                 "wrem::get_dummy_run_by_lumi_quantile(run, luminosityBlock, event, lumiEdges, runVals)",
             )
         cols = [*cols, "run4axis"]
+
+    if isBSM:
+        # to compute inclusive cross section
+        unfolding_tools.add_xnorm_histograms(
+            results,
+            df,
+            args,
+            dataset.name,
+            corr_helpers,
+            theory_helpers,
+            [],
+            [],
+            base_name="gen",
+        )
 
     if args.unfolding:
         if isWmunu:
@@ -1787,17 +1810,18 @@ def build_graph(df, dataset):
             "nominal_weight",
         ]
         # assume to have same coeffs for plus and minus (no reason for it not to be the case)
-        if dataset.name == "WplusmunuPostVFP" or dataset.name == "WplustaunuPostVFP":
+        if dataset.name in ["WplusmunuPostVFP", "WplustaunuPostVFP"]:
             helpers_class = muRmuFPolVar_helpers_plus
             process_name = "W"
-        elif (
-            dataset.name == "WminusmunuPostVFP" or dataset.name == "WminustaunuPostVFP"
-        ):
+        elif dataset.name in ["WminusmunuPostVFP", "WminustaunuPostVFP"]:
             helpers_class = muRmuFPolVar_helpers_minus
             process_name = "W"
-        elif dataset.name == "ZmumuPostVFP" or dataset.name == "ZtautauPostVFP":
+        elif dataset.name in ["ZmumuPostVFP", "ZtautauPostVFP"]:
             helpers_class = muRmuFPolVar_helpers_Z
             process_name = "Z"
+        else:
+            helpers_class = {}
+
         for coeffKey in helpers_class.keys():
             logger.debug(
                 f"Creating muR/muF histograms with polynomial variations for {coeffKey}"
@@ -2014,7 +2038,11 @@ def build_graph(df, dataset):
             )
 
             # Don't think it makes sense to apply the mass weights to scale leptons from tau decays
-            if not args.onlyTheorySyst and not "tau" in dataset.name:
+            if (
+                "massWeight_tensor" in df.GetColumnNames()
+                and not args.onlyTheorySyst
+                and not "tau" in dataset.name
+            ):
                 df = syst_tools.add_muonscale_hist(
                     results,
                     df,

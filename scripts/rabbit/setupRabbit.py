@@ -25,6 +25,7 @@ from wremnants.syst_tools import (
     massWeightNames,
     scale_hist_up_down,
     scale_hist_up_down_corr_from_file,
+    widthWeightNames,
 )
 from wums import boostHistHelpers as hh
 from wums import logging
@@ -165,7 +166,7 @@ def make_parser(parser=None):
         type=str,
         nargs="*",
         help="Don't run over processes belonging to these groups (only accepts exact group names)",
-        default=["QCD"],
+        default=["QCD", "WtoNMu_5", "WtoNMu_10", "WtoNMu_50"],
     )
     parser.add_argument(
         "--filterProcGroups",
@@ -872,12 +873,10 @@ def setup(
     stat_only=False,
     genvar=None,
     channel="ch0",
-    lumi=None,
     fitresult_data=None,
     unfolding_scalemap=None,
+    base_group=None,
 ):
-    xnorm = any(inputBaseName.startswith(x) for x in ["xnorm", "prefsr", "postfsr"])
-
     isUnfolding = args.analysisMode == "unfolding"
     isTheoryAgnostic = args.analysisMode in [
         "theoryAgnosticNormVar",
@@ -915,11 +914,13 @@ def setup(
     logger.debug(f"Excluding these groups of processes: {args.excludeProcGroups}")
 
     datagroups = Datagroups(
-        inputFile, excludeGroups=excludeGroup, filterGroups=filterGroup
+        inputFile,
+        excludeGroups=excludeGroup,
+        filterGroups=filterGroup,
+        xnorm=any(
+            inputBaseName.startswith(x) for x in ["gen", "xnorm", "prefsr", "postfsr"]
+        ),
     )
-    if lumi is not None:
-        logger.info(f"Set integrated luminosity to: {lumi}/fb")
-        datagroups.lumi = lumi
 
     datagroups.fit_axes = fitvar
     datagroups.channel = channel
@@ -980,10 +981,11 @@ def setup(
         constrainMass = True if massConstraintMode == "constrained" else False
     logger.debug(f"constrainMass = {constrainMass}")
 
-    if wmass:
-        base_group = "Wenu" if datagroups.flavor == "e" else "Wmunu"
-    else:
-        base_group = "Zee" if datagroups.flavor == "ee" else "Zmumu"
+    if base_group is None:
+        if wmass:
+            base_group = "Wenu" if datagroups.flavor == "e" else "Wmunu"
+        else:
+            base_group = "Zee" if datagroups.flavor == "ee" else "Zmumu"
 
     if args.addTauToSignal:
         # add tau signal processes to signal group
@@ -999,7 +1001,7 @@ def setup(
 
     if (
         lowPU
-        and not xnorm
+        and not datagroups.xnorm
         and ((args.fakeEstimation != "simple") or (args.fakeSmoothingMode != "binned"))
     ):
         logger.error(
@@ -1030,10 +1032,17 @@ def setup(
             )
         )
 
-    if xnorm:
-        datagroups.select_xnorm_groups(base_group, inputBaseName)
+    bsm_signals = []
+    for bsm_signal in filter(
+        lambda x: x.startswith("WtoNMu"), datagroups.allMCProcesses()
+    ):
+        datagroups.unconstrainedProcesses.append(bsm_signal)
+        bsm_signals.append(bsm_signal)
 
-    if xnorm or isUnfolding or isPoiAsNoi:
+    if datagroups.xnorm:
+        datagroups.select_xnorm_groups([base_group, *bsm_signals], inputBaseName)
+
+    if datagroups.xnorm or isUnfolding or isPoiAsNoi:
         datagroups.setGenAxes(
             sum_gen_axes=[a for a in datagroups.gen_axes_names if a not in fitvar],
             base_group=base_group,
@@ -1041,7 +1050,6 @@ def setup(
         )
 
     if isPoiAsNoi:
-        constrainMass = False if isTheoryAgnostic else True
         poi_axes = datagroups.gen_axes_names if genvar is None else genvar
         # remove specified gen axes from set of gen axes in datagroups so that those are integrated over
         datagroups.setGenAxes(
@@ -1096,6 +1104,8 @@ def setup(
                 datagroups.deleteGroup(
                     f"{base_group}OOA"
                 )  # remove out of acceptance signal
+        else:
+            constrainMass = True
     elif isUnfolding or isTheoryAgnostic:
         constrainMass = False if isTheoryAgnostic else True
         datagroups.sum_gen_axes = [
@@ -1108,7 +1118,7 @@ def setup(
             member_filter=lambda x: not x.name.endswith("OOA"),
             fitvar=fitvar,
             histToReadAxes=args.unfoldingLevel,
-            disable_flow_fit_axes=not (xnorm and args.unfoldingWithFlow),
+            disable_flow_fit_axes=not (datagroups.xnorm and args.unfoldingWithFlow),
         )
 
         # out of acceptance contribution
@@ -1131,7 +1141,7 @@ def setup(
             ax_name, ax_edges = item.split("=")
             abcdExplicitAxisEdges[ax_name] = [float(x) for x in ax_edges.split(",")]
 
-    if wmass and not xnorm:
+    if wmass and not datagroups.xnorm:
         datagroups.fakerate_axes = args.fakerateAxes
         histselector_kwargs = dict(
             mode=args.fakeEstimation,
@@ -1176,7 +1186,7 @@ def setup(
 
     passSystToFakes = (
         wmass
-        and not (xnorm or args.skipSignalSystOnFakes)
+        and not (datagroups.xnorm or args.skipSignalSystOnFakes)
         and datagroups.fakeName != "QCD"
         and (excludeGroup != None and datagroups.fakeName not in excludeGroup)
         and (filterGroup == None or datagroups.fakeName in filterGroup)
@@ -1213,7 +1223,7 @@ def setup(
             excludeMatch=dibosonMatch,
         )
         datagroups.addProcessGroup("wtau_samples", startsWith=["Wtaunu"])
-        if not xnorm:
+        if not datagroups.xnorm:
             datagroups.addProcessGroup(
                 "single_v_nonsig_samples",
                 startsWith=ZMatch,
@@ -1230,12 +1240,12 @@ def setup(
     datagroups.addProcessGroup(
         "signal_samples_inctau",
         startsWith=signalMatch,
-        excludeMatch=[*dibosonMatch],
+        excludeMatch=dibosonMatch,
     )
     datagroups.addProcessGroup(
         "nonsignal_samples_inctau",
         startsWith=nonSignalMatch,
-        excludeMatch=[*dibosonMatch],
+        excludeMatch=dibosonMatch,
     )
     datagroups.addProcessGroup(
         "MCnoQCD",
@@ -1271,7 +1281,7 @@ def setup(
     if not (isTheoryAgnostic or isUnfolding):
         logger.info(f"All MC processes {datagroups.procGroups['MCnoQCD']}")
         logger.info(f"Single V samples: {datagroups.procGroups['single_v_samples']}")
-        if wmass and not xnorm:
+        if wmass and not datagroups.xnorm:
             logger.info(
                 f"Single V no signal samples: {datagroups.procGroups['single_v_nonsig_samples']}"
             )
@@ -1308,7 +1318,7 @@ def setup(
             pseudodataGroups.fakerate_axes = args.fakerateAxes
 
         datagroups.addPseudodataHistogramFakes(pseudodata, pseudodataGroups)
-    if args.pseudoData and not xnorm:
+    if args.pseudoData and not datagroups.xnorm:
         if args.pseudoDataFitInputFile:
             indata = rabbit.debugdata.FitInputData(args.pseudoDataFitInputFile)
             debugdata = rabbit.debugdata.FitDebugData(indata)
@@ -1327,7 +1337,7 @@ def setup(
                     filterGroups=filterGroup,
                 )
 
-                if wmass and not xnorm:
+                if wmass and not datagroups.xnorm:
                     pseudodataGroups.fakerate_axes = args.fakerateAxes
                     pseudodataGroups.set_histselectors(
                         pseudodataGroups.getNames(),
@@ -1345,17 +1355,17 @@ def setup(
                 args.pseudoDataProcsRegexp,
             )
 
-    if args.correlateSignalMCstat and xnorm:
+    if args.correlateSignalMCstat and datagroups.xnorm:
         masked_flow_axes = (
             ["ptGen", "ptVGen"]
-            if (xnorm and isUnfolding and args.unfoldingWithFlow)
+            if (datagroups.xnorm and isUnfolding and args.unfoldingWithFlow)
             else []
         )
         combine_helpers.add_nominal_with_correlated_BinByBinStat(
             datagroups,
             wmass,
             base_name=inputBaseName,
-            masked=xnorm and fitresult_data is None,
+            masked=datagroups.xnorm and fitresult_data is None,
             masked_flow_axes=masked_flow_axes,
         )
     else:
@@ -1370,10 +1380,10 @@ def setup(
                 else args.binByBinStatScaleForDilepton if dilepton else 1.0
             ),
             fitresult_data=fitresult_data,
-            masked=xnorm and fitresult_data is None,
+            masked=datagroups.xnorm and fitresult_data is None,
             masked_flow_axes=(
                 ["ptGen", "ptVGen"]
-                if (xnorm and isUnfolding and args.unfoldingWithFlow)
+                if (datagroups.xnorm and isUnfolding and args.unfoldingWithFlow)
                 else []
             ),
         )
@@ -1401,87 +1411,90 @@ def setup(
         )
 
     decorwidth = args.decorMassWidth or ("wwidth" in args.noi)
-    if not (stat_only and constrainMass):
+    if not (stat_only and constrainMass) and args.massVariation != 0:
+        massVariation = 2.1 if (not wmass and constrainMass) else args.massVariation
+        massWeightName = (
+            f"massWeight_widthdecor{label}" if decorwidth else f"massWeight{label}"
+        )
+        mass_info = dict(
+            processes=signal_samples_forMass,
+            group=f"massShift",
+            noi=not constrainMass,
+            skipEntries=massWeightNames(proc=label, exclude=massVariation),
+            mirror=False,
+            noConstraint=not constrainMass,
+            systAxes=["massShift"],
+            passToFakes=passSystToFakes,
+        )
+
         if args.breitwignerWMassWeights and label == "W":
-            massVariation = 2.1 if (not wmass and constrainMass) else args.massVariation
-            datagroups.addSystematic(
-                histname=f"breitwigner{label}",
-                name="massShiftBW",
-                processes=signal_samples_forMass,
-                group=f"massShift",
-                noi=not constrainMass,
-                skipEntries=massWeightNames(proc=label, exclude=massVariation),
-                mirror=False,
-                noConstraint=not constrainMass,
-                systAxes=["breitwignerVar"],
-                passToFakes=passSystToFakes,
-                action=syst_tools.correct_bw_xsec,
-                actionArgs=dict(h_ref_name=f"massWeight{label}"),
-                actionRequiresSelf=True,
-            )
-        else:
-            massWeightName = "massWeight_widthdecor" if decorwidth else "massWeight"
-            if args.massVariation != 0:
-                if len(args.fitMassDecorr) == 0:
-                    massVariation = (
-                        2.1 if (not wmass and constrainMass) else args.massVariation
+            preOpMap = {}
+            for group in ["Wmunu", "Wtaunu"]:
+                if group not in datagroups.groups.keys():
+                    continue
+                for member in datagroups.groups[group].members:
+                    h_ref = datagroups.readHist(
+                        datagroups.nominalName, member, massWeightName
                     )
-                    datagroups.addSystematic(
-                        f"{massWeightName}{label}",
-                        processes=signal_samples_forMass,
-                        group=f"massShift",
-                        noi=not constrainMass,
-                        skipEntries=massWeightNames(proc=label, exclude=massVariation),
-                        mirror=False,
-                        noConstraint=not constrainMass,
-                        systAxes=["massShift"],
-                        passToFakes=passSystToFakes,
-                    )
-                else:
-                    suffix = "".join([a.capitalize() for a in args.fitMassDecorr])
-                    new_names = [f"{a}_decorr" for a in args.fitMassDecorr]
-                    datagroups.addSystematic(
-                        histname=f"{massWeightName}{label}",
-                        processes=signal_samples_forMass,
-                        name=f"massDecorr{suffix}{label}",
-                        group=f"massDecorr{label}",
-                        # systNameReplace=[("Shift",f"Diff{suffix}")],
-                        skipEntries=[
-                            (x, *[-1] * len(args.fitMassDecorr))
-                            for x in massWeightNames(
-                                proc=label, exclude=args.massVariation
-                            )
-                        ],
-                        noi=not constrainMass,
-                        noConstraint=not constrainMass,
-                        mirror=False,
-                        systAxes=["massShift", *new_names],
-                        passToFakes=passSystToFakes,
-                        # isPoiHistDecorr is a special flag to deal with how the massShift variations are internally formed
-                        isPoiHistDecorr=len(args.fitMassDecorr),
-                        actionRequiresNomi=True,
-                        action=syst_tools.decorrelateByAxes,
-                        actionArgs=dict(
-                            axesToDecorrNames=args.fitMassDecorr,
-                            newDecorrAxesNames=new_names,
-                            axlim=args.decorrAxlim,
-                            rebin=args.decorrRebin,
-                            absval=args.decorrAbsval,
-                        ),
+                    preOpMap[member.name] = (
+                        lambda h, h_ref=h_ref: syst_tools.correct_bw_xsec(h, h_ref)
                     )
 
-        if "massdiffW" in args.noi:
-            suffix = "".join([a.capitalize() for a in args.massDiffWVar.split("-")])
-            combine_helpers.add_mass_diff_variations(
-                datagroups,
-                args.massDiffWVar,
-                name=f"{massWeightName}{label}",
-                processes=signal_samples_forMass,
-                constrain=constrainMass,
-                suffix=suffix,
-                label=label,
-                passSystToFakes=passSystToFakes,
+            datagroups.addSystematic(
+                histname=f"breitwigner_{massWeightName}",
+                name=f"massWeight{label}",
+                preOpMap=preOpMap,
+                **mass_info,
             )
+        else:
+            if len(args.fitMassDecorr) == 0:
+                datagroups.addSystematic(
+                    massWeightName,
+                    **mass_info,
+                )
+            else:
+                suffix = "".join([a.capitalize() for a in args.fitMassDecorr])
+                new_names = [f"{a}_decorr" for a in args.fitMassDecorr]
+                datagroups.addSystematic(
+                    histname=massWeightName,
+                    processes=signal_samples_forMass,
+                    name=f"massDecorr{suffix}{label}",
+                    group=f"massDecorr{label}",
+                    # systNameReplace=[("Shift",f"Diff{suffix}")],
+                    skipEntries=[
+                        (x, *[-1] * len(args.fitMassDecorr))
+                        for x in massWeightNames(proc=label, exclude=args.massVariation)
+                    ],
+                    noi=not constrainMass,
+                    noConstraint=not constrainMass,
+                    mirror=False,
+                    systAxes=["massShift", *new_names],
+                    passToFakes=passSystToFakes,
+                    # isPoiHistDecorr is a special flag to deal with how the massShift variations are internally formed
+                    isPoiHistDecorr=len(args.fitMassDecorr),
+                    actionRequiresNomi=True,
+                    action=syst_tools.decorrelateByAxes,
+                    actionArgs=dict(
+                        axesToDecorrNames=args.fitMassDecorr,
+                        newDecorrAxesNames=new_names,
+                        axlim=args.decorrAxlim,
+                        rebin=args.decorrRebin,
+                        absval=args.decorrAbsval,
+                    ),
+                )
+
+            if "massdiffW" in args.noi:
+                suffix = "".join([a.capitalize() for a in args.massDiffWVar.split("-")])
+                combine_helpers.add_mass_diff_variations(
+                    datagroups,
+                    args.massDiffWVa,
+                    name=massWeightName,
+                    processes=signal_samples_forMass,
+                    constrain=constrainMass,
+                    suffix=suffix,
+                    label=label,
+                    passSystToFakes=passSystToFakes,
+                )
 
     # this appears within doStatOnly because technically these nuisances should be part of it
     if isPoiAsNoi:
@@ -1508,7 +1521,6 @@ def setup(
                 datagroups,
                 label,
                 passSystToFakes,
-                xnorm,
                 poi_axes,
                 prior_norm=args.priorNormXsec,
                 scale_norm=args.scaleNormXsecHistYields,
@@ -1528,7 +1540,7 @@ def setup(
         muRmuFPolVar_helper.add_theoryAgnostic_uncertainty()
 
     if args.correlateSignalMCstat:
-        if xnorm and args.fitresult is None:
+        if datagroups.xnorm and args.fitresult is None:
             # use variations from reco histogram and apply them to xnorm
             source = ("nominal", f"{inputBaseName}_yieldsUnfolding_theory_weight")
             # need to find the reco variables that correspond to the reco fit, reco fit must be done with variables in same order as gen bins
@@ -1555,7 +1567,7 @@ def setup(
         )
 
     if ("wwidth" in args.noi and not wmass) or (
-        not xnorm and not stat_only and not args.noTheoryUnc
+        not datagroups.xnorm and not stat_only and not args.noTheoryUnc
     ):
         # Experimental range
         # widthVars = (42, ['widthW2p043GeV', 'widthW2p127GeV']) if wmass else (2.3, ['widthZ2p4929GeV', 'widthZ2p4975GeV'])
@@ -1564,30 +1576,52 @@ def setup(
             "widthWeightZ",
             name="WidthZ0p8MeV",
             processes=["single_v_nonsig_samples"] if wmass else signal_samples_forMass,
-            action=lambda h: h[{"width": ["widthZ2p49333GeV", "widthZ2p49493GeV"]}],
+            skipEntries=widthWeightNames(proc="Z", exclude=(2.49333, 2.49493)),
             groups=["ZmassAndWidth" if wmass else "widthZ", "theory"],
             mirror=False,
             noi="wwidth" in args.noi if not wmass else False,
             noConstraint="wwidth" in args.noi if not wmass else False,
             systAxes=["width"],
-            outNames=["widthZDown", "widthZUp"],
+            systNameReplace=[["2p49333GeV", "Down"], ["2p49493GeV", "Up"]],
             passToFakes=passSystToFakes,
         )
 
     if wmass and ("wwidth" in args.noi or (not stat_only and not args.noTheoryUnc)):
-        datagroups.addSystematic(
-            "widthWeightW",
+        width_info = dict(
             name="WidthW0p6MeV",
             processes=signal_samples_forMass,
-            action=lambda h: h[{"width": ["widthW2p09053GeV", "widthW2p09173GeV"]}],
             groups=["widthW", "theory"],
             mirror=False,
             noi="wwidth" in args.noi,
             noConstraint="wwidth" in args.noi,
+            skipEntries=widthWeightNames(proc="W", exclude=(2.09053, 2.09173)),
             systAxes=["width"],
-            outNames=["widthWDown", "widthWUp"],
+            systNameReplace=[["2p09053GeV", "Down"], ["2p09173GeV", "Up"]],
             passToFakes=passSystToFakes,
         )
+        widthWeightName = f"widthWeight{label}"
+        if args.breitwignerWMassWeights:
+            preOpMap = {}
+            for group in ["Wmunu", "Wtaunu"]:
+                if group not in datagroups.groups.keys():
+                    continue
+                for member in datagroups.groups[group].members:
+                    h_ref = datagroups.readHist(
+                        datagroups.nominalName, member, widthWeightName
+                    )
+                    preOpMap[member.name] = (
+                        lambda h, h_ref=h_ref: syst_tools.correct_bw_xsec(h, h_ref)
+                    )
+            datagroups.addSystematic(
+                histname=f"breitwigner_{widthWeightName}",
+                preOpMap=preOpMap,
+                **width_info,
+            )
+        else:
+            datagroups.addSystematic(
+                widthWeightName,
+                **width_info,
+            )
 
     if "sin2thetaW" in args.noi or (not stat_only and not args.noTheoryUnc):
         datagroups.addSystematic(
@@ -1615,18 +1649,18 @@ def setup(
         elif wlike:
             if args.helicityFitTheoryUnc:
                 theorySystSamples = []
-        if xnorm:
+        if datagroups.xnorm:
             theorySystSamples = ["signal_samples"]
 
         theory_helper = combine_theory_helper.TheoryHelper(
-            label, datagroups, args, hasNonsigSamples=(wmass and not xnorm)
+            label, datagroups, args, hasNonsigSamples=(wmass and not datagroups.xnorm)
         )
         theory_helper.configure(
             resumUnc=args.resumUnc,
             transitionUnc=not args.noTransitionUnc,
             propagate_to_fakes=passSystToFakes
             and not args.noQCDscaleFakes
-            and not xnorm,
+            and not datagroups.xnorm,
             np_model=args.npUnc,
             tnp_scale=args.scaleTNP,
             mirror_tnp=False,
@@ -1658,7 +1692,7 @@ def setup(
         return datagroups
 
     if not args.noTheoryUnc:
-        if wmass and not xnorm:
+        if wmass and not datagroups.xnorm:
             if args.massConstraintModeZ == "automatic":
                 constrainMassZ = True
             else:
@@ -1703,7 +1737,7 @@ def setup(
                 passSystToFakes=passSystToFakes,
             )
 
-    if xnorm or genfit:
+    if datagroups.xnorm or genfit:
         return datagroups
 
     # Below: experimental uncertainties
@@ -1890,7 +1924,7 @@ def setup(
     if (
         (datagroups.fakeName != "QCD" or args.qcdProcessName == "QCD")
         and datagroups.fakeName in datagroups.groups.keys()
-        and not xnorm
+        and not datagroups.xnorm
         and (
             args.fakeSmoothingMode != "binned"
             or (args.fakeEstimation in ["extrapolate"] and "mt" in fitvar)
@@ -2803,8 +2837,14 @@ if __name__ == "__main__":
             logger.warning(
                 "Theoryfit for more than one channels is currently experimental"
             )
+
+        if args.fitresultResult is not None:
+            result_key = None if args.realData else "asimov"
+        else:
+            result_key = args.fitresultResult
+
         fitresult, fitresult_meta = rabbit.io_tools.get_fitresult(
-            args.fitresult[0], meta=True, result=None if args.realData else "asimov"
+            args.fitresult[0], meta=True, result=result_key
         )
 
         if len(args.fitresult) > 1:
@@ -2822,13 +2862,6 @@ if __name__ == "__main__":
                 fitresult, physics_model=physics_model, channels=channels
             )
         )
-
-        fitresult_lumi = [
-            fitresult_meta["meta_info_input"]["channel_info"][c.replace("_masked", "")][
-                "lumi"
-            ]
-            for c in fitresult_channels
-        ]
 
         writer.add_data_covariance(fitresult_cov)
 
@@ -2851,10 +2884,8 @@ if __name__ == "__main__":
         channel = f"ch{i}"
 
         if args.fitresult is not None:
-            lumi = fitresult_lumi[i]
             fitresult_data = fitresult_hist[i]
         else:
-            lumi = None
             fitresult_data = None
 
         if args.analysisMode == "unfolding" and len(args.unfoldingScalemap) > i:
@@ -2872,10 +2903,26 @@ if __name__ == "__main__":
             genvar=genvar,
             stat_only=args.doStatOnly,
             channel=channel,
-            lumi=lumi,
             fitresult_data=fitresult_data,
             unfolding_scalemap=unfolding_scalemap,
         )
+
+        for bsm_signal in filter(
+            lambda x: x.startswith("WtoNMu"), datagroups.allMCProcesses()
+        ):
+            # add masked channel for inclusive cross section on BSM signal
+            datagroups_xnorm = setup(
+                writer,
+                args,
+                ifile,
+                "gen",
+                iLumiScale,
+                ["count"],
+                genvar=["count"],
+                stat_only=args.doStatOnly or args.doStatOnlyMasked,
+                channel=f"{bsm_signal}_masked",
+                base_group=bsm_signal,
+            )
 
         if isUnfolding:
             # add masked channel
@@ -2889,7 +2936,6 @@ if __name__ == "__main__":
                 genvar=genvar,
                 stat_only=args.doStatOnly or args.doStatOnlyMasked,
                 channel=f"{channel}_masked",
-                lumi=lumi,
                 unfolding_scalemap=unfolding_scalemap,
             )
 

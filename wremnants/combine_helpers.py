@@ -210,7 +210,7 @@ def add_explicit_BinByBinStat(
         )
 
 
-def add_nominal_with_explicit_BinByBinStat(
+def add_nominal_with_correlated_BinByBinStat(
     datagroups, wmass, base_name, masked, masked_flow_axes=[]
 ):
     # signal MC stat is correlated between detector level and gen level with explicit parameters
@@ -420,7 +420,6 @@ def add_noi_unfolding_variations(
     datagroups,
     label,
     passSystToFakes,
-    xnorm,
     poi_axes,
     prior_norm=1,
     scale_norm=1,
@@ -431,9 +430,11 @@ def add_noi_unfolding_variations(
     fitresult=None,
 ):
 
-    poi_axes_syst = [f"_{n}" for n in poi_axes] if xnorm else poi_axes[:]
+    poi_axes_syst = [f"_{n}" for n in poi_axes] if datagroups.xnorm else poi_axes[:]
     noi_args = dict(
-        histname=gen_level if xnorm else f"nominal_{gen_level}_yieldsUnfolding",
+        histname=(
+            gen_level if datagroups.xnorm else f"nominal_{gen_level}_yieldsUnfolding"
+        ),
         name=f"nominal_{gen_level}_yieldsUnfolding",
         baseName=f"{label}_",
         group=f"normXsec{label}",
@@ -465,7 +466,7 @@ def add_noi_unfolding_variations(
             flow=True
         ) ** 0.5 / scalemap.values(flow=True)
 
-    if xnorm:
+    if datagroups.xnorm:
 
         def make_poi_xnorm_variations(h, poi_axes, poi_axes_syst, norm, h_scale=None):
             h = hh.disableFlow(

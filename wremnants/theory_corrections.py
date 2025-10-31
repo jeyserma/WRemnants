@@ -49,8 +49,13 @@ def load_corr_helpers(
     corr_helpers = {}
     for proc in procs:
         corr_helpers[proc] = {}
-        for generator in generators:
-            fname = f"{base_dir}/{generator}Corr{proc[0]}.pkl.lz4"
+        for i, generator in enumerate(generators):
+            if proc.startswith("WtoNMu") and i == 0:
+                label = "BSM"
+            else:
+                label = proc[0]
+
+            fname = f"{base_dir}/{generator}Corr{label}.pkl.lz4"
             if not os.path.isfile(fname):
                 logger.warning(
                     f"Did not find correction file for process {proc}, generator {generator}. No correction will be applied for this process!"
@@ -58,14 +63,14 @@ def load_corr_helpers(
                 continue
             logger.debug(f"Make theory correction helper for file: {fname}")
             corrh = load_corr_hist(
-                fname, proc[0], get_corr_name(generator, minnlo_ratio=minnlo_ratio)
+                fname, label, get_corr_name(generator, minnlo_ratio=minnlo_ratio)
             )
             numh = None
             if generator == generators[0] and "nnlojet" in generator:
                 logger.info(
                     f"Adding statistical uncertainties for correction {generator}"
                 )
-                numh = load_corr_hist(fname, proc[0], f"{generator}_hist")
+                numh = load_corr_hist(fname, label, f"{generator}_hist")
 
             corrh = postprocess_corr_hist(corrh, numh)
             if not make_tensor:
@@ -414,7 +419,9 @@ def set_corr_ratio_flow(corrh):
     return corrh
 
 
-def make_corr_from_ratio(denom_hist, num_hist, rebin=None, smooth="numerator"):
+def make_corr_from_ratio(
+    denom_hist, num_hist, rebin=None, smooth="numerator", normalize=False
+):
     denom_hist, num_hist = rebin_corr_hists([denom_hist, num_hist], binning=rebin)
 
     if smooth == "numerator":
@@ -424,6 +431,10 @@ def make_corr_from_ratio(denom_hist, num_hist, rebin=None, smooth="numerator"):
         num_hist = hh.smooth_hist(
             hh.smooth_hist(num_hist, "absY", exclude_axes=["qT"]), "qT", start_bin=4
         )
+
+    if normalize:
+        num_hist = hh.divideHists(num_hist, num_hist.project("vars"))
+        denom_hist = hh.normalize(denom_hist, scale=1)
 
     corrh = hh.divideHists(num_hist, denom_hist, flow=False, by_ax_name=False)
 
