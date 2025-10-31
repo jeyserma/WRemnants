@@ -367,6 +367,7 @@ def make_parser(parser=None):
         choices=[
             "run",
             "phi",
+            "nRecoVtx",
             "prefire",
             "effi",
             "lumi",

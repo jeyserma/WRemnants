@@ -171,6 +171,8 @@ axis_labels = {
     "iso": {"label": r"$I$", "unit": "GeV"},
     "relIso": r"$I_\mathrm{rel}$",
     "run": r"Run range",
+    "nRecoVtx": r"Number of reconstructed vertices",
+    "PV_npvsGood": r"Number of reconstructed vertices",
     # "ewPTll": r"$\mathrm{Post\ FSR}\ p_\mathrm{T}^{\mu\mu}$",
     # "ewMll": r"$\mathrm{Post\ FSR}\ m^{\mu\mu}$",
     # "ewYll": r"$\mathrm{Post\ FSR}\ Y^{\mu\mu}$",

@@ -38,6 +38,7 @@ from wremnants.datasets.dataset_tools import getDatasets
 from wremnants.helicity_utils_polvar import makehelicityWeightHelper_polvar
 from wremnants.histmaker_tools import (
     aggregate_groups,
+    define_norm_weight_nRecoVtx,
     get_run_lumi_edges,
     make_muon_phi_axis,
     scale_to_data,
@@ -75,6 +76,12 @@ parser.add_argument(
     type=float,
     default=15.0,
     help="Minimum pT for the postFSR gen muon when defining the variation of the veto efficiency",
+)
+parser.add_argument(
+    "--vetoGenPartEta",
+    type=float,
+    default=2.4,
+    help="Maximum absolute eta for the postFSR gen muon when defining the variation of the veto efficiency",
 )
 parser.add_argument(
     "--selectVetoEventsMC",
@@ -718,6 +725,18 @@ def build_graph(df, dataset):
         axes = [*axes, make_muon_phi_axis(args.addMuonPhiAxis)]
         cols = [*cols, "goodMuons_phi0"]
 
+    if args.addNvtxAxis is not None:
+        axes = [
+            *axes,
+            hist.axis.Variable(
+                np.array(args.addNvtxAxis),
+                name="nRecoVtx",
+                underflow=False,
+                overflow=False,
+            ),
+        ]
+        cols = [*cols, "PV_npvsGood"]
+
     if args.addRunAxis:
         run_edges, lumi_edges = get_run_lumi_edges(args.nRunBins, era)
         run_bin_centers = [
@@ -929,6 +948,7 @@ def build_graph(df, dataset):
         df,
         nMuons=1,
         ptCut=args.vetoRecoPt,
+        etaCut=args.vetoRecoEta,
         useGlobalOrTrackerVeto=useGlobalOrTrackerVeto,
     )
     df = muon_selections.select_good_muons(
@@ -1043,7 +1063,7 @@ def build_graph(df, dataset):
         )
         df = df.Define(
             "postfsrMuons_inAcc",
-            f"postfsrMuons && abs(GenPart_eta) < 2.4 && GenPart_pt > {args.vetoGenPartPt}",
+            f"postfsrMuons && abs(GenPart_eta) < {args.vetoGenPartEta} && GenPart_pt > {args.vetoGenPartPt}",
         )
         if args.selectVetoEventsMC:
             # in principle a gen muon with eta = 2.401 might still be matched to a reco muon with eta < 2.4, same for pt, so this condition is potentially fragile, but it is just for test plots
@@ -1160,6 +1180,11 @@ def build_graph(df, dataset):
 
         if not args.noVertexWeight:
             weight_expr += "*weight_vtx"
+
+        # for tests to split into number of reconstructed vertices
+        if args.addNvtxAxis is not None and args.normWeightNvtx is not None:
+            df = define_norm_weight_nRecoVtx(df, args.addNvtxAxis, args.normWeightNvtx)
+            weight_expr += "*weight_nRecoVtx"
 
         # Muon variables used to measure tag-and-probe efficiency SF might not be the final corrected ones
         # TODO: implement an option to choose which vatriables to use (e.g. pt-eta-charge after CVH only ?)
