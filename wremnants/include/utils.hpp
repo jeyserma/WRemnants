@@ -8,6 +8,8 @@
 #include <eigen3/unsupported/Eigen/CXX11/Tensor>
 
 #include "defines.hpp"
+#include <algorithm>
+#include <vector>
 
 using namespace ROOT;
 
@@ -1056,6 +1058,7 @@ TensorType clamp_tensor_safe(const TensorType &tensor, double min_val,
 
   return result;
 }
+
 // Overload with NaN replacement
 template <typename TensorType>
 TensorType clamp_tensor_safe(const TensorType &tensor, double min_val,
@@ -1075,6 +1078,28 @@ TensorType clamp_tensor_safe(const TensorType &tensor, double min_val,
   });
 
   return result;
+}
+
+double get_differential_norm_weight(const double var_value,
+                                    const Vec_d &axis_edges,
+                                    const Vec_d &weight_list,
+                                    bool flows_to_unit = false) {
+
+  const size_t imax = axis_edges.size() - 1;
+
+  // Below lower bound
+  if (var_value < axis_edges.front())
+    return flows_to_unit ? 1.0 : weight_list.front();
+
+  // Above upper bound
+  if (var_value >= axis_edges.back())
+    return flows_to_unit ? 1.0 : weight_list.back();
+
+  // Binary search for correct interval
+  auto it = std::lower_bound(axis_edges.begin(), axis_edges.end(), var_value);
+  size_t idx = std::distance(axis_edges.begin(), it) - 1;
+
+  return weight_list[idx];
 }
 
 } // namespace wrem

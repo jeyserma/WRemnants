@@ -502,6 +502,12 @@ def common_parser(analysis_label=""):
             help="Lower threshold for muon pt in the veto definition",
         )
         parser.add_argument(
+            "--vetoRecoEta",
+            default=2.4,
+            type=float,
+            help="Upper threshold for muon absolute eta in the veto definition",
+        )
+        parser.add_argument(
             "--oneMCfileEveryN",
             type=int,
             default=None,
@@ -537,6 +543,27 @@ def common_parser(analysis_label=""):
             Specify a positive number of bins (default does nothing), which will be uniformly spaced,
             or a list of bin edges (the number of bins is inferred accordingly.
             Phi is defined between -pi and +pi
+            """,
+        )
+        parser.add_argument(
+            "--addNvtxAxis",
+            type=float,
+            default=None,
+            nargs="+",
+            help="""
+            Add another fit axis with the number of reconstructed vertices.
+            Specify a list of bin edges
+            """,
+        )
+        parser.add_argument(
+            "--normWeightNvtx",
+            type=float,
+            default=None,
+            nargs="+",
+            help="""
+            Additional normalization weight differential in number of reconstructed vertices.
+            To be used together with --addNvtxAxis, if desired.
+            Specify a list of weights (one less item than --addNvtxAxis)
             """,
         )
 
