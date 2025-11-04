@@ -612,7 +612,10 @@ class TheoryHelper(object):
         var_name = var_name.replace("binned_", "")
         var_name = var_name.replace("_Correlated", "")
 
-        if not any(var_name in x for x in self.np_hist.axes[self.syst_ax]) and model != "LatticeEigvars":
+        if (
+            not any(var_name in x for x in self.np_hist.axes[self.syst_ax])
+            and model != "LatticeEigvars"
+        ):
             raise ValueError(
                 f"NP model choice was '{model}' but did not find corresponding variations in the histogram"
             )
@@ -620,13 +623,32 @@ class TheoryHelper(object):
         self.np_model = model
 
     def add_gamma_np_uncertainties(self):
-        if self.np_model == "LatticeEigvars": # new SCETlib NP model, using lattice central values and constrained eigenvariations
-            lattice_vals = ["lambda2_nu0.0696-lambda4_nu0.0122-lambda_inf_nu1.1Ext", "lambda2_nu0.1044-lambda4_nu0.0026-lambda_inf_nu2.1Ext", "lambda2_nu0.1153-lambda4_nu0.0032-lambda_inf_nu1.6Ext", "lambda2_nu0.0587-lambda4_nu0.0116-lambda_inf_nu1.6Ext", "lambda2_nu0.0873-lambda4_nu0.0092", "lambda2_nu0.0867-lambda4_nu0.0056"]
+        if (
+            self.np_model == "LatticeEigvars"
+        ):  # new SCETlib NP model, using lattice central values and constrained eigenvariations
+            lattice_vals = [
+                "lambda2_nu0.0696-lambda4_nu0.0122-lambda_inf_nu1.1Ext",
+                "lambda2_nu0.1044-lambda4_nu0.0026-lambda_inf_nu2.1Ext",
+                "lambda2_nu0.1153-lambda4_nu0.0032-lambda_inf_nu1.6Ext",
+                "lambda2_nu0.0587-lambda4_nu0.0116-lambda_inf_nu1.6Ext",
+                "lambda2_nu0.0873-lambda4_nu0.0092",
+                "lambda2_nu0.0867-lambda4_nu0.0056",
+            ]
             if not all([x in self.corr_hist.axes[self.syst_ax] for x in lattice_vals]):
-                raise ValueError(f"Using the lattice NP model, but could not find the 3 Eigenvariations for gamma in hist {self.corr_hist_name}")
+                raise ValueError(
+                    f"Using the lattice NP model, but could not find the 3 Eigenvariations for gamma in hist {self.corr_hist_name}"
+                )
 
-            gamma_nuisance_names = ["scetlibNPgammaEigvar1", "scetlibNPgammaEigvar2", "scetlibNPgammaEigvar3"]
-            var_names = [f"{name}{direction}" for name in gamma_nuisance_names for direction in ["Up", "Down"]]
+            gamma_nuisance_names = [
+                "scetlibNPgammaEigvar1",
+                "scetlibNPgammaEigvar2",
+                "scetlibNPgammaEigvar3",
+            ]
+            var_names = [
+                f"{name}{direction}"
+                for name in gamma_nuisance_names
+                for direction in ["Up", "Down"]
+            ]
             var_vals = lattice_vals
         else:
             # Since "c_nu = 0.1 is the central value, it doesn't show up in the name"
@@ -763,7 +785,9 @@ class TheoryHelper(object):
             }
 
         if "Delta" not in self.np_model and self.np_model != "LatticeEigvars":
-            to_remove = list(filter(lambda x: "Delta" in x, np_map.keys())) + list(filter(lambda x: "delta" in x, np_map.keys()))
+            to_remove = list(filter(lambda x: "Delta" in x, np_map.keys())) + list(
+                filter(lambda x: "delta" in x, np_map.keys())
+            )
             for k in to_remove:
                 np_map.pop(k)
 
@@ -812,7 +836,9 @@ class TheoryHelper(object):
             }
 
         if "Delta" not in self.np_model and self.np_model != "LatticeEigvars":
-            to_remove = list(filter(lambda x: "Delta" in x, np_map.keys())) + list(filter(lambda x: "delta" in x, np_map.keys()))
+            to_remove = list(filter(lambda x: "Delta" in x, np_map.keys())) + list(
+                filter(lambda x: "delta" in x, np_map.keys())
+            )
             for k in to_remove:
                 np_map.pop(k)
 
