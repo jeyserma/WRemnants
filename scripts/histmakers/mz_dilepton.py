@@ -355,7 +355,11 @@ if args.unfolding:
 muon_prefiring_helper, muon_prefiring_helper_stat, muon_prefiring_helper_syst = (
     muon_prefiring.make_muon_prefiring_helpers(era=era)
 )
-theory_helpers_procs = theory_corrections.make_theory_helpers(args, procs=["Z", "W"])
+procs = [
+    p for p, grp in (("W", common.wprocs), ("Z", common.zprocs))
+    if any(d.name in grp for d in datasets)
+]
+theory_helpers_procs = theory_corrections.make_theory_helpers(args, procs=procs)
 
 # extra axes which can be used to label tensor_axes
 if args.binnedScaleFactors:

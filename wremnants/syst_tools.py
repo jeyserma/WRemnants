@@ -1735,7 +1735,7 @@ def add_pdfAlphaSByHelicity_hist(
     results, df, helper, axes, cols, name="pdfAlphaS", base_name="nominal", **kwargs
 ):
     name = Datagroups.histName(base_name, syst=f"{name}ByHelicity")
-    tensorName = "helicityAlphaSWeight_tensor"
+    tensorName = f"{name}_helicityAlphaSWeight_tensor"
     df = df.Define(
         tensorName,
         helper,

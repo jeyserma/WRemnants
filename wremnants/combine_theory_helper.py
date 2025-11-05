@@ -947,12 +947,6 @@ class TheoryHelper(object):
             if scale != -1.0
             else theory_tools.pdf_inflation_factor(pdfInfo, self.args.noi)
         )
-        pdf_hist = pdfName
-        pdf_corr_hist = (
-            f"scetlib_dyturbo{pdf.upper().replace('AN3LO', 'an3lo')}VarsCorr"
-            if self.corr_hist_name == "scetlib_dyturboCorr"
-            else self.corr_hist_name.replace("Corr", "VarsCorr")
-        )
         symmetrize = "average" if noi else "quadratic"
         asRange = pdfInfo["alphasRange"]
         as_replace = (
@@ -960,14 +954,14 @@ class TheoryHelper(object):
             if asRange == "002"
             else [("0117", "Down"), ("0119", "Up")]
         )
+        asname = (
+            f"{pdfName}alphaS{asRange}"
+            if not self.as_from_corr
+            else self.args.alphaSTheoryCorr
+        )
         if self.from_hels:
-            asname = "pdfAlphaSByHelicity"
-        else:
-            asname = (
-                f"{pdfName}alphaS{asRange}"
-                if not self.as_from_corr
-                else pdf_corr_hist.replace("Vars", "_pdfas")
-            )
+            asname += "ByHelicity"
+        logger.info(f"We here {asname}")
         as_args = dict(
             histname=asname,
             processes=["single_v_samples"],
@@ -980,6 +974,7 @@ class TheoryHelper(object):
             symmetrize=symmetrize,
             passToFakes=self.propagate_to_fakes,
         )
+        logger.info(f"Adding alphaS uncertainty with args: {as_args}")
         if not noi:
             as_args["groups"].extend([f"{pdfName}AlphaS", "theory", "theory_qcd"])
         if self.as_from_corr:

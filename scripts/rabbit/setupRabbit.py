@@ -857,6 +857,12 @@ def make_parser(parser=None):
         action="store_true",
         help="Use the Breit-Wigner mass wights for mW.",
     )
+    parser.add_argument(
+        "--alphaSTheoryCorr",
+        type=str,
+        default="scetlib_dyturboCT18Z_pdfasCorr",
+        help="Correction file to use for alphaS theory uncertainty.",
+    )
     parser = make_subparsers(parser)
 
     return parser
@@ -931,7 +937,7 @@ def setup(
             sel_ub = parsing.str_to_complex_or_int(sel_ub)
             datagroups.setGlobalAction(
                 lambda h: (
-                    h[{sel_ax: slice(sel_lb, sel_ub, hist.sum)}]
+                    h[{sel_ax: slice(sel_lb, sel_ub)}]
                     if sel_ax in h.axes.name
                     else h
                 ),
