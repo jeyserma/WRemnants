@@ -961,7 +961,6 @@ class TheoryHelper(object):
         )
         if self.from_hels:
             asname += "ByHelicity"
-        logger.info(f"We here {asname}")
         as_args = dict(
             histname=asname,
             processes=["single_v_samples"],
@@ -974,7 +973,6 @@ class TheoryHelper(object):
             symmetrize=symmetrize,
             passToFakes=self.propagate_to_fakes,
         )
-        logger.info(f"Adding alphaS uncertainty with args: {as_args}")
         if not noi:
             as_args["groups"].extend([f"{pdfName}AlphaS", "theory", "theory_qcd"])
         if self.as_from_corr:
