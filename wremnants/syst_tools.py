@@ -1841,6 +1841,15 @@ def add_theory_corr_hists(
                 or var_label.startswith("Lambda2")
                 or var_label.startswith("Delta_Lambda2")
                 or var_label.startswith("Lambda4")
+                or (
+                    var_label.startswith("lambda2")
+                    and not var_label.startswith("lambda2_nu")
+                )
+                or var_label.startswith("delta_lambda2")
+                or (
+                    var_label.startswith("lambda4")
+                    and not var_label.startswith("lambda4_nu")
+                )
             )
 
         # special treatment for Lambda2/Omega since they need to be decorrelated in charge and possibly rapidity
