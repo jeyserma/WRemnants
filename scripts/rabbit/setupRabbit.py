@@ -861,7 +861,7 @@ def make_parser(parser=None):
         "--alphaSTheoryCorr",
         type=str,
         default="scetlib_dyturboCT18Z_pdfasCorr",
-        help="Correction file to use for alphaS theory uncertainty.",
+        help="Correction histogram to use for alphaS theory uncertainty.",
     )
     parser = make_subparsers(parser)
 

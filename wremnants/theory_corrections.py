@@ -533,11 +533,16 @@ def make_theory_helpers(
                 )
             )
         if "alphaS" in corrs:
+            as_vars = [x + "Corr" for x in args.theoryCorr if "pdfas" in x]
+            if len(as_vars) > 1:
+                logger.warning("If you're computing multiple alphaS variations via the helicites, make sure the normalization makes sense.")
+            for var in as_vars:
+                if args.theoryCorr[0] not in var:
+                    logger.warning("The alphaS varitions by helicity assume that the nominal alphaS variation and the nominal theory prediction match.")
             theory_helpers_procs[proc]["alphaS"] = (
                 make_alphaS_uncertainties_helper_by_helicity(
                     proc=proc,
-                    norm=args.theoryCorr[0],
-                    theory_corrs=[x + "Corr" for x in args.theoryCorr if "pdfas" in x]
+                    as_vars=as_vars
                 )
             )
         if "pdf_central" in corrs:
@@ -715,30 +720,38 @@ def make_pdfs_uncertainties_helper_by_helicity(
 
 def make_alphaS_uncertainties_helper_by_helicity(
     proc,
-    theory_corrs,
-    norm=None,
+    as_vars,
     return_tensor=True,
 ):
+    """
+    Compute the alphaS uncertainty helpers by helicities.
+    We calculate these as:
+
+    alphaS_var / alphaS_nominal
+
+    This only makes sense if alphaS_nominal = central theoryCorr.
+    """
+
     as_helpers = {}
-    for theory_corr in theory_corrs:
-        logger.debug(f"Making alphaS uncertainty helper for theory corr {theory_corr}")
+    for as_var in as_vars:
+        logger.debug(f"Making alphaS uncertainty helper for theory corr {as_var}")
         as_helper = make_pdf_uncertainty_helper_by_helicity(
             proc=proc,
-            pdf=theory_corr,
-            pdf_renorm=theory_corrs[0], # this assumes that the first alphaS variation also matches the first theory corr, which isn't the point
+            pdf=as_var,
+            pdf_renorm=as_var,
             var_ax_name="vars",
-            filename=f"/ceph/submit/data/group/cms/store/user/lavezzo/alphaS/251030_gen_asByHelicity/w_z_gen_dists_scetlib_dyturboCorr_maxFiles_m1_asByHelicity_extended.hdf5",
-            filename_renorm=f"/ceph/submit/data/group/cms/store/user/lavezzo/alphaS/251030_gen_asByHelicity/w_z_gen_dists_scetlib_dyturboCorr_maxFiles_m1_asByHelicity_extended.hdf5",
+            filename=f"{common.data_dir}/alphaS/w_z_gen_dists_{as_var}_maxFiles_m1.hdf5",
             return_tensor=return_tensor
         )
         if as_helper is not None:
-            as_helpers[theory_corr] = as_helper
+            as_helpers[as_var] = as_helper
     return as_helpers
+
 
 def make_pdf_uncertainty_helper_by_helicity(
     proc,
     pdf,
-    pdf_renorm=None,
+    pdf_renorm,
     central_weights=False,
     filename=f"{common.data_dir}/angularCoefficients/w_z_gen_dists_maxFiles_m1_alphaSunfoldingBinning_helicity.hdf5",
     filename_renorm=None,
