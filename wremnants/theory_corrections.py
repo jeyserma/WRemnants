@@ -61,7 +61,11 @@ def load_corr_helpers(
                 fname, proc[0], get_corr_name(generator, minnlo_ratio=minnlo_ratio)
             )
             numh = None
-            if generator == generators[0] and "nnlojet" in generator:
+            if (
+                (generator == generators[0]) and 
+                ("nnlojet" in generator.lower()) and
+                ("pdfas" not in generator.lower()) 
+            ):
                 logger.info(
                     f"Adding statistical uncertainties for correction {generator}"
                 )
