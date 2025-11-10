@@ -1724,7 +1724,7 @@ def add_pdfUncertByHelicity_hist(
     safeTensorName = f"{tensorName}_clamped"
     df = df.Define(
         safeTensorName,
-        f"auto res = wrem::clamp_tensor_safe({tensorName}, -theory_weight_truncate, theory_weight_truncate, 1.0); res = nominal_weight*res; return res;",
+        f"auto res = wrem::clamp_tensor_safe({tensorName}, -theory_weight_truncate, theory_weight_truncate, 1.0); res = nominal_weight_pdf_uncorr*res; return res;",
     )
     add_syst_hist(
         results, df, name, axes, cols, safeTensorName, helper.tensor_axes, **kwargs
@@ -1751,7 +1751,7 @@ def add_pdfAlphaSByHelicity_hist(
     safeTensorName = f"{tensorName}_clamped"
     df = df.Define(
         safeTensorName,
-        f"auto res = wrem::clamp_tensor_safe({tensorName}, -theory_weight_truncate, theory_weight_truncate, 1.0); res = nominal_weight*res; return res;",
+        f"auto res = wrem::clamp_tensor_safe({tensorName}, -theory_weight_truncate, theory_weight_truncate, 1.0); res = nominal_weight_uncorr*res; return res;",
     )
     add_syst_hist(
         results, df, name, axes, cols, safeTensorName, helper.tensor_axes, **kwargs

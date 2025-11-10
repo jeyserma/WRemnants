@@ -62,9 +62,9 @@ def load_corr_helpers(
             )
             numh = None
             if (
-                (generator == generators[0]) and 
-                ("nnlojet" in generator.lower()) and
-                ("pdfas" not in generator.lower()) 
+                (generator == generators[0])
+                and ("nnlojet" in generator.lower())
+                and ("pdfas" not in generator.lower())
             ):
                 logger.info(
                     f"Adding statistical uncertainties for correction {generator}"
@@ -535,15 +535,16 @@ def make_theory_helpers(
         if "alphaS" in corrs:
             as_vars = [x + "Corr" for x in args.theoryCorr if "pdfas" in x]
             if len(as_vars) > 1:
-                logger.warning("If you're computing multiple alphaS variations via the helicites, make sure the normalization makes sense.")
+                logger.warning(
+                    "If you're computing multiple alphaS variations via the helicites, make sure the normalization makes sense."
+                )
             for var in as_vars:
                 if args.theoryCorr[0] not in var:
-                    logger.warning("The alphaS varitions by helicity assume that the nominal alphaS variation and the nominal theory prediction match.")
+                    logger.warning(
+                        "The alphaS varitions by helicity assume that the nominal alphaS variation and the nominal theory prediction match."
+                    )
             theory_helpers_procs[proc]["alphaS"] = (
-                make_alphaS_uncertainties_helper_by_helicity(
-                    proc=proc,
-                    as_vars=as_vars
-                )
+                make_alphaS_uncertainties_helper_by_helicity(proc=proc, as_vars=as_vars)
             )
         if "pdf_central" in corrs:
             theory_helpers_procs[proc]["pdf_central"] = (
@@ -700,17 +701,15 @@ def make_pdfs_uncertainties_helper_by_helicity(
             if theory_tools.pdfMap[pdf].get("renorm", False)
             else theory_tools.pdfMap[pdfs[0]]["name"]
         )
-        logger.info(
+        logger.debug(
             f"Making PDF uncertainty helper for PDF set {pdf} ({pdf_name}) with renorm {pdf_renorm}"
         )
         pdf_helper = make_pdf_uncertainty_helper_by_helicity(
             proc=proc,
             pdf=pdf_name,
-            pdf_renorm=pdf_renorm_name,
+            pdf_renorm="pdf_uncorr",
             filename=common.data_dir
             + f"/PDFs/w_z_gen_dists_maxFiles_m1_{pdf}_pdfByHelicity_skimmed.hdf5",
-            filename_renorm=common.data_dir
-            + f"/PDFs/w_z_gen_dists_maxFiles_m1_{pdf_renorm}_pdfByHelicity_skimmed.hdf5",
             return_tensor=return_tensor,
         )
         if pdf_helper is not None:
@@ -738,10 +737,14 @@ def make_alphaS_uncertainties_helper_by_helicity(
         as_helper = make_pdf_uncertainty_helper_by_helicity(
             proc=proc,
             pdf=as_var,
-            pdf_renorm=as_var,
+            # pdf_renorm=as_var,
+            pdf_renorm="theory_uncorr",
             var_ax_name="vars",
-            filename=f"{common.data_dir}/alphaS/w_z_gen_dists_{as_var}_maxFiles_m1.hdf5",
-            return_tensor=return_tensor
+            # filename=f"{common.data_dir}/angularCoefficients/w_z_gen_dists_scetlib_dyturboCorr_maxFiles_m1_asByHelicity.hdf5",
+            # filename=f"{common.data_dir}/alphaS/w_z_gen_dists_{as_var}_maxFiles_m1.hdf5",
+            # filename="/ceph/submit/data/group/cms/store/user/lavezzo/alphaS//251110_gen_asByHelicity/w_z_gen_dists_scetlib_dyturboCT18Z_pdfasCorr_maxFiles_m1_Zmumu_asByHelicity_uncorrHist.hdf5",
+            filename="/ceph/submit/data/group/cms/store/user/lavezzo/alphaS//251110_gen_asByHelicity/w_z_gen_dists_scetlib_dyturboCT18Z_pdfasCorr_maxFiles_m1_Zmumu_asByHelicity_uncorrHist_theoryCorrBinning.hdf5",
+            return_tensor=return_tensor,
         )
         if as_helper is not None:
             as_helpers[as_var] = as_helper
@@ -776,7 +779,7 @@ def make_pdf_uncertainty_helper_by_helicity(
                 outputs = results[process]["output"]
                 if hist_key not in outputs:
                     logger.warning(
-                        f"Did not find {pdf_name} in {filename}. Not creating histogram of PDF variations by helicities for this set."
+                        f"Did not find {hist_key} in {filename}. Not creating histogram of PDF variations by helicities for this set."
                     )
                     return None
                 hists.append(outputs[hist_key].get())

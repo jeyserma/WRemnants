@@ -918,6 +918,14 @@ def build_graph(df, dataset):
     )
     results.append(nominal_gen_pdf_uncorr)
 
+    nominal_gen_theory_uncorr = df.HistoBoost(
+        "nominal_gen_theory_uncorr",
+        nominal_axes,
+        [*nominal_cols, "nominal_weight_uncorr"],
+        storage=hist.storage.Weight(),
+    )
+    results.append(nominal_gen_theory_uncorr)
+
     return results, weightsum
 
 
