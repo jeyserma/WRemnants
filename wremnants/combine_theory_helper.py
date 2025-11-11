@@ -959,7 +959,7 @@ class TheoryHelper(object):
                 asRange = "002"
         else:
             asname = f"{pdfName}alphaS{asRange}"
-        if self.from_hels and not asname.endswith("ByHelicity"):
+        if self.as_from_corr and self.from_hels and not asname.endswith("ByHelicity"):
             asname += "ByHelicity"
 
         if noi:
