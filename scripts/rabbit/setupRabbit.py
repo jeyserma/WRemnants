@@ -937,7 +937,7 @@ def setup(
             sel_ub = parsing.str_to_complex_or_int(sel_ub)
             datagroups.setGlobalAction(
                 lambda h: (
-                    h[{sel_ax: slice(sel_lb, sel_ub)}]
+                    h[{sel_ax: slice(sel_lb, sel_ub, hist.sum)}]
                     if sel_ax in h.axes.name
                     else h
                 ),
