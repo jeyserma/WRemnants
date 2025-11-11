@@ -938,7 +938,7 @@ class TheoryHelper(object):
                     **tmp_pdf_args,
                 )
 
-    def add_pdf_alphas_variation(self, noi=False, scale=-1.0):
+    def add_pdf_alphas_variation(self, noi=False, scale=None):
         # TODO how do we want to handle the PDF -- alphaS sync?
         # in principle one can pass any combination of alphaS and PDF sets, we don't have checks against this
         pdf = self.datagroups.args_from_metadata("pdfs")[0]
@@ -946,7 +946,7 @@ class TheoryHelper(object):
         pdfName = pdfInfo["name"]
         scale = (
             scale
-            if scale != -1.0
+            if scale is not None
             else theory_tools.pdf_inflation_factor(pdfInfo, self.args.noi)
         )
         symmetrize = "average" if noi else "quadratic"
