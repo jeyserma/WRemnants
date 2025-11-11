@@ -938,31 +938,48 @@ class TheoryHelper(object):
                     **tmp_pdf_args,
                 )
 
-    def add_pdf_alphas_variation(self, noi=False, scale=None):
-        # TODO how do we want to handle the PDF -- alphaS sync?
-        # in principle one can pass any combination of alphaS and PDF sets, we don't have checks against this
+    def add_pdf_alphas_variation(self, noi=False):
         pdf = self.datagroups.args_from_metadata("pdfs")[0]
         pdfInfo = theory_tools.pdf_info_map("ZmumuPostVFP", pdf)
         pdfName = pdfInfo["name"]
-        scale = (
-            scale
-            if scale is not None
-            else theory_tools.pdf_inflation_factor(pdfInfo, self.args.noi)
-        )
         symmetrize = "average" if noi else "quadratic"
         asRange = pdfInfo["alphasRange"]
+
+        pdf_corr_hist = (
+            f"scetlib_dyturbo{pdf.upper().replace('AN3LO', 'an3lo')}VarsCorr"
+            if self.corr_hist_name == "scetlib_dyturboCorr"
+            else self.corr_hist_name.replace("Corr", "VarsCorr")
+        )
+        if self.as_from_corr:
+            asname = pdf_corr_hist.replace("Vars", "_pdfas")
+            # alphaS from correction histograms only available for these sets,
+            # so fall back to CT18Z for other sets
+            if not ("MSHT20" in asname or "CT18Z" in asname or "MSHT20an3lo" in asname):
+                asname = "scetlib_dyturboCT18Z_pdfasCorr"
+                asRange = "002"
+        else:
+            asname = f"{pdfName}alphaS{asRange}"
+        if self.from_hels and not asname.endswith("ByHelicity"):
+            asname += "ByHelicity"
+
+        if noi:
+            # scale to 0.002, helps with the fit
+            if asRange == "002":
+                scale = 1.0
+            elif asRange == "001":
+                scale = 2.0
+        else:
+            # scale to 0.0015
+            if asRange == "002":
+                scale = 0.75
+            elif asRange == "001":
+                scale = 1.5
+
         as_replace = (
             [("as", "pdfAlphaS")] + [("0116", "Down"), ("0120", "Up")]
             if asRange == "002"
             else [("0117", "Down"), ("0119", "Up")]
         )
-        asname = (
-            f"{pdfName}alphaS{asRange}"
-            if not self.as_from_corr
-            else self.args.alphaSTheoryCorr
-        )
-        if self.from_hels and not asname.endswith("ByHelicity"):
-            asname += "ByHelicity"
         as_args = dict(
             histname=asname,
             processes=["single_v_samples"],
@@ -971,7 +988,7 @@ class TheoryHelper(object):
             noConstraint=noi,
             groups=[pdfName],
             systAxes=["vars" if self.as_from_corr else "alphasVar"],
-            scale=(0.75 if asRange == "002" else 1.5) * scale,
+            scale=scale,
             symmetrize=symmetrize,
             passToFakes=self.propagate_to_fakes,
         )
