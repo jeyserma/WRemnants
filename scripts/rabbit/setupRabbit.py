@@ -857,12 +857,6 @@ def make_parser(parser=None):
         action="store_true",
         help="Use the Breit-Wigner mass wights for mW.",
     )
-    parser.add_argument(
-        "--alphaSTheoryCorr",
-        type=str,
-        default="scetlib_dyturboCT18Z_pdfasCorr",
-        help="Correction histogram to use for alphaS theory uncertainty.",
-    )
     parser = make_subparsers(parser)
 
     return parser
@@ -1648,7 +1642,6 @@ def setup(
 
         theory_helper.add_pdf_alphas_variation(
             noi="alphaS" in args.noi,
-            scale=args.scalePdf if not "alphaS" in args.noi else None,
         )
 
         if not stat_only and not args.noTheoryUnc:
