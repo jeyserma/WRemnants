@@ -938,13 +938,15 @@ class TheoryHelper(object):
                     **tmp_pdf_args,
                 )
 
-    def add_pdf_alphas_variation(self, noi=False, scale=-1.0):
+    def add_pdf_alphas_variation(self, noi=False, scale=None):
+        # TODO how do we want to handle the PDF -- alphaS sync?
+        # in principle one can pass any combination of alphaS and PDF sets, we don't have checks against this
         pdf = self.datagroups.args_from_metadata("pdfs")[0]
         pdfInfo = theory_tools.pdf_info_map("ZmumuPostVFP", pdf)
         pdfName = pdfInfo["name"]
         scale = (
             scale
-            if scale != -1.0
+            if scale is not None
             else theory_tools.pdf_inflation_factor(pdfInfo, self.args.noi)
         )
         symmetrize = "average" if noi else "quadratic"
@@ -959,7 +961,7 @@ class TheoryHelper(object):
             if not self.as_from_corr
             else self.args.alphaSTheoryCorr
         )
-        if self.from_hels:
+        if self.from_hels and not asname.endswith("ByHelicity"):
             asname += "ByHelicity"
         as_args = dict(
             histname=asname,
@@ -980,6 +982,7 @@ class TheoryHelper(object):
         else:
             as_args["systNameReplace"] = as_replace
             as_args["skipEntries"] = [{"alphasVar": "as0118"}]
+        logger.debug(f"Using scale factor of {as_args['scale']} for alphaS uncertainty")
         self.datagroups.addSystematic(**as_args)
 
     def add_transition_fo_scale_uncertainties(self, transition=True, scale=True):

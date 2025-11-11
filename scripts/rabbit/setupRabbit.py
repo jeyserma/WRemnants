@@ -937,7 +937,7 @@ def setup(
             sel_ub = parsing.str_to_complex_or_int(sel_ub)
             datagroups.setGlobalAction(
                 lambda h: (
-                    h[{sel_ax: slice(sel_lb, sel_ub)}]
+                    h[{sel_ax: slice(sel_lb, sel_ub, hist.sum)}]
                     if sel_ax in h.axes.name
                     else h
                 ),
@@ -1648,7 +1648,7 @@ def setup(
 
         theory_helper.add_pdf_alphas_variation(
             noi="alphaS" in args.noi,
-            scale=args.scalePdf if not "alphaS" in args.noi else 1.0,
+            scale=args.scalePdf if not "alphaS" in args.noi else None,
         )
 
         if not stat_only and not args.noTheoryUnc:
