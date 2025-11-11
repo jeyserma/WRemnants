@@ -911,11 +911,15 @@ class TheoryHelper(object):
         )
         symmetrize = "average" if noi else "quadratic"
         asRange = pdfInfo["alphasRange"]
-        asname = (
-            f"{pdfName}alphaS{asRange}"
-            if not self.as_from_corr
-            else pdf_corr_hist.replace("Vars", "_pdfas")
-        )
+        if self.as_from_corr:
+            asname = pdf_corr_hist.replace("Vars", "_pdfas")
+            # alphaS from correction histograms only available for these sets,
+            # so fall back to CT18Z for other sets
+            if not ("MSHT20" in asname or "CT18Z" in asname or "MSHT20an3lo" in asname):
+                asname = "scetlib_dyturboCT18Z_pdfasCorr"
+                asRange = "002"
+        else:
+            asname = f"{pdfName}alphaS{asRange}"
         as_replace = (
             [("as", "pdfAlphaS")] + [("0116", "Down"), ("0120", "Up")]
             if asRange == "002"
