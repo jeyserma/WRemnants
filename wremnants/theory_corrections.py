@@ -548,7 +548,7 @@ def make_theory_helpers(
                     den="pdf_uncorr",
                     central_weights=True,
                     filename=common.data_dir
-                    + f"/PDFs/w_z_gen_dists_maxFiles_m1_{args.pdfs[0]}_pdfByHelicity_skimmed.hdf5",
+                    + f"/PDFsByHelicity/w_z_gen_dists_maxFiles_m1_{args.pdfs[0]}_pdfByHelicity_skimmed.hdf5",
                 )
             )
 
@@ -695,7 +695,7 @@ def make_pdfs_uncertainties_helper_by_helicity(
             nom=pdf_name,
             den="pdf_uncorr",
             filename=common.data_dir
-            + f"/PDFs/w_z_gen_dists_maxFiles_m1_{pdf}_pdfByHelicity_skimmed.hdf5",
+            + f"/PDFsByHelicity/w_z_gen_dists_maxFiles_m1_{pdf}_pdfByHelicity_skimmed.hdf5",
             var_ax_name="pdfVar",
             return_tensor=return_tensor,
         )
@@ -716,8 +716,8 @@ def make_alphaS_uncertainties_helper_by_helicity(
             proc=proc,
             nom=as_var,
             den="theory_uncorr",
-            # TODO fix this
-            filename="/ceph/submit/data/group/cms/store/user/lavezzo/alphaS//251110_gen_asByHelicity/w_z_gen_dists_scetlib_dyturboCT18Z_pdfasCorr_maxFiles_m1_Zmumu_asByHelicity_uncorrHist_theoryCorrBinning.hdf5",
+            filename=common.data_dir
+            + f"/AlphaSByHelicity/w_z_gen_dists_{as_var}_maxFiles_m1_skimmed.hdf5",
             var_ax_name="vars",
             return_tensor=return_tensor,
         )
