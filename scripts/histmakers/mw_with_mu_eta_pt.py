@@ -38,6 +38,7 @@ from wremnants.datasets.dataset_tools import getDatasets
 from wremnants.helicity_utils_polvar import makehelicityWeightHelper_polvar
 from wremnants.histmaker_tools import (
     aggregate_groups,
+    define_norm_weight_nRecoVtx,
     get_run_lumi_edges,
     make_muon_phi_axis,
     scale_to_data,
@@ -75,6 +76,12 @@ parser.add_argument(
     type=float,
     default=15.0,
     help="Minimum pT for the postFSR gen muon when defining the variation of the veto efficiency",
+)
+parser.add_argument(
+    "--vetoGenPartEta",
+    type=float,
+    default=2.4,
+    help="Maximum absolute eta for the postFSR gen muon when defining the variation of the veto efficiency",
 )
 parser.add_argument(
     "--selectVetoEventsMC",
@@ -660,7 +667,16 @@ def build_graph(df, dataset):
     logger.info(f"build graph for dataset: {dataset.name}")
     results = []
     isW = dataset.name in common.wprocs
-    isWmunu = dataset.name in ["WplusmunuPostVFP", "WminusmunuPostVFP"]
+    isBSM = dataset.name in [
+        "WtoNMu_MN-5-V-0p001",
+        "WtoNMu_MN-10-V-0p001",
+        "WtoNMu_MN-50-V-0p001",
+    ]
+    isWmunu = isBSM or dataset.name in [
+        "WplusmunuPostVFP",
+        "WminusmunuPostVFP",
+    ]
+
     isZ = dataset.name in common.zprocs
     isZveto = isZ or dataset.name in ["DYJetsToMuMuMass10to50PostVFP"]
     isWorZ = isW or isZ
@@ -709,6 +725,18 @@ def build_graph(df, dataset):
         axes = [*axes, make_muon_phi_axis(args.addMuonPhiAxis)]
         cols = [*cols, "goodMuons_phi0"]
 
+    if args.addNvtxAxis is not None:
+        axes = [
+            *axes,
+            hist.axis.Variable(
+                np.array(args.addNvtxAxis),
+                name="nRecoVtx",
+                underflow=False,
+                overflow=False,
+            ),
+        ]
+        cols = [*cols, "PV_npvsGood"]
+
     if args.addRunAxis:
         run_edges, lumi_edges = get_run_lumi_edges(args.nRunBins, era)
         run_bin_centers = [
@@ -748,6 +776,20 @@ def build_graph(df, dataset):
                 "wrem::get_dummy_run_by_lumi_quantile(run, luminosityBlock, event, lumiEdges, runVals)",
             )
         cols = [*cols, "run4axis"]
+
+    if isBSM:
+        # to compute inclusive cross section
+        unfolding_tools.add_xnorm_histograms(
+            results,
+            df,
+            args,
+            dataset.name,
+            corr_helpers,
+            theory_helpers,
+            [],
+            [],
+            base_name="gen",
+        )
 
     if args.unfolding:
         if isWmunu:
@@ -906,6 +948,7 @@ def build_graph(df, dataset):
         df,
         nMuons=1,
         ptCut=args.vetoRecoPt,
+        etaCut=args.vetoRecoEta,
         useGlobalOrTrackerVeto=useGlobalOrTrackerVeto,
     )
     df = muon_selections.select_good_muons(
@@ -1020,7 +1063,7 @@ def build_graph(df, dataset):
         )
         df = df.Define(
             "postfsrMuons_inAcc",
-            f"postfsrMuons && abs(GenPart_eta) < 2.4 && GenPart_pt > {args.vetoGenPartPt}",
+            f"postfsrMuons && abs(GenPart_eta) < {args.vetoGenPartEta} && GenPart_pt > {args.vetoGenPartPt}",
         )
         if args.selectVetoEventsMC:
             # in principle a gen muon with eta = 2.401 might still be matched to a reco muon with eta < 2.4, same for pt, so this condition is potentially fragile, but it is just for test plots
@@ -1137,6 +1180,11 @@ def build_graph(df, dataset):
 
         if not args.noVertexWeight:
             weight_expr += "*weight_vtx"
+
+        # for tests to split into number of reconstructed vertices
+        if args.addNvtxAxis is not None and args.normWeightNvtx is not None:
+            df = define_norm_weight_nRecoVtx(df, args.addNvtxAxis, args.normWeightNvtx)
+            weight_expr += "*weight_nRecoVtx"
 
         # Muon variables used to measure tag-and-probe efficiency SF might not be the final corrected ones
         # TODO: implement an option to choose which vatriables to use (e.g. pt-eta-charge after CVH only ?)
@@ -1787,17 +1835,18 @@ def build_graph(df, dataset):
             "nominal_weight",
         ]
         # assume to have same coeffs for plus and minus (no reason for it not to be the case)
-        if dataset.name == "WplusmunuPostVFP" or dataset.name == "WplustaunuPostVFP":
+        if dataset.name in ["WplusmunuPostVFP", "WplustaunuPostVFP"]:
             helpers_class = muRmuFPolVar_helpers_plus
             process_name = "W"
-        elif (
-            dataset.name == "WminusmunuPostVFP" or dataset.name == "WminustaunuPostVFP"
-        ):
+        elif dataset.name in ["WminusmunuPostVFP", "WminustaunuPostVFP"]:
             helpers_class = muRmuFPolVar_helpers_minus
             process_name = "W"
-        elif dataset.name == "ZmumuPostVFP" or dataset.name == "ZtautauPostVFP":
+        elif dataset.name in ["ZmumuPostVFP", "ZtautauPostVFP"]:
             helpers_class = muRmuFPolVar_helpers_Z
             process_name = "Z"
+        else:
+            helpers_class = {}
+
         for coeffKey in helpers_class.keys():
             logger.debug(
                 f"Creating muR/muF histograms with polynomial variations for {coeffKey}"
@@ -2014,7 +2063,11 @@ def build_graph(df, dataset):
             )
 
             # Don't think it makes sense to apply the mass weights to scale leptons from tau decays
-            if not args.onlyTheorySyst and not "tau" in dataset.name:
+            if (
+                "massWeight_tensor" in df.GetColumnNames()
+                and not args.onlyTheorySyst
+                and not "tau" in dataset.name
+            ):
                 df = syst_tools.add_muonscale_hist(
                     results,
                     df,

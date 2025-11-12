@@ -298,6 +298,9 @@ theory_corr_weight_map = {
     "scetlib_nnlojetN4p0LLN3LO_pdfas": expand_pdf_entries(
         "ct18z", alphas=True, renorm=True
     ),
+    "scetlib_dyturboN3p0LL_LatticeNP_pdfas": expand_pdf_entries(
+        "ct18z", alphas=True, renorm=True
+    ),
     "scetlib_dyturboMSHT20an3lo_pdfas": expand_pdf_entries("msht20an3lo", alphas=True),
     "scetlib_dyturboMSHT20an3loVars": expand_pdf_entries("msht20an3lo"),
     # Tested this, better not to treat this way unless using MSHT20nnlo as central set
@@ -425,19 +428,29 @@ def define_lhe_vars(df):
 
     logger.info("Defining LHE variables")
 
+    # SM leptons (11-16) or BSM neutrino (9900012)
     df = df.Define(
         "lheLeps",
-        "LHEPart_status == 1 && abs(LHEPart_pdgId) >= 11 && abs(LHEPart_pdgId) <= 16",
+        "LHEPart_status == 1 && LHEPart_pdgId >= 11 && LHEPart_pdgId <= 16",
     )
-    df = df.Define("lheLep", "lheLeps && LHEPart_pdgId>0")
-    df = df.Define("lheAntiLep", "lheLeps && LHEPart_pdgId<0")
+    df = df.Define(
+        "lheAntiLeps",
+        "LHEPart_status == 1 && LHEPart_pdgId <= -11 && LHEPart_pdgId >= -16",
+    )
+    df = df.Define(
+        "lheBSM",
+        "LHEPart_pdgId == 9900012 && LHEPart_status == 1",
+    )
+
+    df = df.Define("lheLep", "Sum(lheLeps) == 1 ? lheLeps : lheBSM")
+    df = df.Define("lheAntiLep", "Sum(lheAntiLeps) == 1 ? lheAntiLeps : lheBSM")
     df = df.Define(
         "lheLep_idx",
-        'if (Sum(lheLep) != 1) throw std::runtime_error("lhe lepton not found."); return ROOT::VecOps::ArgMax(lheLep);',
+        'if (Sum(lheLep) != 1) throw std::runtime_error("lhe lepton not found, sum = " + std::to_string(Sum(lheAntiLep))); return ROOT::VecOps::ArgMax(lheLep);',
     )
     df = df.Define(
         "lheAntiLep_idx",
-        'if (Sum(lheAntiLep) != 1) throw std::runtime_error("lhe anti-lepton not found."); return ROOT::VecOps::ArgMax(lheAntiLep);',
+        'if (Sum(lheAntiLep) != 1) throw std::runtime_error("lhe anti-lepton not found, sum = " + std::to_string(Sum(lheAntiLep))); return ROOT::VecOps::ArgMax(lheAntiLep);',
     )
 
     df = df.Define("lheVs", "abs(LHEPart_pdgId) >=23 && abs(LHEPart_pdgId)<=24")
@@ -518,7 +531,8 @@ def define_prefsr_vars(df):
     df = df.Define("phiVgen", "genV.Phi()")
     df = df.Define("absYVgen", "std::fabs(yVgen)")
     df = df.Define(
-        "chargeVgen", "GenPart_pdgId[prefsrLeps[0]] + GenPart_pdgId[prefsrLeps[1]]"
+        "chargeVgen",
+        "-1 * (GenPart_pdgId[prefsrLeps[0]] % 2 + GenPart_pdgId[prefsrLeps[1]] % 2)",
     )
     df = df.Define("csSineCosThetaPhigen", "wrem::csSineCosThetaPhi(genlanti, genl)")
     df = df.Define("csCosThetagen", "csSineCosThetaPhigen.costheta")
@@ -930,12 +944,15 @@ def define_theory_weights_and_corrs(df, dataset_name, helpers, args, theory_help
     if "LHEPart_status" in df.GetColumnNames():
         df = define_lhe_vars(df)
 
-    if not "powheg" in dataset_name:
+    if "powheg" not in dataset_name:
         # no preFSR particles in powheg samples
         df = define_prefsr_vars(df)
-        df = define_intermediate_gen_vars(df, "hardProcess", 21, 29)
-        df = define_intermediate_gen_vars(df, "postShower", 21, 59)
-        df = define_intermediate_gen_vars(df, "postBeamRemnants", 21, 69)
+        if not dataset_name.startswith("WtoNMu_MN"):
+            # no intermediate bosons in some events in madgraph samples
+            logger.debug(f"Define intermediate gen variables for {dataset_name}")
+            df = define_intermediate_gen_vars(df, "hardProcess", 21, 29)
+            df = define_intermediate_gen_vars(df, "postShower", 21, 59)
+            df = define_intermediate_gen_vars(df, "postBeamRemnants", 21, 69)
 
     if "GenPart_status" in df.GetColumnNames():
         df = define_ew_vars(df)
@@ -1022,10 +1039,18 @@ def define_breit_wigner_weights(df, proc):
         return df.DefinePerSample("bw_weight", "1.0")
 
     type = 1 if "W" in proc else 0
-    entries = 21
+    entries = 21 if "W" in proc else 23
     df = df.Define(
-        f"breitwignerWeights{proc[0]}_tensor",
-        f"auto res = wrem::vec_to_tensor_t<double, {entries}>(wrem::breitWignerWeights(massVgen, {type}));"
+        f"breitwigner_massWeight{proc[0]}_tensor",
+        f"auto res = wrem::vec_to_tensor_t<double, {entries}>(wrem::breitWignerMassWeights<{type}>(massVgen));"
+        "res = res * nominal_weight;"
+        "return res;",
+    )
+
+    entries = 5
+    df = df.Define(
+        f"breitwigner_widthWeight{proc[0]}_tensor",
+        f"auto res = wrem::vec_to_tensor_t<double, {entries}>(wrem::breitWignerWidthWeights<{type}>(massVgen));"
         "res = res * nominal_weight;"
         "return res;",
     )
@@ -1084,6 +1109,7 @@ def define_ew_theory_corr(
             )
 
     if "ew_theory_corr_weight" not in df.GetColumnNames():
+        logger.debug("Define 'ew_theory_corr_weight'=1.0")
         df = df.DefinePerSample("ew_theory_corr_weight", "1.0")
 
     return df
@@ -1103,6 +1129,7 @@ def define_theory_corr(df, dataset_name, helpers, generators, modify_central_wei
         or not generators
         or generators[0] not in dataset_helpers
     ):
+        logger.debug("Define 'theory_corr_weight'=1.0")
         df = df.DefinePerSample("theory_corr_weight", "1.0")
 
     for i, generator in enumerate(generators):

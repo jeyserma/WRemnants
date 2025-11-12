@@ -40,7 +40,7 @@ class Datagroups(object):
         "2018": 1.025,
     }
 
-    def __init__(self, infile, mode=None, **kwargs):
+    def __init__(self, infile, mode=None, xnorm=False, **kwargs):
         if infile.endswith(".pkl.lz4"):
             with lz4.frame.open(infile) as f:
                 self.results = pickle.load(f)
@@ -111,6 +111,9 @@ class Datagroups(object):
         self.absorbSyst = None
         self.explicitSyst = None
         self.customSystMapping = {}
+
+        # if the histograms should be normalized to cross section (otherwise expected events)
+        self.xnorm = xnorm
 
         self.writer = None
 
@@ -384,7 +387,10 @@ class Datagroups(object):
     def processScaleFactor(self, proc):
         if proc.is_data or proc.xsec is None:
             return 1
-        return self.lumi * 1000 * proc.xsec / proc.weight_sum
+        scale = proc.xsec / proc.weight_sum
+        if not self.xnorm:
+            scale *= self.lumi * 1000
+        return scale
 
     def getMetaInfo(self):
         if "meta_info" not in self.results and "meta_data" not in self.results:
@@ -511,14 +517,14 @@ class Datagroups(object):
                         f"Forcing group member {member.name} to read the nominal hist for syst {syst}"
                     )
                 try:
-                    h = self.readHist(baseName, member, procName, read_syst)
+                    h = self.readHist(baseName, member, read_syst)
                     foundExact = True
                 except ValueError as e:
                     if nominalIfMissing:
                         logger.info(
                             f"{str(e)}. Using nominal hist {self.nominalName} instead"
                         )
-                        h = self.readHist(self.nominalName, member, procName, "")
+                        h = self.readHist(self.nominalName, member, "")
                     else:
                         logger.warning(str(e))
                         continue
@@ -539,7 +545,7 @@ class Datagroups(object):
 
                 if preOpMap and member.name in preOpMap:
                     logger.debug(
-                        f"Applying action to {member.name}/{procName} after loading"
+                        f"Applying preOp to {member.name}/{procName} after loading"
                     )
                     h = preOpMap[member.name](h, **preOpArgs)
 
@@ -1052,11 +1058,11 @@ class Datagroups(object):
         ):
             self.setRebinOp(a)
 
-    def readHist(self, baseName, proc, group, syst):
+    def readHist(self, baseName, proc, syst):
         output = self.results[proc.name]["output"]
         histname = self.histName(baseName, proc.name, syst)
         logger.debug(
-            f"Reading hist {histname} for proc/group {proc.name}/{group} and syst '{syst}'"
+            f"Reading hist {histname} for proc/group {proc.name} and syst '{syst}'"
         )
         if histname not in output:
             raise ValueError(f"Histogram {histname} not found for process {proc.name}")
@@ -1297,7 +1303,6 @@ class Datagroups(object):
         action=None,
         actionArgs={},
         actionRequiresNomi=False,
-        actionRequiresSelf=False,
         **kwargs,
     ):
         """
@@ -1392,14 +1397,6 @@ class Datagroups(object):
                 if actionRequiresNomi:
                     hnom = self.groups[proc].hists[self.nominalName]
                     hvar = action(hvar, hnom, **actionArgs)
-                elif actionRequiresSelf:
-                    hvar = action(
-                        hvar,
-                        self,
-                        proc=proc,
-                        forceToNominal=forceToNominal,
-                        **actionArgs,
-                    )
                 else:
                     hvar = action(hvar, **actionArgs)
 

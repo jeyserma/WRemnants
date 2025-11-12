@@ -8,6 +8,8 @@
 #include <eigen3/unsupported/Eigen/CXX11/Tensor>
 
 #include "defines.hpp"
+#include <algorithm>
+#include <vector>
 
 using namespace ROOT;
 
@@ -695,8 +697,9 @@ double computeBreitWigner(const double massVgen, const double ref_mass,
   return bw;
 }
 
-double computeBreitWignerWeight(const double massVgen, const double offset,
-                                const int type) {
+template <int Type>
+double computeBreitWignerWeight(const double massVgen, const double offset_mass,
+                                const double offset_width) {
   // applies offset to the reference mass and width of the V boson in the
   // running width scheme converts offset and reference mass and width to fixed
   // width scheme and calculates ratio of BW(offset)/BW(reference)
@@ -716,10 +719,10 @@ double computeBreitWignerWeight(const double massVgen, const double offset,
 
   double MV_GEN_ = 0;
   double GAMMAV_GEN_ = 0;
-  if (type == 0) {
+  if constexpr (Type == 0) {
     MV_GEN_ = MZ_GEN_;
     GAMMAV_GEN_ = GAMMAZ_GEN_;
-  } else {
+  } else if constexpr (Type == 1) {
     MV_GEN_ = MW_GEN_;
     GAMMAV_GEN_ = GAMMAW_GEN_;
   }
@@ -735,8 +738,9 @@ double computeBreitWignerWeight(const double massVgen, const double offset,
 
   // shift the mass and compute the corresponding width in the running width
   // scheme
-  const double target_mass = MV_GEN_ + offset;
-  const double target_Gamma = GAMMAW_GEN_ * std::pow(target_mass / MW_GEN_, 3);
+  const double target_mass = MV_GEN_ + offset_mass;
+  const double target_Gamma =
+      (GAMMAW_GEN_ + offset_width) * std::pow(target_mass / MW_GEN_, 3);
   // convert shifted mass and width to fixed width scheme
   const double target_fixed_mass =
       convertRunningToFixedWidth(target_mass, target_mass, target_Gamma);
@@ -750,17 +754,39 @@ double computeBreitWignerWeight(const double massVgen, const double offset,
   return weight;
 }
 
-Vec_f breitWignerWeights(const double massVgen, const int type = 0) {
+template <int Type> Vec_f breitWignerMassWeights(const double massVgen) {
 
   // Z -> type=0
   // W -> type=1
 
-  Vec_f res(21, 1);
+  constexpr int N = (Type == 0) ? 23 : 21;
+  Vec_f res(N, 1);
   double offset = -100;
   for (int i = 0; i <= 21; i++) {
-
     offset = -100 + i * 10;
-    res[i] = computeBreitWignerWeight(massVgen, offset, type);
+    res[i] = computeBreitWignerWeight<Type>(massVgen, offset, 0.0);
+  }
+
+  if constexpr (Type == 0) {
+    res[21] = computeBreitWignerWeight<Type>(massVgen, -2.1, 0.0);
+    res[22] = computeBreitWignerWeight<Type>(massVgen, 2.1, 0.0);
+  }
+
+  return res;
+}
+
+template <int Type> Vec_f breitWignerWidthWeights(const double massVgen) {
+
+  // Z -> type=0
+  // W -> type=1
+
+  constexpr std::array<float, 5> offsets =
+      (Type == 0) ? std::array<float, 5>{-0.77f, 0.83f, -1.2f, 1.1f, 3.4f}
+                  : std::array<float, 5>{-0.57f, 0.63f, -48.1f, -6.1f, 35.9f};
+
+  Vec_f res(5, 1);
+  for (int i = 0; i <= 5; i++) {
+    res[i] = computeBreitWignerWeight<Type>(massVgen, 0.0, offsets[i]);
   }
 
   return res;
@@ -1032,6 +1058,7 @@ TensorType clamp_tensor_safe(const TensorType &tensor, double min_val,
 
   return result;
 }
+
 // Overload with NaN replacement
 template <typename TensorType>
 TensorType clamp_tensor_safe(const TensorType &tensor, double min_val,
@@ -1051,6 +1078,28 @@ TensorType clamp_tensor_safe(const TensorType &tensor, double min_val,
   });
 
   return result;
+}
+
+double get_differential_norm_weight(const double var_value,
+                                    const Vec_d &axis_edges,
+                                    const Vec_d &weight_list,
+                                    bool flows_to_unit = false) {
+
+  const size_t imax = axis_edges.size() - 1;
+
+  // Below lower bound
+  if (var_value < axis_edges.front())
+    return flows_to_unit ? 1.0 : weight_list.front();
+
+  // Above upper bound
+  if (var_value >= axis_edges.back())
+    return flows_to_unit ? 1.0 : weight_list.back();
+
+  // Binary search for correct interval
+  auto it = std::lower_bound(axis_edges.begin(), axis_edges.end(), var_value);
+  size_t idx = std::distance(axis_edges.begin(), it) - 1;
+
+  return weight_list[idx];
 }
 
 } // namespace wrem

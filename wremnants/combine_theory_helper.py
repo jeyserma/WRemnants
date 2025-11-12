@@ -24,6 +24,7 @@ class TheoryHelper(object):
         "Delta_Lambda_Correlated",
         "Delta_Omega",
         "binned_Omega",
+        "LatticeEigvars",
         "none",
     ]
 
@@ -611,7 +612,10 @@ class TheoryHelper(object):
         var_name = var_name.replace("binned_", "")
         var_name = var_name.replace("_Correlated", "")
 
-        if not any(var_name in x for x in self.np_hist.axes[self.syst_ax]):
+        if (
+            not any(var_name in x for x in self.np_hist.axes[self.syst_ax])
+            and model != "LatticeEigvars"
+        ):
             raise ValueError(
                 f"NP model choice was '{model}' but did not find corresponding variations in the histogram"
             )
@@ -619,25 +623,53 @@ class TheoryHelper(object):
         self.np_model = model
 
     def add_gamma_np_uncertainties(self):
-        # Since "c_nu = 0.1 is the central value, it doesn't show up in the name"
-        gamma_vals = list(
-            filter(
-                lambda x: x in self.corr_hist.axes[self.syst_ax],
-                ["c_nu-0.1-omega_nu0.5", "omega_nu0.5", "c_nu-0.25", "c_nu-0.25"],
+        if (
+            self.np_model == "LatticeEigvars"
+        ):  # new SCETlib NP model, using lattice central values and constrained eigenvariations
+            lattice_vals = [
+                "lambda2_nu0.0696-lambda4_nu0.0122-lambda_inf_nu1.1Ext",
+                "lambda2_nu0.1044-lambda4_nu0.0026-lambda_inf_nu2.1Ext",
+                "lambda2_nu0.1153-lambda4_nu0.0032-lambda_inf_nu1.6Ext",
+                "lambda2_nu0.0587-lambda4_nu0.0116-lambda_inf_nu1.6Ext",
+                "lambda2_nu0.0873-lambda4_nu0.0092",
+                "lambda2_nu0.0867-lambda4_nu0.0056",
+            ]
+            if not all([x in self.corr_hist.axes[self.syst_ax] for x in lattice_vals]):
+                raise ValueError(
+                    f"Using the lattice NP model, but could not find the 3 Eigenvariations for gamma in hist {self.corr_hist_name}"
+                )
+
+            gamma_nuisance_names = [
+                "scetlibNPgammaEigvar1",
+                "scetlibNPgammaEigvar2",
+                "scetlibNPgammaEigvar3",
+            ]
+            var_names = [
+                f"{name}{direction}"
+                for name in gamma_nuisance_names
+                for direction in ["Up", "Down"]
+            ]
+            var_vals = lattice_vals
+        else:
+            # Since "c_nu = 0.1 is the central value, it doesn't show up in the name"
+            gamma_vals = list(
+                filter(
+                    lambda x: x in self.corr_hist.axes[self.syst_ax],
+                    ["c_nu-0.1-omega_nu0.5", "omega_nu0.5", "c_nu-0.25", "c_nu-0.25"],
+                )
             )
-        )
 
-        if len(gamma_vals) != 2:
-            raise ValueError(
-                f"Failed to find consistent variation for gamma NP in hist {self.corr_hist_name}"
-            )
+            if len(gamma_vals) != 2:
+                raise ValueError(
+                    f"Failed to find consistent variation for gamma NP in hist {self.corr_hist_name}"
+                )
 
-        gamma_nuisance_name = "scetlibNPgamma"
+            gamma_nuisance_name = "scetlibNPgamma"
 
-        var_vals = gamma_vals
-        var_names = [f"{gamma_nuisance_name}Down", f"{gamma_nuisance_name}Up"]
+            var_vals = gamma_vals
+            var_names = [f"{gamma_nuisance_name}Down", f"{gamma_nuisance_name}Up"]
 
-        logger.debug(f"Adding gamma uncertainties from syst entries {gamma_vals}")
+        logger.debug(f"Adding gamma uncertainties from syst entries {var_vals}")
 
         processesZ = ["single_v_samples"]
         processesW = ["single_v_samples"]
@@ -728,9 +760,14 @@ class TheoryHelper(object):
         )
 
     def add_correlated_np_uncertainties(self):
-
-        np_map = (
-            {
+        if self.np_model == "LatticeEigvars":
+            np_map = {
+                "lambda2": ["0.0", "0.5"],
+                "delta_lambda2": ["0.105", "0.145"],
+                "lambda4": ["0.01", "0.16"],
+            }
+        elif "Lambda" in self.np_model:
+            np_map = {
                 "Lambda2": [
                     "-0.25",
                     "0.25",
@@ -741,15 +778,16 @@ class TheoryHelper(object):
                 ],
                 "Lambda4": [".01", ".16"],
             }
-            if "Lambda" in self.np_model
-            else {
+        else:
+            np_map = {
                 "Omega": ["0.", "0.8"],
                 "Delta_Omega": ["-0.02", "0.02"],
             }
-        )
 
-        if "Delta" not in self.np_model:
-            to_remove = list(filter(lambda x: "Delta" in x, np_map.keys()))
+        if "Delta" not in self.np_model and self.np_model != "LatticeEigvars":
+            to_remove = list(filter(lambda x: "Delta" in x, np_map.keys())) + list(
+                filter(lambda x: "delta" in x, np_map.keys())
+            )
             for k in to_remove:
                 np_map.pop(k)
 
@@ -773,8 +811,14 @@ class TheoryHelper(object):
             )
 
     def add_uncorrelated_np_uncertainties(self):
-        np_map = (
-            {
+        if self.np_model == "LatticeEigvars":
+            np_map = {
+                "lambda2": ["0.0", "0.5"],
+                "delta_lambda2": ["0.105", "0.145"],
+                "lambda4": ["0.01", "0.16"],
+            }
+        elif "Lambda" in self.np_model:
+            np_map = {
                 "Lambda2": [
                     "-0.25",
                     "0.25",
@@ -785,15 +829,16 @@ class TheoryHelper(object):
                 ],
                 "Lambda4": [".01", ".16"],
             }
-            if "Lambda" in self.np_model
-            else {
+        else:
+            np_map = {
                 "Omega": ["0.", "0.8"],
                 "Delta_Omega": ["-0.02", "0.02"],
             }
-        )
 
-        if "Delta" not in self.np_model:
-            to_remove = list(filter(lambda x: "Delta" in x, np_map.keys()))
+        if "Delta" not in self.np_model and self.np_model != "LatticeEigvars":
+            to_remove = list(filter(lambda x: "Delta" in x, np_map.keys())) + list(
+                filter(lambda x: "delta" in x, np_map.keys())
+            )
             for k in to_remove:
                 np_map.pop(k)
 
