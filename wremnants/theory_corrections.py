@@ -697,16 +697,22 @@ def make_pdfs_uncertainties_helper_by_helicity(
     pdfs,
     return_tensor=True,
 ):
+    pdf_file_template = (
+        common.data_dir
+        + "/PDFsByHelicity/w_z_gen_dists_maxFiles_m1_{pdf}_pdfByHelicity_skimmed.hdf5"
+    )
     pdf_helpers = {}
     for pdf in pdfs:
         pdf_name = theory_tools.pdfMap[pdf]["name"]
         logger.debug(f"Making PDF uncertainty helper for PDF set {pdf_name}")
+        pdf_renorm_name = (
+            pdf_name if theory_tools.pdfMap[pdf].get("renorm", False) else "pdf_uncorr"
+        )
         pdf_helper = make_uncertainty_helper_by_helicity(
             proc=proc,
             nom=pdf_name,
-            den="pdf_uncorr",
-            filename=common.data_dir
-            + f"/PDFsByHelicity/w_z_gen_dists_maxFiles_m1_{pdf}_pdfByHelicity_skimmed.hdf5",
+            den=pdf_renorm_name,
+            filename=pdf_file_template.format(pdf=pdf),
             var_ax_name="pdfVar",
             return_tensor=return_tensor,
         )
