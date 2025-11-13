@@ -298,6 +298,9 @@ theory_corr_weight_map = {
     "scetlib_nnlojetN4p0LLN3LO_pdfas": expand_pdf_entries(
         "ct18z", alphas=True, renorm=True
     ),
+    "scetlib_dyturboN3p0LL_LatticeNP_pdfas": expand_pdf_entries(
+        "ct18z", alphas=True, renorm=True
+    ),
     "scetlib_dyturboMSHT20an3lo_pdfas": expand_pdf_entries("msht20an3lo", alphas=True),
     "scetlib_dyturboMSHT20an3loVars": expand_pdf_entries("msht20an3lo"),
     # Tested this, better not to treat this way unless using MSHT20nnlo as central set
