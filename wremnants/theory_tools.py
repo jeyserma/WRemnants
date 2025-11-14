@@ -56,7 +56,7 @@ pdfMap = {
         "alphas": ["LHEPdfWeight[0]", "LHEPdfWeight[101]", "LHEPdfWeight[102]"],
         "alphasRange": "002",
         "inflation_factor_wmass": 2.5,
-        "inflation_factor_alphaS": 3.5,
+        "inflation_factor_alphaS": 1.0,
     },
     "ct18": {
         "name": "pdfCT18",
@@ -890,9 +890,9 @@ def define_pdf_columns(df, dataset_name, pdfs, noAltUnc):
     return df
 
 
-def define_central_boson_pdf_weight(df, dataset_name, pdf, theory_helpers):
+def define_central_pdf_weight_from_helicities(df, dataset_name, pdf, theory_helpers):
 
-    logger.info("Using boson-parametrized PDF weights for the central PDF weight")
+    logger.info("Using PDF weights from helicities for the central PDF weight")
     pdf_name = theory_tools.pdfMap[pdf]["name"]
 
     tensorName = f"helicity{pdf_name}CentralWeight_tensor"
@@ -959,7 +959,7 @@ def define_theory_weights_and_corrs(df, dataset_name, helpers, args, theory_help
 
     df = df.DefinePerSample("theory_weight_truncate", "10.")
     if theory_helpers and "pdf_central" in theory_helpers.keys():
-        df = define_central_boson_pdf_weight(
+        df = define_central_pdf_weight_from_helicities(
             df,
             dataset_name,
             args.pdfs[0] if len(args.pdfs) >= 1 else None,

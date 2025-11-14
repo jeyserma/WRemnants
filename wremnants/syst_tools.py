@@ -1720,7 +1720,7 @@ def add_qcdScaleByHelicityUnc_hist(
 
 
 def add_pdfUncertByHelicity_hist(
-    results, df, helper, pdf_name, axes, cols, base_name="nominal", **kwargs
+    results, df, helper, pdf, pdf_name, axes, cols, base_name="nominal", **kwargs
 ):
     name = Datagroups.histName(base_name, syst=f"{pdf_name}UncertByHelicity")
     tensorName = f"helicity{pdf_name}Weight_tensor"
@@ -1739,9 +1739,14 @@ def add_pdfUncertByHelicity_hist(
             ],
         )
     safeTensorName = f"{tensorName}_clamped"
+    renorm = theory_tools.pdfMap[pdf].get("renorm", False)
+    if renorm:
+        central_event_weight = "nominal_weight"
+    else:
+        central_event_weight = "nominal_weight_pdf_uncorr"
     df = df.Define(
         safeTensorName,
-        f"auto res = wrem::clamp_tensor_safe({tensorName}, -theory_weight_truncate, theory_weight_truncate, 1.0); res = nominal_weight_pdf_uncorr*res; return res;",
+        f"auto res = wrem::clamp_tensor_safe({tensorName}, -theory_weight_truncate, theory_weight_truncate, 1.0); res = {central_event_weight}*res; return res;",
     )
     add_syst_hist(
         results, df, name, axes, cols, safeTensorName, helper.tensor_axes, **kwargs
@@ -2575,7 +2580,14 @@ def add_theory_hists(
                     f"Make PDF uncertainty by helicity histograms for {dataset_name} and PDF set {pdf_name}"
                 )
                 add_pdfUncertByHelicity_hist(
-                    results, df, pdf_helpers[pdf_name], pdf_name, axes, cols, **info
+                    results,
+                    df,
+                    pdf_helpers[pdf_name],
+                    pdf,
+                    pdf_name,
+                    axes,
+                    cols,
+                    **info,
                 )
         if theory_helpers.get("alphaS") is not None:
             logger.debug(
