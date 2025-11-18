@@ -285,6 +285,7 @@ theory_corr_weight_map = {
     "scetlib_dyturboMSHT20_pdfas": expand_pdf_entries("msht20", alphas=True),
     "scetlib_dyturboMSHT20Vars": expand_pdf_entries("msht20"),
     "scetlib_dyturboCT18ZVars": expand_pdf_entries("ct18z"),
+    "scetlib_dyturboN3p0LL_LatticeNP_CT18ZVars": expand_pdf_entries("ct18z"),
     "scetlib_dyturboCT18Z_pdfas": expand_pdf_entries("ct18z", alphas=True, renorm=True),
     "scetlib_dyturboN3p1LL_pdfas": expand_pdf_entries(
         "ct18z", alphas=True, renorm=True

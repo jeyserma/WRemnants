@@ -510,7 +510,9 @@ def make_corr_by_helicity(
 
 
 def make_theory_helpers(
-    args, procs=["Z", "W"], corrs=["qcdScale", "pdf", "alphaS", "pdf_central"]
+    args,
+    procs=["Z", "W"],
+    corrs=["qcdScale", "pdf", "pdf_from_corr", "alphaS", "pdf_central"],
 ):
 
     theory_helpers_procs = {p: {} for p in procs}
@@ -543,6 +545,22 @@ def make_theory_helpers(
                     pdfs=args.pdfs,
                 )
             )
+        if "pdf_from_corr" in corrs:
+            pdf_from_corrs = [x + "Corr" for x in args.theoryCorr if "Vars" in x]
+            theory_helpers_procs[proc]["pdf_from_corr"] = {}
+            for pdf in pdf_from_corrs:
+                theory_helpers_procs[proc]["pdf_from_corr"].update(
+                    {
+                        pdf: make_uncertainty_helper_by_helicity(
+                            proc=proc,
+                            nom=pdf,
+                            den="pdf_uncorr",
+                            central_weights=False,
+                            var_ax_name="vars",
+                            filename="/ceph/submit/data/group/cms/store/user/lavezzo/alphaS//251118_gen_pdfsByHelicity/w_z_gen_dists_scetlib_dyturboN3p0LL_LatticeNP_CT18ZVarsCorr_maxFiles_m1_scetlib_dyturboN3p0LL_LatticeNP_CT18ZVars.hdf5",  # TODO clean up and move file to wremanants-data
+                        )
+                    }
+                )
         if "alphaS" in corrs:
             as_vars = [x + "Corr" for x in args.theoryCorr if "pdfas" in x]
             theory_helpers_procs[proc]["alphaS"] = (
@@ -737,11 +755,17 @@ def make_alphaS_uncertainties_helper_by_helicity(
         logger.debug(
             f"Making alphaS uncertainty helper by helicity for theory corr {as_var}"
         )
+        fname = alphas_file_template.format(as_var=as_var)
+        if not os.path.isfile(fname):
+            logger.warning(
+                f"Did not find alphaS variation file {fname}. No alphaS uncertainty via the helicities will be calculated for {as_var}!"
+            )
+            continue
         as_helper = make_uncertainty_helper_by_helicity(
             proc=proc,
             nom=as_var,
             den="theory_uncorr",
-            filename=alphas_file_template.format(as_var=as_var),
+            filename=fname,
             var_ax_name="vars",
             return_tensor=return_tensor,
         )
