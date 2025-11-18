@@ -756,11 +756,6 @@ def make_alphaS_uncertainties_helper_by_helicity(
             f"Making alphaS uncertainty helper by helicity for theory corr {as_var}"
         )
         fname = alphas_file_template.format(as_var=as_var)
-        if not os.path.isfile(fname):
-            logger.warning(
-                f"Did not find alphaS variation file {fname}. No alphaS uncertainty via the helicities will be calculated for {as_var}!"
-            )
-            continue
         as_helper = make_uncertainty_helper_by_helicity(
             proc=proc,
             nom=as_var,
@@ -801,12 +796,17 @@ def make_uncertainty_helper_by_helicity(
         hist_key = f"nominal_gen_{h}"
         hists = []
         for process in proc_map.get(proc, ()):
+            if not os.path.exists(filename):
+                logger.warning(
+                    f"File {filename} does not exist. Not creating histogram of variations by helicities for process {proc} and variation {nom}."
+                )
+                return None
             with h5py.File(filename, "r") as h5file:
                 results = input_tools.load_results_h5py(h5file)
-                outputs = results[process]["output"]
+                outputs = results.get(process, {}).get("output", {})
                 if hist_key not in outputs:
                     logger.warning(
-                        f"Did not find {hist_key} in {filename}. Not creating histogram of PDF variations by helicities for this set."
+                        f"Did not find {hist_key} in {filename}. Not creating histogram of variations by helicities for process {proc} and variation {nom}."
                     )
                     return None
                 hists.append(outputs[hist_key].get())

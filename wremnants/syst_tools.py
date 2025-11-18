@@ -2605,7 +2605,6 @@ def add_theory_hists(
                     cols,
                     **info,
                 )
-
         if theory_helpers.get("alphaS") is not None:
             for k, v in theory_helpers["alphaS"].items():
                 logger.debug(
