@@ -547,20 +547,12 @@ def make_theory_helpers(
             )
         if "pdf_from_corr" in corrs:
             pdf_from_corrs = [x + "Corr" for x in args.theoryCorr if "Vars" in x]
-            theory_helpers_procs[proc]["pdf_from_corr"] = {}
-            for pdf in pdf_from_corrs:
-                theory_helpers_procs[proc]["pdf_from_corr"].update(
-                    {
-                        pdf: make_uncertainty_helper_by_helicity(
-                            proc=proc,
-                            nom=pdf,
-                            den="pdf_uncorr",
-                            central_weights=False,
-                            var_ax_name="vars",
-                            filename="/ceph/submit/data/group/cms/store/user/lavezzo/alphaS//251118_gen_pdfsByHelicity/w_z_gen_dists_scetlib_dyturboN3p0LL_LatticeNP_CT18ZVarsCorr_maxFiles_m1_scetlib_dyturboN3p0LL_LatticeNP_CT18ZVars.hdf5",  # TODO clean up and move file to wremanants-data
-                        )
-                    }
+            theory_helpers_procs[proc]["pdf_from_corr"] = (
+                make_pdfs_from_corrs_uncertainties_helper_by_helicity(
+                    proc=proc,
+                    pdfs_from_corrs=pdf_from_corrs,
                 )
+            )
         if "alphaS" in corrs:
             as_vars = [x + "Corr" for x in args.theoryCorr if "pdfas" in x]
             theory_helpers_procs[proc]["alphaS"] = (
@@ -577,7 +569,7 @@ def make_theory_helpers(
                     den="pdf_uncorr",
                     central_weights=True,
                     filename=common.data_dir
-                    + f"/PDFsByHelicity/w_z_gen_dists_maxFiles_m1_{args.pdfs[0]}_pdfByHelicity_skimmed.hdf5",
+                    + f"/TheoryCorrectionsByHelicity/PDFs/w_z_gen_dists_maxFiles_m1_{args.pdfs[0]}_pdfByHelicity_skimmed.hdf5",
                 )
             )
 
@@ -717,7 +709,7 @@ def make_pdfs_uncertainties_helper_by_helicity(
 ):
     pdf_file_template = (
         common.data_dir
-        + "/PDFsByHelicity/w_z_gen_dists_maxFiles_m1_{pdf}_pdfByHelicity_skimmed.hdf5"
+        + "/TheoryCorrectionsByHelicity/PDFs/w_z_gen_dists_maxFiles_m1_{pdf}_pdfByHelicity_skimmed.hdf5"
     )
     pdf_helpers = {}
     for pdf in pdfs:
@@ -741,6 +733,32 @@ def make_pdfs_uncertainties_helper_by_helicity(
     return pdf_helpers
 
 
+def make_pdfs_from_corrs_uncertainties_helper_by_helicity(
+    proc,
+    pdfs_from_corrs,
+    return_tensor=True,
+):
+    pdf_file_template = (
+        common.data_dir
+        + "/TheoryCorrectionsByHelicity/PDFsFromCorrs/w_z_gen_dists_{pdf}_maxFiles_m1_skimmed.hdf5"
+    )
+    pdf_helpers = {}
+    for pdf in pdfs_from_corrs:
+        logger.debug(f"Making PDF uncertainty helper by helicity for theory corr {pdf}")
+        pdf_helper = make_uncertainty_helper_by_helicity(
+            proc=proc,
+            nom=pdf,
+            den="pdf_uncorr",
+            central_weights=False,
+            var_ax_name="vars",
+            filename=pdf_file_template.format(pdf=pdf),
+            return_tensor=return_tensor,
+        )
+        if pdf_helper is not None:
+            pdf_helpers[pdf] = pdf_helper
+    return pdf_helpers
+
+
 def make_alphaS_uncertainties_helper_by_helicity(
     proc,
     as_vars,
@@ -748,7 +766,7 @@ def make_alphaS_uncertainties_helper_by_helicity(
 ):
     alphas_file_template = (
         common.data_dir
-        + "/AlphaSByHelicity/w_z_gen_dists_{as_var}_maxFiles_m1_skimmed.hdf5"
+        + "/TheoryCorrectionsByHelicity/AlphaS/w_z_gen_dists_{as_var}_maxFiles_m1_skimmed.hdf5"
     )
     as_helpers = {}
     for as_var in as_vars:
