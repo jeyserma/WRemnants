@@ -382,7 +382,7 @@ def make_parser(parser=None):
         type=str,
         help="Set the mode for the fake estimation",
         default="extended1D",
-        choices=["closure", "simple", "extrapolate", "extended1D", "extended2D"],
+        choices=["mc", "closure", "simple", "extrapolate", "extended1D", "extended2D"],
     )
     parser.add_argument(
         "--forceGlobalScaleFakes",
@@ -520,10 +520,16 @@ def make_parser(parser=None):
         help="Scale the minnlo qcd scale uncertainties by this factor",
     )
     parser.add_argument(
-        "--symmetrizeMinnloScale",
+        "--symmetrizeTheoryUnc",
         default="quadratic",
         type=str,
         help="Symmetrization type for minnlo scale variations",
+    )
+    parser.add_argument(
+        "--symmetrizePdfUnc",
+        default="quadratic",
+        type=str,
+        help="Symmetrization type for PDF (and alphas) variations",
     )
     parser.add_argument(
         "--massVariation", type=float, default=100, help="Variation of boson mass"
@@ -642,6 +648,11 @@ def make_parser(parser=None):
         "--isoEfficiencySmoothing",
         action="store_true",
         help="If isolation SF was derived from smooth efficiencies instead of direct smoothing",
+    )
+    parser.add_argument(
+        "--normalize",
+        action="store_true",
+        help="Add normalization uncertainty fully constrained across processes",
     )
     parser.add_argument(
         "--logNormalWmunu",
@@ -1297,6 +1308,19 @@ def setup(
             norm=1.0001,
         )
 
+    if args.normalize:
+        name = f"normalization_{datagroups.channel}"
+        datagroups.writer.add_norm_systematic(
+            name,
+            datagroups.predictedProcesses(),
+            datagroups.channel,
+            uncertainty=1.01,
+            noi=False,
+            constrained=False,
+            groups="Normalization",
+            add_to_data_covariance=datagroups.isAbsorbedNuisance(name),
+        )
+
     decorwidth = args.decorMassWidth or args.fitWidth
     massWeightName = "massWeight_widthdecor" if decorwidth else "massWeight"
     if not (args.doStatOnly and constrainMass):
@@ -1514,7 +1538,8 @@ def setup(
             samples=theorySystSamples,
             minnlo_unc=args.minnloScaleUnc,
             minnlo_scale=args.scaleMinnloScale,
-            minnlo_symmetrize=args.symmetrizeMinnloScale,
+            theory_symmetrize=args.symmetrizeTheoryUnc,
+            pdf_symmetrize=args.symmetrizePdfUnc,
         )
 
         theory_helper.add_pdf_alphas_variation(
@@ -1753,7 +1778,7 @@ def setup(
         )
 
     if (
-        (datagroups.fakeName != "QCD" or args.qcdProcessName == "QCD")
+        (datagroups.fakeName != "QCD" and args.qcdProcessName != "QCD")
         and datagroups.fakeName in datagroups.groups.keys()
         and not xnorm
         and (

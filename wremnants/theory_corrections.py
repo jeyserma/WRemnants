@@ -324,7 +324,9 @@ def postprocess_corr_hist(corrh, numh=None):
 def get_corr_name(generator):
     # Hack for now
     label = generator.replace("1D", "")
-    if "dataPtll" in generator or "dataRecoPtll" in generator:
+    if (
+        "dataPtll" in generator or "dataRecoPtll" in generator
+    ) and "scetlib" not in generator:
         return "MC_data_ratio"
     return (
         f"{label}_minnlo_ratio"
