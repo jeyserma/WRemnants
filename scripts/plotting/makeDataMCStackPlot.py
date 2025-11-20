@@ -116,7 +116,7 @@ parser.add_argument(
     type=str,
     help="Set the mode for the fake estimation",
     default="extended1D",
-    choices=["simple", "extrapolate", "extended1D", "extended2D"],
+    choices=["mc", "simple", "extrapolate", "extended1D", "extended2D"],
 )
 parser.add_argument(
     "--fakeMCCorr",
@@ -422,7 +422,7 @@ if addVariation:
         else:
             varname = name
 
-        reload = name != args.baseName
+        reload = name != args.baseName or do_transform
         # The action map will only work if reloading, otherwise need to apply some transform
         # to the already loaded hist
         if load_op and reload:

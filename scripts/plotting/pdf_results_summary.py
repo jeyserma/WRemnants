@@ -57,6 +57,11 @@ parser.add_argument(
 )
 parser.add_argument("--print", action="store_true", help="Print results")
 parser.add_argument(
+    "--printAssym",
+    action="store_true",
+    help="Print results with asymmetric uncertainties",
+)
+parser.add_argument(
     "--impactType",
     choices=["traditional", "nonprofiled", "global"],
     default="traditional",
@@ -81,17 +86,41 @@ ref_unc = 6.0 if isW else 2.0
 
 pdf_name = lambda p: theory_tools.pdfMap[p]["name"]
 
+rename = {
+    f"err_{pdf_name(pdf)}{suffix}": f"err_pdf{suffix}"
+    for pdf in args.pdfs
+    for suffix in ["", "_up", "_down"]
+}
+
 dfs = rabbit_input.read_all_groupunc_df(
     [args.reffile.format(pdf=pdf) for pdf in args.pdfs],
-    rename_cols={f"err_{pdf_name(pdf)}": "err_pdf" for pdf in args.pdfs},
+    rename_cols=rename,
     uncs=[pdf_name(pdf) for pdf in args.pdfs],
     names=[pdf_name(pdf)[3:] for pdf in args.pdfs],
     impact_type=args.impactType,
 )
 
 if args.print:
+    if args.printAssym:
+        print(
+            "PDF           Mass PDF_unc_up PDF_unc_down  Prof. unc  Total_unc_up Total_unc_down"
+        )
+    else:
+        print("PDF           Mass PDF_unc Total_unc")
+    to_print = (
+        ["value", "err_pdf", "err_Total"]
+        if not args.printAssym
+        else [
+            "value",
+            "err_pdf_up",
+            "err_pdf_down",
+            "err_Profiled",
+            "err_Total_up",
+            "err_Total_down",
+        ]
+    )
     for k, v in dfs.iterrows():
-        print(round(v.iloc[1], 1), round(v.iloc[3], 1), round(v.iloc[2], 1))
+        print(v.loc["Name"].ljust(12), *(round(v.loc[x], 1) for x in to_print))
 
 central = dfs.iloc[0, :]
 
@@ -117,9 +146,11 @@ dfs["Name"] = dfs["Name"].replace("MSHT20an3lo", "MSHT20aN3LO")
 dfs["Name"] = dfs["Name"].replace("NNPDF31", "NNPDF3.1")
 dfs["Name"] = dfs["Name"].replace("NNPDF40", "NNPDF4.0")
 
+dfs = dfs[["Name", "value", "err_pdf", "err_Total"]]
+
 fig = plot_tools.make_summary_plot(
     central_val,
-    central["err_total"],
+    central["err_Total"],
     central["err_pdf"],
     "CT18Z (nominal)",
     dfs.iloc[1:, :],

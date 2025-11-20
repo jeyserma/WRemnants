@@ -42,13 +42,6 @@ class TheoryHelper(object):
         corr_hists = self.datagroups.args_from_metadata("theoryCorr")
         self.corr_hist_name = (corr_hists[0] + "Corr") if corr_hists else None
 
-        # Special case for dataPtll corr
-        if "data" in self.corr_hist_name and "scetlib_dyturbo" in corr_hists:
-            logger.warning(
-                f"Using uncertainties from scetlib_dyturboCorr for corr {self.corr_hist_name}"
-            )
-            self.corr_hist_name = "scetlib_dyturboCorr"
-
         self.syst_ax = "vars"
         self.corr_hist = None
         self.resumUnc = None

@@ -382,7 +382,7 @@ def make_parser(parser=None):
         type=str,
         help="Set the mode for the fake estimation",
         default="extended1D",
-        choices=["closure", "simple", "extrapolate", "extended1D", "extended2D"],
+        choices=["mc", "closure", "simple", "extrapolate", "extended1D", "extended2D"],
     )
     parser.add_argument(
         "--forceGlobalScaleFakes",
@@ -1778,7 +1778,7 @@ def setup(
         )
 
     if (
-        (datagroups.fakeName != "QCD" or args.qcdProcessName == "QCD")
+        (datagroups.fakeName != "QCD" and args.qcdProcessName != "QCD")
         and datagroups.fakeName in datagroups.groups.keys()
         and not xnorm
         and (

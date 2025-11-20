@@ -1,3 +1,5 @@
+import copy
+
 import matplotlib.cm as cm
 
 from wums import boostHistHelpers as hh
@@ -84,6 +86,8 @@ process_supergroups = {
     },
 }
 process_supergroups["z_wlike"] = process_supergroups["z_dilepton"]
+process_supergroups["w_mass_npmc"] = copy.deepcopy(process_supergroups["w_mass"])
+process_supergroups["w_mass_npmc"]["Fake"] = ["QCD"]
 process_supergroups["z_lowpu"] = process_supergroups["z_dilepton"]
 
 process_labels = {
@@ -100,7 +104,7 @@ process_labels = {
     "PhotonInduced": r"$\gamma$-induced",
     "Top": "Top",
     "Diboson": "Diboson",
-    "QCD": "QCD MC (predicted)",
+    "QCD": "QCD MC",
     "Other": "Other",
     "Fake": "Nonprompt",
     "Fake_e": "Nonprompt (e)",
@@ -117,6 +121,8 @@ axis_labels = {
     "ptWgen": {"label": r"$\mathit{p}_{T}^\mathrm{W}$", "unit": "GeV"},
     "ptZgen": {"label": r"$\mathit{p}_{T}^\mathrm{Z}$", "unit": "GeV"},
     "muonJetPt": {"label": r"$\mathit{p}_{T}^\mathrm{jet[\mu]}$", "unit": "GeV"},
+    "recoil_perp": {"label": r"$\it{u}_{\mathrm{T}}^{\perp}$", "unit": "GeV"},
+    "recoil_para": {"label": r"$\it{u}_{\mathrm{T}}^{\parallel}$", "unit": "GeV"},
     "qGen": r"$|\mathit{q}^{\mu}|$",
     "eta": r"$\mathit{\eta}^{\mu}$",
     "etaGen": r"$\mathit{\eta}^{\mu}$",
@@ -146,7 +152,7 @@ axis_labels = {
     "MET_pt": {"label": r"$\mathit{p}_{\mathrm{T}}^{miss}$", "unit": "GeV"},
     "MET": {"label": r"$\mathit{p}_{\mathrm{T}}^{miss}$", "unit": "GeV"},
     "met": {"label": r"$\mathit{p}_{\mathrm{T}}^{miss}$", "unit": "GeV"},
-    "mt": {"label": r"$\mathit{m}_{T}^{\mu,MET}$", "unit": "GeV"},
+    "mt": {"label": r"$\mathit{m}_{T}$", "unit": "GeV"},
     "mtfix": {"label": r"$\mathit{m}_{T}^\mathrm{fix}$", "unit": "GeV"},
     "etaPlus": r"$\mathit{\eta}^{\mu(+)}$",
     "etaMinus": r"$\mathit{\eta}^{\mu(-)}$",

@@ -32,20 +32,35 @@ def read_groupunc_df(
     )
 
     info = {
-        "Nome": poi[0],
+        "Name": poi[0],
         "value": pulls[labels_ung == poi[0]],
-        "err_total": impacts[labels == "Total"],
     }
-    info.update({f"err_{unc}": impacts[labels == unc] for unc in uncs})
+
+    if impact_type == "nonprofiled":
+        for unc in [*uncs, "Total"]:
+            err = impacts[labels == unc]
+            if err.size != 0:
+                err = err.reshape(2)
+                info[f"err_{unc}"] = np.average(np.abs(err))
+                info[f"err_{unc}_down"], info[f"err_{unc}_up"] = err
+        total_unc = constraints[labels_ung == poi[0]]
+        info["err_Profiled"] = total_unc
+
+        total_unc = np.sqrt(sum(info[f"err_{unc}"] ** 2 for unc in [*uncs, "Profiled"]))
+        info["err_Total"] = total_unc
+        for u in ("up", "down"):
+            sign = np.sign(info[f"err_Total_{u}"])
+            info[f"err_Total_{u}"] = sign * np.sqrt(
+                info[f"err_Total_{u}"] ** 2 + info[f"err_Profiled"] ** 2
+            )
+    else:
+        info["err_Total"] = impacts[labels == "Total"]
+        info.update({f"err_{unc}": impacts[labels == unc] for unc in uncs})
 
     df = pd.DataFrame(info)
 
     df.iloc[0, 1:] = df.iloc[0, 1:] * 100
     df.iloc[0, 1] += ref_massz if poi[0] == "massShiftZ100MeV" else ref_massw
-
-    if impact_type == "nonprofiled":
-        total_unc = np.sqrt(np.sum(df.iloc[:, -2:].values * df.iloc[:, -2:].values))
-        df.loc[:, "err_total"] = total_unc
 
     if rename_cols:
         df.rename(columns=rename_cols, inplace=True)

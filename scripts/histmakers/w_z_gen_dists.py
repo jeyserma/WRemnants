@@ -176,18 +176,21 @@ def build_graph(df, dataset):
     axis_ptV_thag = theoryAgnostic_axes[0]
     axis_yV_thag = theoryAgnostic_axes[1]
 
-    if args.useUnfoldingBinning:
-        unfolding_axes, unfolding_cols, unfolding_selections = (
-            differential.get_dilepton_axes(
-                ["ptVGen", "absYVGen"],
-                {
-                    "ptll": common.get_dilepton_ptV_binning(fine=False),
-                    "yll": common.yll_10quantiles_binning,
-                },
-                "prefsr",
-                add_out_of_acceptance_axis=False,
-            )
+    unfolding_axes, unfolding_cols, unfolding_selections = (
+        differential.get_dilepton_axes(
+            [
+                "ptVGen",
+            ],  # "absYVGen"],
+            {
+                "ptll": common.get_dilepton_ptV_binning(fine=False),
+                # "yll": common.yll_10quantiles_binning,
+            },
+            "prefsr",
+            add_out_of_acceptance_axis=False,
         )
+    )
+
+    if args.useUnfoldingBinning:
         axis_absYVgen = hist.axis.Variable(
             unfolding_axes[1].edges,
             name="absYVgen",
@@ -315,24 +318,7 @@ def build_graph(df, dataset):
         nominal_axes += [axis_helicitygen]
         nominal_cols += ["helicity_idxs", "helicity_moments"]
 
-    mode = f'{"z" if isZ else "w"}_{analysis_label}'
-    if args.fiducial is not None:
-        if isZ and args.fiducial == "singlelep":
-            mode += "_wlike"
-
-        df = unfolding_tools.select_fiducial_space(
-            df,
-            mode=mode,
-            fiducial=args.fiducial,
-            unfolding=True,
-            selections=unfolding_selections,
-        )
-
-    if args.singleLeptonHists and (isW or isZ):
-        df = unfolding_tools.define_gen_level(
-            df, dataset.name, ["prefsr"], mode="w_mass" if isW else "z_wlike"
-        )
-
+    if (args.fiducial or args.singleLeptonHists) and (isW or isZ):
         lep_cols = ["prefsrLep_absEta", "prefsrLep_pt", "prefsrLep_charge"]
         lep_axes = [axis_absetal_gen, axis_ptl_gen, axis_chargel_gen]
 
@@ -340,13 +326,31 @@ def build_graph(df, dataset):
             lep_axes = [*lep_axes, axis_charm]
             lep_cols = [*lep_cols, "charm"]
 
-        results.append(
-            df.HistoBoost(
-                "prefsr_lep",
-                lep_axes,
-                [*lep_cols, "nominal_weight"],
-                storage=hist.storage.Weight(),
+        if args.singleLeptonHists:
+            results.append(
+                df.HistoBoost(
+                    "prefsr_lep",
+                    lep_axes,
+                    [*lep_cols, "nominal_weight"],
+                    storage=hist.storage.Weight(),
+                )
             )
+
+    mode = f'{"z" if isZ else "w"}_{analysis_label}'
+    if args.fiducial is not None:
+        if isZ and args.fiducial == "singlelep":
+            mode += "_wlike"
+
+        df = unfolding_tools.define_gen_level(
+            df, dataset.name, ["prefsr"], mode="w_mass" if isW else "z_wlike"
+        )
+        df = unfolding_tools.select_fiducial_space(
+            df,
+            "prefsr",
+            mode=mode,
+            fiducial=args.fiducial,
+            unfolding=True,
+            selections=unfolding_selections,
         )
 
     if not args.skipEWHists and (isW or isZ) and "Zmumu_powheg-weak" in dataset.name:
