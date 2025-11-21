@@ -983,44 +983,47 @@ class TheoryHelper(object):
                     **tmp_pdf_args,
                 )
 
-    def add_pdf_alphas_variation(self, noi=False, scale=-1.0):
+    def add_pdf_alphas_variation(self, noi=False):
         pdf = self.datagroups.args_from_metadata("pdfs")[0]
         pdfInfo = theory_tools.pdf_info_map("ZmumuPostVFP", pdf)
         pdfName = pdfInfo["name"]
-        scale = (
-            scale
-            if scale != -1.0
-            else theory_tools.pdf_inflation_factor(pdfInfo, self.args.noi)
-        )
-        pdf_hist = pdfName
-        pdf_corr_hist = (
-            f"scetlib_dyturbo{pdf.upper().replace('AN3LO', 'an3lo')}VarsCorr"
-            if self.corr_hist_name == "scetlib_dyturboCorr"
-            else self.corr_hist_name.replace("Corr", "VarsCorr")
-        )
-        asRange = pdfInfo["alphasRange"]
+        as_range = pdfInfo["alphasRange"]
+
         if self.as_from_corr:
+            pdf_corr_hist = (
+                f"scetlib_dyturbo{pdf.upper().replace('AN3LO', 'an3lo')}VarsCorr"
+                if self.corr_hist_name == "scetlib_dyturboCorr"
+                else self.corr_hist_name.replace("Corr", "VarsCorr")
+            )
             asname = pdf_corr_hist.replace("Vars", "_pdfas")
             # alphaS from correction histograms only available for these sets,
             # so fall back to CT18Z for other sets
             if not ("MSHT20" in asname or "CT18Z" in asname or "MSHT20an3lo" in asname):
                 asname = "scetlib_dyturboCT18Z_pdfasCorr"
-                asRange = "002"
+                as_range = theory_tools.pdfMap["ct18z"]["alphasRange"]
+            if asname.replace("Corr", "") not in self.datagroups.args_from_metadata(
+                "theoryCorr"
+            ):
+                logger.warning(
+                    f"AlphaS correction histogram {asname} not found in theoryCorrs."
+                )
         else:
-            asname = f"{pdfName}alphaS{asRange}"
-        as_replace = (
-            [("as", "pdfAlphaS")] + [("0116", "Down"), ("0120", "Up")]
-            if asRange == "002"
-            else [("0117", "Down"), ("0119", "Up")]
-        )
-        if self.from_hels:
-            asname = "pdfAlphaSByHelicity"
+            asname = f"{pdfName}alphaS{as_range}"
+        if self.as_from_corr and self.from_hels and not asname.endswith("ByHelicity"):
+            asname += "ByHelicity"
+
+        input_variation = int(as_range) * 10 ** (-len(as_range))
+        target_variation = 0.002 if noi else 0.0015
+        scale = target_variation / input_variation
+
+        as_replace = [("as", "pdfAlphaS")]
+        if as_range == "002":
+            as_replace.extend([("0116", "Down"), ("0120", "Up")])
+        elif as_range == "001":
+            as_replace.extend([("0117", "Down"), ("0119", "Up")])
         else:
-            asname = (
-                f"{pdfName}alphaS{asRange}"
-                if not self.as_from_corr
-                else pdf_corr_hist.replace("Vars", "_pdfas")
-            )
+            raise RuntimeError("Unsupported alphaS range for PDF set!")
+
         as_args = dict(
             histname=asname,
             processes=["single_v_samples"],
@@ -1029,7 +1032,7 @@ class TheoryHelper(object):
             noConstraint=noi,
             groups=[pdfName],
             systAxes=["vars" if self.as_from_corr else "alphasVar"],
-            scale=(0.75 if asRange == "002" else 1.5) * scale,
+            scale=scale,
             symmetrize="average" if noi else self.pdf_symmetrize,
             passToFakes=self.propagate_to_fakes,
         )
@@ -1040,6 +1043,7 @@ class TheoryHelper(object):
         else:
             as_args["systNameReplace"] = as_replace
             as_args["skipEntries"] = [{"alphasVar": "as0118"}]
+        logger.info(f"Using alphaS variation {asname}, applying scaling of {scale}")
         self.datagroups.addSystematic(**as_args)
 
     def add_transition_fo_scale_uncertainties(self, transition=True, scale=True):

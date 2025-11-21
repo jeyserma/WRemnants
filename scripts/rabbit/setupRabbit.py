@@ -1684,7 +1684,6 @@ def setup(
 
         theory_helper.add_pdf_alphas_variation(
             noi="alphaS" in args.noi,
-            scale=args.scalePdf if not "alphaS" in args.noi else 1.0,
         )
 
         if not stat_only and not args.noTheoryUnc:
@@ -2878,7 +2877,6 @@ if __name__ == "__main__":
     # loop over all files
     for i, ifile in enumerate(args.inputFile):
         fitvar = args.fitvar[i].split("-")
-        print(fitvar)
         genvar = (
             args.genAxes[i].split("-")
             if hasattr(args, "genAxes") and len(args.genAxes)

@@ -945,7 +945,7 @@ jobs:
           scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run.sh rabbit_plot_pulls_and_impacts.py
           ${WREMNANTS_OUTDIR}/ZMassDilepton_ptll_yll/fitresults.hdf5 --title CMS --subtitle Preliminary
           --showNumbers --pullrange '2.1' --config utilities/styles/styles.py --oneSidedImpacts --grouping max 
-          -o $WEB_DIR/$PLOT_DIR --otherExtensions pdf png -n 50 --scaleImpacts 1.5 
+          -o $WEB_DIR/$PLOT_DIR --otherExtensions pdf png -n 50 --scaleImpacts 2.0
 
       - name: setup
         run: >-
