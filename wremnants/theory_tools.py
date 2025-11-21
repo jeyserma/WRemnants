@@ -890,9 +890,9 @@ def define_pdf_columns(df, dataset_name, pdfs, noAltUnc):
     return df
 
 
-def define_central_boson_pdf_weight(df, dataset_name, pdf, theory_helpers):
+def define_central_pdf_weight_from_helicities(df, dataset_name, pdf, theory_helpers):
 
-    logger.info("Using boson-parametrized PDF weights for the central PDF weight")
+    logger.info("Using PDF weights from helicities for the central PDF weight")
     pdf_name = theory_tools.pdfMap[pdf]["name"]
 
     tensorName = f"helicity{pdf_name}CentralWeight_tensor"
@@ -959,7 +959,7 @@ def define_theory_weights_and_corrs(df, dataset_name, helpers, args, theory_help
 
     df = df.DefinePerSample("theory_weight_truncate", "10.")
     if theory_helpers and "pdf_central" in theory_helpers.keys():
-        df = define_central_boson_pdf_weight(
+        df = define_central_pdf_weight_from_helicities(
             df,
             dataset_name,
             args.pdfs[0] if len(args.pdfs) >= 1 else None,
@@ -1016,6 +1016,10 @@ def build_weight_expr(df, exclude_weights=[]):
         logger.info("Adding additional weight '{extra_weight}'")
         found_weights.append("extra_weight")
 
+    if "central_weight" in valid_cols:
+        logger.info("Adding additional central weight 'central_weight'")
+        found_weights.append("central_weight")
+
     weight_expr = "*".join(found_weights)
 
     logger.debug(f"Weight is {weight_expr}")
@@ -1025,10 +1029,7 @@ def build_weight_expr(df, exclude_weights=[]):
 
 def define_nominal_weight(df):
     logger.debug("Defining nominal weight")
-    if "central_weight" in df.GetColumnNames():
-        return df.Define(f"nominal_weight", build_weight_expr(df) + " * central_weight")
-    else:
-        return df.Define(f"nominal_weight", build_weight_expr(df))
+    return df.Define(f"nominal_weight", build_weight_expr(df))
 
 
 def define_breit_wigner_weights(df, proc):

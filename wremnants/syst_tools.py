@@ -1728,7 +1728,7 @@ def add_qcdScaleByHelicityUnc_hist(
 
 
 def add_pdfUncertByHelicity_hist(
-    results, df, helper, pdf_name, axes, cols, base_name="nominal", **kwargs
+    results, df, helper, pdf, pdf_name, axes, cols, base_name="nominal", **kwargs
 ):
     name = Datagroups.histName(base_name, syst=f"{pdf_name}UncertByHelicity")
     tensorName = f"helicity{pdf_name}Weight_tensor"
@@ -1747,9 +1747,14 @@ def add_pdfUncertByHelicity_hist(
             ],
         )
     safeTensorName = f"{tensorName}_clamped"
+    renorm = theory_tools.pdfMap[pdf].get("renorm", False)
+    if renorm:
+        central_event_weight = "nominal_weight"
+    else:
+        central_event_weight = "nominal_weight_pdf_uncorr"
     df = df.Define(
         safeTensorName,
-        f"auto res = wrem::clamp_tensor_safe({tensorName}, -theory_weight_truncate, theory_weight_truncate, 1.0); res = nominal_weight*res; return res;",
+        f"auto res = wrem::clamp_tensor_safe({tensorName}, -theory_weight_truncate, theory_weight_truncate, 1.0); res = {central_event_weight}*res; return res;",
     )
     add_syst_hist(
         results, df, name, axes, cols, safeTensorName, helper.tensor_axes, **kwargs
@@ -1757,10 +1762,10 @@ def add_pdfUncertByHelicity_hist(
 
 
 def add_pdfAlphaSByHelicity_hist(
-    results, df, helper, axes, cols, base_name="nominal", **kwargs
+    results, df, helper, axes, cols, name="pdfAlphaS", base_name="nominal", **kwargs
 ):
-    name = Datagroups.histName(base_name, syst="pdfAlphaSByHelicity")
-    tensorName = "helicityAlphaSWeight_tensor"
+    name = Datagroups.histName(base_name, syst=f"{name}ByHelicity")
+    tensorName = f"{name}_helicityAlphaSWeight_tensor"
     df = df.Define(
         tensorName,
         helper,
@@ -1776,7 +1781,7 @@ def add_pdfAlphaSByHelicity_hist(
     safeTensorName = f"{tensorName}_clamped"
     df = df.Define(
         safeTensorName,
-        f"auto res = wrem::clamp_tensor_safe({tensorName}, -theory_weight_truncate, theory_weight_truncate, 1.0); res = nominal_weight*res; return res;",
+        f"auto res = wrem::clamp_tensor_safe({tensorName}, -theory_weight_truncate, theory_weight_truncate, 1.0); res = nominal_weight_uncorr*res; return res;",
     )
     add_syst_hist(
         results, df, name, axes, cols, safeTensorName, helper.tensor_axes, **kwargs
@@ -2583,15 +2588,21 @@ def add_theory_hists(
                     f"Make PDF uncertainty by helicity histograms for {dataset_name} and PDF set {pdf_name}"
                 )
                 add_pdfUncertByHelicity_hist(
-                    results, df, pdf_helpers[pdf_name], pdf_name, axes, cols, **info
+                    results,
+                    df,
+                    pdf_helpers[pdf_name],
+                    pdf,
+                    pdf_name,
+                    axes,
+                    cols,
+                    **info,
                 )
         if theory_helpers.get("alphaS") is not None:
             logger.debug(
                 f"Make AlphaS uncertainty by helicity histograms for {dataset_name}"
             )
-            add_pdfAlphaSByHelicity_hist(
-                results, df, theory_helpers.get("alphaS"), axes, cols, **info
-            )
+            for k, v in theory_helpers["alphaS"].items():
+                add_pdfAlphaSByHelicity_hist(results, df, v, axes, cols, name=k, **info)
 
         add_breit_wigner_mass_weights_hist(
             results, df, axes, cols, proc=dataset_name, **info
