@@ -73,6 +73,18 @@ parser.add_argument(
     nargs="*",
     help="Filter to plot (default no filter, only specify if you want a subset",
 )
+parser.add_argument(
+    "--excludeProcs",
+    type=str,
+    nargs="*",
+    help="Exclude processes matched by group name or (subset) of name",
+    default=[
+        "QCD",
+        "WtoNMu_5",
+        "WtoNMu_10",
+        "WtoNMu_50",
+    ],
+)
 parser.add_argument("--noData", action="store_true", help="Don't plot data")
 parser.add_argument("--noFill", action="store_true", help="Don't fill")
 parser.add_argument("--noStack", action="store_true", help="Don't stack")
@@ -266,7 +278,7 @@ outdir = output_tools.make_plot_dir(args.outpath, args.outfolder, eoscp=args.eos
 groups = Datagroups(
     args.infile,
     filterGroups=args.procFilters,
-    excludeGroups=None if args.procFilters else ["QCD"],
+    excludeGroups=args.excludeProcs,
 )
 
 if not args.fineGroups:
