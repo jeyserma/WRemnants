@@ -1012,7 +1012,7 @@ class TheoryHelper(object):
         if self.as_from_corr and self.from_hels and not asname.endswith("ByHelicity"):
             asname += "ByHelicity"
 
-        input_variation = int(as_range) * 10**(-len(as_range))
+        input_variation = int(as_range) * 10 ** (-len(as_range))
         target_variation = 0.002 if noi else 0.0015
         scale = target_variation / input_variation
 
