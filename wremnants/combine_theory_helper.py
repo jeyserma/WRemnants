@@ -1001,7 +1001,7 @@ class TheoryHelper(object):
             # so fall back to CT18Z for other sets
             if not ("MSHT20" in asname or "CT18Z" in asname or "MSHT20an3lo" in asname):
                 asname = "scetlib_dyturboCT18Z_pdfasCorr"
-                as_range = "002"
+                as_range = theory_tools.pdfMap["ct18z"]["alphasRange"]
             if asname.replace("Corr", "") not in self.datagroups.args_from_metadata(
                 "theoryCorr"
             ):
@@ -1013,24 +1013,17 @@ class TheoryHelper(object):
         if self.as_from_corr and self.from_hels and not asname.endswith("ByHelicity"):
             asname += "ByHelicity"
 
-        if noi:
-            # scale to 0.002, helps with the fit
-            if as_range == "002":
-                scale = 1.0
-            elif as_range == "001":
-                scale = 2.0
-        else:
-            # scale to 0.0015
-            if as_range == "002":
-                scale = 0.75
-            elif as_range == "001":
-                scale = 1.5
+        input_variation = int(as_range) * 10**(-len(as_range))
+        target_variation = 0.002 if noi else 0.0015
+        scale = target_variation / input_variation
 
         as_replace = [("as", "pdfAlphaS")]
         if as_range == "002":
             as_replace.extend([("0116", "Down"), ("0120", "Up")])
         elif as_range == "001":
             as_replace.extend([("0117", "Down"), ("0119", "Up")])
+        else:
+            raise RuntimeError("Unsupported alphaS range for PDF set!")
 
         as_args = dict(
             histname=asname,

@@ -1016,6 +1016,10 @@ def build_weight_expr(df, exclude_weights=[]):
         logger.info("Adding additional weight '{extra_weight}'")
         found_weights.append("extra_weight")
 
+    if "central_weight" in valid_cols:
+        logger.info("Adding additional central weight 'central_weight'")
+        found_weights.append("central_weight")
+
     weight_expr = "*".join(found_weights)
 
     logger.debug(f"Weight is {weight_expr}")
@@ -1025,10 +1029,7 @@ def build_weight_expr(df, exclude_weights=[]):
 
 def define_nominal_weight(df):
     logger.debug("Defining nominal weight")
-    if "central_weight" in df.GetColumnNames():
-        return df.Define(f"nominal_weight", build_weight_expr(df) + " * central_weight")
-    else:
-        return df.Define(f"nominal_weight", build_weight_expr(df))
+    return df.Define(f"nominal_weight", build_weight_expr(df))
 
 
 def define_breit_wigner_weights(df, proc):

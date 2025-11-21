@@ -773,8 +773,8 @@ def make_uncertainty_helper_by_helicity(
         "W": ("WplusmunuPostVFP", "WminusmunuPostVFP"),
     }
 
-    def _collect_hist(h, filename):
-        hist_key = f"nominal_gen_{h}"
+    def _collect_hist(hist_name, filename):
+        hist_key = f"nominal_gen_{hist_name}"
         hists = []
         for process in proc_map.get(proc, ()):
             with h5py.File(filename, "r") as h5file:
@@ -798,7 +798,7 @@ def make_uncertainty_helper_by_helicity(
     if h_nom is None:
         return None
 
-    if den == h_nom:
+    if den == nom:
         h_den = h_nom
     else:
         h_den = _collect_hist(den, filename_den)
