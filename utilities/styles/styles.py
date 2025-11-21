@@ -12,12 +12,14 @@ def translate_html_to_latex(n):
     # transform html style formatting into latex style
     if "</" in n:
         n = (
-            f"${n}$".replace("<i>", r"\mathit{")
+            n.replace("<i>", r"\mathit{")
+            .replace("</i>", "}")
             .replace("<sub>", "_{")
             .replace("<sup>", "^{")
-            .replace("</i>", "}")
             .replace("</sub>", "}")
             .replace("</sup>", "}")
+            .replace(r"μ", r"\mu")
+            .replace(r"ε", r"\epsilon")
             .replace(" ", r"\ ")
         )
     return n
@@ -132,7 +134,7 @@ axis_labels = {
     "muonJetPt": {"label": r"$\mathit{p}_{T}^\mathrm{jet[\mu]}$", "unit": "GeV"},
     "recoil_perp": {"label": r"$\it{u}_{\mathrm{T}}^{\perp}$", "unit": "GeV"},
     "recoil_para": {"label": r"$\it{u}_{\mathrm{T}}^{\parallel}$", "unit": "GeV"},
-    "qGen": r"$|\mathit{q}^{\mu}|$",
+    "qGen": r"$\mathit{q}^{\mu}$",
     "eta": r"$\mathit{\eta}^{\mu}$",
     "etaGen": r"$\mathit{\eta}^{\mu}$",
     "abseta": r"$|\mathit{\eta}^{\mu}|$",
@@ -406,6 +408,10 @@ nuisance_grouping = {
         "pdfCT18Z",
         "pTModeling",
         "theory_ew",
+        "massShift",
+        "widthW",
+        "widthZ",
+        "sin2thetaZ",
     ],
     "unfolding_min": [
         "Total",
@@ -432,6 +438,30 @@ nuisance_grouping = {
         "resumScale",
         "bcQuarkMass",
         "theory_ew",
+    ],
+    "xsecs": [
+        "Total",
+        "stat",
+        "binByBinStat",
+        "binByBinStatW",
+        "binByBinStatZ",
+        # "expNoLumi",
+        "luminosity",
+        "angularCoeffs",
+        "pdfCT18Z",
+        "pTModeling",
+        "theory_ew",
+        "massShift",
+        "widthW",
+        "widthZ",
+        "sin2thetaZ",
+        "muon_eff_syst",
+        "muon_eff_stat",
+        "prefire",
+        "muonCalibration",
+        "Fake",
+        "recoil",
+        "CMS_background",
     ],
 }
 
@@ -498,7 +528,7 @@ impact_labels = {
     "binByBinStatWtoNMu_10": "Bin-by-bin stat. (BSM)",
     "binByBinStatWtoNMu_50": "Bin-by-bin stat. (BSM)",
     "recoil": "recoil",
-    "CMS_background": "Bkg.",
+    "CMS_background": "Other bkg.",
     "FakeHighMT": "FakeHighMT",
     "FakeLowMT": "FakeLowMT",
     "rFake": "fakerate",
