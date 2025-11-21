@@ -336,7 +336,9 @@ def postprocess_corr_hist(corrh, numh=None):
 def get_corr_name(generator, minnlo_ratio=True):
     # Hack for now
     label = generator.replace("1D", "")
-    if "dataPtll" in generator or "dataRecoPtll" in generator:
+    if (
+        "dataPtll" in generator or "dataRecoPtll" in generator
+    ) and "scetlib" not in generator:
         return "MC_data_ratio"
     if minnlo_ratio:
         return (
@@ -810,8 +812,8 @@ def make_uncertainty_helper_by_helicity(
         "W": ("WplusmunuPostVFP", "WminusmunuPostVFP"),
     }
 
-    def _collect_hist(h, filename):
-        hist_key = f"nominal_gen_{h}"
+    def _collect_hist(hist_name, filename):
+        hist_key = f"nominal_gen_{hist_name}"
         hists = []
         for process in proc_map.get(proc, ()):
             if not os.path.exists(filename):
@@ -840,7 +842,7 @@ def make_uncertainty_helper_by_helicity(
     if h_nom is None:
         return None
 
-    if den == h_nom:
+    if den == nom:
         h_den = h_nom
     else:
         h_den = _collect_hist(den, filename_den)
