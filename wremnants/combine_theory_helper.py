@@ -1007,6 +1007,7 @@ class TheoryHelper(object):
                 or "CT18Z" in asname
                 or "MSHT20an3lo" in asname
                 or "Lattice" in asname
+                or "nnlojet" in asname
             ):  # TODO should fix the correction file name for Lattice?
                 asname = "scetlib_dyturboCT18Z_pdfasCorr"
                 as_range = "002"
