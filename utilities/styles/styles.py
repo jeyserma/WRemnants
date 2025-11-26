@@ -54,9 +54,10 @@ process_colors = {
     "Fake_e": "#964A8B",
     "Fake_mu": "#964A8B",
     "Prompt": "#E42536",
-    "WtoNMu_5": "#409C3D",
-    "WtoNMu_10": "#2BC74D",
-    "WtoNMu_50": "#00FF80",
+    "WtoNMu_5": "#006400",
+    "WtoNMu_10": "#008C00",
+    "WtoNMu_30": "#00B965",
+    "WtoNMu_50": "#00FFFF",
     "BSM": "#409C3D",
 }
 
@@ -120,6 +121,7 @@ process_labels = {
     "Prompt": "Prompt",
     "WtoNMu_5": r"W$^{\pm}\to\mathrm{N}\mu (5GeV)$",
     "WtoNMu_10": r"W$^{\pm}\to\mathrm{N}\mu (10GeV)$",
+    "WtoNMu_30": r"W$^{\pm}\to\mathrm{N}\mu (30GeV)$",
     "WtoNMu_50": r"W$^{\pm}\to\mathrm{N}\mu (50GeV)$",
 }
 
@@ -378,6 +380,7 @@ nuisance_grouping = {
         "binByBinStatZtautau",
         "binByBinStatWtoNMu_5",
         "binByBinStatWtoNMu_10",
+        "binByBinStatWtoNMu_30",
         "binByBinStatWtoNMu_50",
     ],
     "unfolding": [
@@ -497,6 +500,7 @@ translate_selection = {
 impact_labels = {
     "WtoNMu_5": "<i>μ</i><sub>W→μN(5GeV)</sub>",
     "WtoNMu_10": "<i>μ</i><sub>W→μN(10GeV)</sub>",
+    "WtoNMu_30": "<i>μ</i><sub>W→μN(30GeV)</sub>",
     "WtoNMu_50": "<i>μ</i><sub>W→μN(50GeV)</sub>",
     "massShiftZ100MeV": "<i>m</i><sub>Z</sub>",
     "massShiftW100MeV": "<i>m</i><sub>W</sub>",
@@ -513,7 +517,7 @@ impact_labels = {
     "QCDscaleWPtHelicityMiNNLO": "<i>μ</i><sub>R </sub> <i>μ</i><sub>F </sub> scale (W)",
     "QCDscaleZPtChargeHelicityMiNNLO": "<i>μ</i><sub>R </sub> <i>μ</i><sub>F </sub> scale (Z)",
     "QCDscaleWPtChargeHelicityMiNNLO": "<i>μ</i><sub>R </sub> <i>μ</i><sub>F </sub> scale (W)",
-    "binByBinStat": "Bin-by-bin stat.",
+    "binByBinStat": "Simulation stat.",
     "binByBinStatW": "Bin-by-bin stat. (W)",
     "binByBinStatZ": "Bin-by-bin stat. (Z)",
     "binByBinStatWmunu": "Bin-by-bin stat. (W→μν)",
@@ -526,6 +530,7 @@ impact_labels = {
     "binByBinStatTop": "Bin-by-bin stat. (top)",
     "binByBinStatWtoNMu_5": "Bin-by-bin stat. (BSM)",
     "binByBinStatWtoNMu_10": "Bin-by-bin stat. (BSM)",
+    "binByBinStatWtoNMu_30": "Bin-by-bin stat. (BSM)",
     "binByBinStatWtoNMu_50": "Bin-by-bin stat. (BSM)",
     "recoil": "recoil",
     "CMS_background": "Other bkg.",

@@ -166,7 +166,7 @@ def make_parser(parser=None):
         type=str,
         nargs="*",
         help="Don't run over processes belonging to these groups (only accepts exact group names)",
-        default=["QCD", "WtoNMu_5", "WtoNMu_10", "WtoNMu_50"],
+        default=["QCD", "WtoNMu_5", "WtoNMu_10", "WtoNMu_30", "WtoNMu_50"],
     )
     parser.add_argument(
         "--filterProcGroups",
