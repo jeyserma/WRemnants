@@ -74,6 +74,10 @@ def make_datagroups_2016(
             members=dg.get_members_from_results(startswith=["WtoNMu_MN-10-"]),
         )
         dg.addGroup(
+            "WtoNMu_30",
+            members=dg.get_members_from_results(startswith=["WtoNMu_MN-30-"]),
+        )
+        dg.addGroup(
             "WtoNMu_50",
             members=dg.get_members_from_results(startswith=["WtoNMu_MN-50-"]),
         )

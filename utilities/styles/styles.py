@@ -55,8 +55,8 @@ process_colors = {
     "Fake_mu": "#964A8B",
     "Prompt": "#E42536",
     "WtoNMu_5": "#006400",
-    "WtoNMu_10": "#008C00",
-    "WtoNMu_30": "#00B965",
+    "WtoNMu_10": "#009933",
+    "WtoNMu_30": "#00CC99",
     "WtoNMu_50": "#00FFFF",
     "BSM": "#409C3D",
 }
@@ -119,10 +119,10 @@ process_labels = {
     "Fake_e": "Nonprompt (e)",
     "Fake_mu": r"Nonprompt ($\mu$)",
     "Prompt": "Prompt",
-    "WtoNMu_5": r"W$^{\pm}\to\mathrm{N}\mu (5GeV)$",
-    "WtoNMu_10": r"W$^{\pm}\to\mathrm{N}\mu (10GeV)$",
-    "WtoNMu_30": r"W$^{\pm}\to\mathrm{N}\mu (30GeV)$",
-    "WtoNMu_50": r"W$^{\pm}\to\mathrm{N}\mu (50GeV)$",
+    "WtoNMu_5": r"W$^{\pm}\to\mu\mathrm{N} (5GeV)$",
+    "WtoNMu_10": r"W$^{\pm}\to\mu\mathrm{N} (10GeV)$",
+    "WtoNMu_30": r"W$^{\pm}\to\mu\mathrm{N} (30GeV)$",
+    "WtoNMu_50": r"W$^{\pm}\to\mu\mathrm{N} (50GeV)$",
 }
 
 axis_labels = {
@@ -498,10 +498,10 @@ translate_selection = {
 }
 
 impact_labels = {
-    "WtoNMu_5": "<i>μ</i><sub>W→μN(5GeV)</sub>",
-    "WtoNMu_10": "<i>μ</i><sub>W→μN(10GeV)</sub>",
-    "WtoNMu_30": "<i>μ</i><sub>W→μN(30GeV)</sub>",
-    "WtoNMu_50": "<i>μ</i><sub>W→μN(50GeV)</sub>",
+    "WtoNMu_5": "<i>μ</i><sub>W→Nμ(5GeV)</sub>",
+    "WtoNMu_10": "<i>μ</i><sub>W→Nμ(10GeV)</sub>",
+    "WtoNMu_30": "<i>μ</i><sub>W→Nμ(30GeV)</sub>",
+    "WtoNMu_50": "<i>μ</i><sub>W→Nμ(50GeV)</sub>",
     "massShiftZ100MeV": "<i>m</i><sub>Z</sub>",
     "massShiftW100MeV": "<i>m</i><sub>W</sub>",
     "widthZ": "Γ<i>m</i><sub>Z</sub>",
