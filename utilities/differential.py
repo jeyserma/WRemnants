@@ -129,13 +129,8 @@ def get_dilepton_axes(
 
         if v == "ptVGen":
             edges = reco_edges["ptll"]
-            if rebin_pt:
-                # use 2 ptll bin for each ptVGen bin, last bin is overflow
-                if len(edges) % 2:
-                    # in case it's an odd number of edges, last two bins are overflow
-                    edges = edges[:-1]
-                # 1 gen bin for 2 reco bins
-                edges = edges[::2]
+            if rebin_pt is not None:
+                edges = rebin_pt(edges)
 
             axes.append(
                 hist.axis.Variable(
