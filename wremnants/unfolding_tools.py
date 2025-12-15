@@ -346,16 +346,16 @@ class UnfolderZ:
         self.poi_as_noi = poi_as_noi
         self.unfolding_levels = unfolding_levels
 
-        # self.qcdScaleByHelicity_helper =
+        def rebin_pt(edges):
+            # use 2 ptll bin for each ptVGen bin, except first and last
+            # first gen bin same size as reco bin, then 1 gen bin for 2 reco bins
+            new_edges = np.array([*edges[:2], *edges[3::2]])
+            if len(new_edges) % 2:
+                # in case it's an odd number of edges, last two bins are overflow
+                edges = edges[:-1]
+            return new_edges
 
-        if self.add_helicity_axis:
-            # helper to derive helicity xsec shape from event by event reweighting
-            self.weightsByHelicity_helper_unfolding = helicity_utils.make_helicity_weight_helper(
-                is_z=True,
-                filename=f"{common.data_dir}/angularCoefficients/w_z_helicity_xsecs_maxFiles_m1_alphaSunfoldingBinning_helicity.hdf5",
-                # filename=f"{common.data_dir}/angularCoefficients/w_z_helicity_xsecs_maxFiles_m1_nnpdf31_alphaSunfoldingBinning_helicity.hdf5",
-                rebi_ptVgen=True,
-            )
+        self.weightsByHelicity_helper_unfolding = None
 
         self.unfolding_axes = {}
         self.unfolding_cols = {}
@@ -368,13 +368,22 @@ class UnfolderZ:
                 level,
                 flow_y=self.poi_as_noi,
                 add_out_of_acceptance_axis=self.poi_as_noi,
-                rebin_pt=True,
+                rebin_pt=rebin_pt,
             )
             self.unfolding_axes[level] = a
             self.unfolding_cols[level] = c
             self.unfolding_selections[level] = s
 
             if self.add_helicity_axis:
+                if self.weightsByHelicity_helper_unfolding is None:
+                    edges = [ax for ax in a if ax.name == "ptVGen"][0].edges
+                    # helper to derive helicity xsec shape from event by event reweighting
+                    self.weightsByHelicity_helper_unfolding = helicity_utils.make_helicity_weight_helper(
+                        is_z=True,
+                        filename=f"{common.data_dir}/angularCoefficients/w_z_helicity_xsecs_maxFiles_m1_alphaSunfoldingBinning_helicity.hdf5",
+                        rebin_ptVgen_edges=edges,
+                    )
+
                 for ax in a:
                     if ax.name == "acceptance":
                         continue
@@ -383,6 +392,7 @@ class UnfolderZ:
                     wbh_axis = self.weightsByHelicity_helper_unfolding.hist.axes[
                         ax.name.replace("Gen", "gen")
                     ]
+
                     if any(ax.edges != wbh_axis.edges):
                         raise RuntimeError(
                             f"""
