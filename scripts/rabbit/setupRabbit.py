@@ -166,7 +166,7 @@ def make_parser(parser=None):
         type=str,
         nargs="*",
         help="Don't run over processes belonging to these groups (only accepts exact group names)",
-        default=["QCD", "WtoNMu_5", "WtoNMu_10", "WtoNMu_50"],
+        default=["QCD"],
     )
     parser.add_argument(
         "--filterProcGroups",
@@ -174,6 +174,13 @@ def make_parser(parser=None):
         nargs="*",
         help="Only run over processes belonging to these groups",
         default=[],
+    )
+    parser.add_argument(
+        "--addBSM",
+        type=str,
+        default=None,
+        help="Add BSM model",
+        choices=["WtoNMu_0", "WtoNMu_5", "WtoNMu_10", "WtoNMu_30", "WtoNMu_50"],
     )
     parser.add_argument(
         "-x",
@@ -931,6 +938,7 @@ def setup(
         xnorm=any(
             inputBaseName.startswith(x) for x in ["gen", "xnorm", "prefsr", "postfsr"]
         ),
+        bsm_model=args.addBSM,
     )
 
     datagroups.fit_axes = fitvar
@@ -997,6 +1005,15 @@ def setup(
             base_group = "Wenu" if datagroups.flavor == "e" else "Wmunu"
         else:
             base_group = "Zee" if datagroups.flavor == "ee" else "Zmumu"
+
+    if args.addBSM == "WtoNMu_0":
+        # add a proxy BSM group as a copy of the SM
+        datagroups.copyGroup("Wmunu", "WtoNMu_0")
+
+        # normalize total cross section to BSM default
+        total_xsec = sum([m.xsec for m in datagroups.groups["WtoNMu_0"].members])
+        for member in datagroups.groups["WtoNMu_0"].members:
+            member.xsec = common.xsec_WtoNMu * member.xsec / total_xsec
 
     if args.addTauToSignal:
         # add tau signal processes to signal group
