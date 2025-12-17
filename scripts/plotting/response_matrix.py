@@ -292,6 +292,93 @@ for g_name, group in datagroups.items():
             else {"charge": -1.0j if channel == "minus" else 1.0j}
         )
 
+        if "resolution" in args.histName or "relResolution" in args.histName:
+
+            if "relResolution" in args.histname:
+                relative = True
+            else:
+                relative = False
+
+            fig = plt.figure(figsize=(10, 6))
+            ax = fig.add_subplot()
+
+            vreco = translate_label["ptll"]
+            vgen = translate_label["ptVGen"]
+            binlabel = translate_label["abs(yll)"]
+
+            ax.set_xlabel(vgen)
+            vreco = (
+                vreco.replace(r"[\mathrm{GeV}]", "")
+                .replace("$", "")
+                .replace("(V)", "(Z)")
+                .replace("Reco", "")
+                .replace(r"\ ", "")
+            )
+            vgen = (
+                vgen.replace(r"[\mathrm{GeV}]", "")
+                .replace("$", "")
+                .replace("(V)", "(Z)")
+                .replace("Gen", "")
+                .replace(r"\ ", "")
+            )
+            if relative:
+                ylabel = rf"$\sigma(({vreco} - {vgen}) / {vgen})$"
+            else:
+                ylabel = rf"$\sigma({vreco} - {vgen})$"
+            ax.set_ylabel(ylabel)
+
+            x = histo.axes["ptll"].edges
+            x_centers = histo.axes["ptll"].centers
+            r_centers = histo.axes["ptll_resolution"].centers
+
+            for idx, ibin in enumerate(histo.axes["absYll"]):
+                values = histo[{"absYll": idx}].values()
+
+                mean_res = np.zeros(len(x_centers))
+                std_res = np.zeros(len(x_centers))
+
+                for i in range(len(x_centers)):
+                    weights = values[:, i]
+
+                    if weights.sum() == 0:
+                        mean_res[i] = np.nan
+                        std_res[i] = np.nan
+                        continue
+
+                    # weighted mean
+                    mean = np.average(r_centers, weights=weights)
+
+                    # weighted variance
+                    var = np.average((r_centers - mean) ** 2, weights=weights)
+
+                    mean_res[i] = mean
+                    std_res[i] = np.sqrt(var)
+
+                ax.stairs(std_res, x, label=f"{binlabel}[{idx}]")
+
+            plot_tools.add_cms_decor(
+                ax, args.cmsDecor, data=True, lumi=None, loc=args.logoPos
+            )
+            plot_tools.addLegend(
+                ax, ncols=args.legCols, loc=args.legPos, text_size=args.legSize
+            )
+
+            ax.set_ylim(0, 0.9)
+            ax.set_xlim(0, 100)
+
+            outfile = f"resolution_1d_{g_name}_pt"
+
+            plot_tools.save_pdf_and_png(outdir, outfile)
+
+            output_tools.write_index_and_log(
+                outdir,
+                outfile,
+                analysis_meta_info={args.infile: groups.getMetaInfo()},
+                args=args,
+            )
+
+            continue
+
         # plot slices of resolution
         if all(x in histo.axes.name for x in ["pt", "ptGen", "absEtaGen"]):
             plot_resolution(
