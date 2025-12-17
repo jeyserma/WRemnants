@@ -77,6 +77,11 @@ parser.add_argument(
     help="Value for the transverse mass cut in the event selection",
 )
 parser.add_argument(
+    "--mtGenCut",
+    action="store_true",
+    help="Apply mt cut at generator level",
+)
+parser.add_argument(
     "--vetoGenPartPt",
     type=float,
     default=15.0,
@@ -809,7 +814,7 @@ def build_graph(df, dataset):
                 "pt_min": template_minpt,
                 "pt_max": template_maxpt,
                 "abseta_max": template_maxeta,
-                "mtw_min": None,
+                "mtw_min": args.mtCut if args.mtGenCut else None,
             }
             if hasattr(dataset, "out_of_acceptance"):
                 df = unfolding_tools.select_fiducial_space(
