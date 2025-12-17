@@ -104,7 +104,7 @@ def get_dilepton_axes(
     gen_level,
     add_out_of_acceptance_axis=False,
     flow_y=False,
-    rebin_pt=False,
+    rebin_pt=None,
 ):
     """
     construct axes, columns, and selections for differential Z dilepton measurement from correponding reco edges. Currently supported: pT(Z), |yZ|
