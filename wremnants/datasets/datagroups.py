@@ -895,9 +895,10 @@ class Datagroups(object):
 
         if self.groups[group_name].memberOp is not None:
             base_member_op = self.groups[group_name].memberOp[base_member_idx]
-            return base_member_op(nominal_hist)
-        else:
-            return nominal_hist
+            if base_member_op is not None:
+                return base_member_op(nominal_hist)
+
+        return nominal_hist
 
     def getPOINames(self, gen_bin_indices, axes_names, base_name, flow=True):
         poi_names = []

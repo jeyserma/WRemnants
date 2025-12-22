@@ -69,7 +69,7 @@ class Datagroup(object):
             self.memberOp = [None] * len(self.members)
 
         self.memberOp.append(deepcopy(member_operation))
-        self.members.append(member)
+        self.members.append(deepcopy(member))
 
     def deleteMembers(self, members=None):
         if members is None:

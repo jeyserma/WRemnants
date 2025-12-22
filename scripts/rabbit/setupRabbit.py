@@ -1007,8 +1007,8 @@ def setup(
             base_group = "Zee" if datagroups.flavor == "ee" else "Zmumu"
 
     if args.addBSM == "WtoNMu_0":
-        # add a proxy BSM group as a copy of the SM
-        datagroups.copyGroup("Wmunu", "WtoNMu_0")
+        # an empty group should have been created, add SM W members as proxy for BSM
+        datagroups.groups["WtoNMu_0"].addMembers(datagroups.groups["Wmunu"].members)
 
         # normalize total cross section to BSM default
         total_xsec = sum([m.xsec for m in datagroups.groups["WtoNMu_0"].members])
