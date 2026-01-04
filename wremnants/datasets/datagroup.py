@@ -61,7 +61,7 @@ class Datagroup(object):
                 "'member_operations' has to be a string or a list with the same length as 'members'!"
             )
 
-    def addMember(self, member, member_operation=None):
+    def addMember(self, member, member_operation=None, deepcopy_member=False):
         # adds a member to the existing members of a given group
 
         # add member operation
@@ -69,7 +69,10 @@ class Datagroup(object):
             self.memberOp = [None] * len(self.members)
 
         self.memberOp.append(deepcopy(member_operation))
-        self.members.append(deepcopy(member))
+        if deepcopy_member:
+            self.members.append(deepcopy(member))
+        else:
+            self.members.append(member)
 
     def deleteMembers(self, members=None):
         if members is None:
@@ -83,7 +86,7 @@ class Datagroup(object):
 
         if member not in [m for m in self.members]:
             logger.warning(
-                f"The member {member.name} can not be found in the group {self.name}! Do nothing here."
+                f"The member {member.name} can not be found in the group {self.name}! Available members are {[m.name for m in self.members]}. Do nothing here."
             )
             return
 
