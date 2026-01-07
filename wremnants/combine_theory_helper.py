@@ -913,29 +913,16 @@ class TheoryHelper(object):
             else theory_tools.pdf_inflation_factor(pdfInfo, self.args.noi)
         )
         pdf_hist = pdfName
-        pdf_corr_hist = (
-            f"scetlib_dyturbo{pdf.upper().replace('AN3LO', 'an3lo')}VarsCorr"
-            if self.corr_hist_name == "scetlib_dyturboCorr"
-            else self.corr_hist_name.replace(
-                "Corr", "_CT18ZVarsCorr"
-            )  # TODO how do we get around this?
-        )
-        if self.from_hels:
-            pdf_hist += "UncertByHelicity"
-            pdf_corr_hist += "UncertByHelicity"
-        symmetrize = "quadratic"
 
         if self.pdf_from_corr:
-            theory_unc = self.datagroups.args_from_metadata("theoryCorr")
-            if not theory_unc:
-                logger.error(
-                    "Can not add resummation uncertainties. No theory correction was applied!"
-                )
-            if pdf_hist[:-4] not in theory_unc:
-                logger.error(
-                    f"Did not find {pdf_hist} correction in file! Cannot use SCETlib+DYTurbo PDF uncertainties"
-                )
+            pdf_name_stripped = pdfName[3:] if pdfName.startswith("pdf") else pdfName
+            pdf_corr_hist = (
+                f"{self.corr_hist_name.replace("Corr")}{pdf_name_stripped}VarsCorr"
+            )
             pdf_hist = pdf_corr_hist
+
+        if self.from_hels:
+            pdf_hist += "UncertByHelicity"
 
         logger.info(f"Using PDF hist {pdf_hist}, apply scaling of {scale}")
 
@@ -991,34 +978,38 @@ class TheoryHelper(object):
         pdf = self.datagroups.args_from_metadata("pdfs")[0]
         pdfInfo = theory_tools.pdf_info_map("ZmumuPostVFP", pdf)
         pdfName = pdfInfo["name"]
+        pdf_name_stripped = pdfName[3:] if pdfName.startswith("pdf") else pdfName
         as_range = pdfInfo["alphasRange"]
 
         if self.as_from_corr:
-            pdf_corr_hist = (
-                f"scetlib_dyturbo{pdf.upper().replace('AN3LO', 'an3lo')}VarsCorr"
-                if self.corr_hist_name == "scetlib_dyturboCorr"
-                else self.corr_hist_name.replace("Corr", "VarsCorr")
+            asname = (
+                f"{self.corr_hist_name.replace("Corr")}{pdf_name_stripped}_pdfasCorr"
             )
-            asname = pdf_corr_hist.replace("Vars", "_pdfas")
-            # alphaS from correction histograms only available for these sets,
+
+            # alphaS from correction histograms only available for some pdf sets,
             # so fall back to CT18Z for other sets
-            if not (
-                "MSHT20" in asname
-                or "CT18Z" in asname
-                or "MSHT20an3lo" in asname
-                or "Lattice" in asname
-                or "nnlojet" in asname
-            ):  # TODO should fix the correction file name for Lattice?
-                asname = "scetlib_dyturboCT18Z_pdfasCorr"
-                as_range = theory_tools.pdfMap["ct18z"]["alphasRange"]
             if asname.replace("Corr", "") not in self.datagroups.args_from_metadata(
                 "theoryCorr"
             ):
-                logger.warning(
-                    f"AlphaS correction histogram {asname} not found in theoryCorrs."
-                )
+                asname = "scetlib_dyturboCT18Z_pdfasCorr"
+                if asname in self.datagroups.args_from_metadata("theoryCorr"):
+                    logger.warning(
+                        f"AlphaS correction histogram {asname} not found in theoryCorrs."
+                        "Falling back to scetlib_dyturboCT18Z alphaS corrections (scetlib_dyturboCT18Z_pdfasCorr)."
+                    )
+                    pdf = "ct18z"
+                    pdfInfo = theory_tools.pdf_info_map("ZmumuPostVFP", pdf)
+                    pdfName = pdfInfo["name"]
+                    as_range = pdfInfo["alphasRange"]
+                    as_range = theory_tools.pdfMap[pdf]["alphasRange"]
+                else:
+                    raise RuntimeError(
+                        f"AlphaS correction histogram {asname} not found in theoryCorrs."
+                        "Cannot add alphaS uncertainty!"
+                    )
         else:
             asname = f"{pdfName}alphaS{as_range}"
+
         if self.as_from_corr and self.from_hels and not asname.endswith("ByHelicity"):
             asname += "ByHelicity"
 

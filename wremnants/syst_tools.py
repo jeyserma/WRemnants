@@ -2575,6 +2575,7 @@ def add_theory_hists(
                 scale_cols,
                 **info,
             )
+
         if theory_helpers.get("pdf") is not None:
             pdf_helpers = theory_helpers.get("pdf")
             for pdf in args.pdfs:
@@ -2597,28 +2598,28 @@ def add_theory_hists(
                     cols,
                     **info,
                 )
-        if theory_helpers.get("pdf_from_corr") is not None:
-            pdf_from_corr_helpers = theory_helpers.get("pdf_from_corr")
-            for pdf in pdf_from_corr_helpers:
-                logger.debug(
-                    f"Make PDF (from correction file) uncertainty by helicity histograms for {dataset_name} and PDF from correction {pdf}"
-                )
-                add_pdfUncertByHelicity_hist(
-                    results,
-                    df,
-                    pdf_from_corr_helpers[pdf],
-                    pdf,
-                    pdf,
-                    axes,
-                    cols,
-                    **info,
-                )
-        if theory_helpers.get("alphaS") is not None:
-            for k, v in theory_helpers["alphaS"].items():
-                logger.debug(
-                    f"Make alphaS uncertainty by helicity histogram for {dataset_name} and alphaS from correction {k}"
-                )
-                add_pdfAlphaSByHelicity_hist(results, df, v, axes, cols, name=k, **info)
+        for pdf_name, pdf_from_corr_helper in theory_helpers.get(
+            "pdf_from_corr", {}
+        ).items():
+            logger.debug(
+                f"Make PDF (from correction file) uncertainty by helicity histograms for {dataset_name} and PDF from correction {pdf_name}"
+            )
+            add_pdfUncertByHelicity_hist(
+                results,
+                df,
+                pdf_from_corr_helper,
+                pdf_name,
+                pdf_name,
+                axes,
+                cols,
+                **info,
+            )
+
+        for k, v in theory_helpers.get("alphaS", {}).items():
+            logger.debug(
+                f"Make alphaS uncertainty by helicity histogram for {dataset_name} and alphaS from correction {k}"
+            )
+            add_pdfAlphaSByHelicity_hist(results, df, v, axes, cols, name=k, **info)
 
         add_breit_wigner_mass_weights_hist(
             results, df, axes, cols, proc=dataset_name, **info
