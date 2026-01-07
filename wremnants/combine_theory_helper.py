@@ -917,7 +917,7 @@ class TheoryHelper(object):
         if self.pdf_from_corr:
             pdf_name_stripped = pdfName[3:] if pdfName.startswith("pdf") else pdfName
             pdf_corr_hist = (
-                f"{self.corr_hist_name.replace("Corr")}{pdf_name_stripped}VarsCorr"
+                f"{self.corr_hist_name.replace("Corr", "")}{pdf_name_stripped}VarsCorr"
             )
             pdf_hist = pdf_corr_hist
 
@@ -982,9 +982,7 @@ class TheoryHelper(object):
         as_range = pdfInfo["alphasRange"]
 
         if self.as_from_corr:
-            asname = (
-                f"{self.corr_hist_name.replace("Corr")}{pdf_name_stripped}_pdfasCorr"
-            )
+            asname = f"{self.corr_hist_name.replace("Corr", "")}{pdf_name_stripped}_pdfasCorr"
 
             # alphaS from correction histograms only available for some pdf sets,
             # so fall back to CT18Z for other sets
