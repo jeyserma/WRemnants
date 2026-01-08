@@ -29,6 +29,17 @@ def str_to_complex_or_int(value):
             raise argparse.ArgumentTypeError(f"Invalid integer: '{value}'")
 
 
+def str_to_list_or_int(value):
+    # .strip() handles the "leading space" trick if you use it
+    value = value.strip()
+    if "," in value:
+        return [float(x) for x in value.split(",")]
+    try:
+        return int(value)
+    except ValueError:
+        raise argparse.ArgumentTypeError(f"Invalid integer: '{value}'")
+
+
 def set_parser_attribute(parser, argument, attribute, newValue):
     # change an argument of the parser, must be called before parse_arguments
     logger = logging.child_logger(__name__)
@@ -261,6 +272,7 @@ def common_parser(analysis_label=""):
             "2016PreVFP",
             "2016PostVFP",
             "2017",
+            "2017G",
             "2017H",
             "2018",
             "2023_PUAVE1",
@@ -600,7 +612,7 @@ def common_parser(analysis_label=""):
                     )
                 sfFile = "muonSF/2017/allSmooth_2017_vtxAgnIso.root"
             else:
-                raise NotImplementedError(f"Era {commonargs.era} is not yet supported")
+                sfFile = ""
 
         sfFile = f"{common.data_dir}/{sfFile}"
     else:
