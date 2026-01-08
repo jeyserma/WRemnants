@@ -1841,7 +1841,7 @@ def add_theory_corr_hists(
 
         var_axis = helpers[generator].tensor_axes[-1]
 
-        name = Datagroups.histName(base_name, syst=f"{generator}Corr")
+        name = Datagroups.histName(base_name, syst=f"{generator}_Corr")
         weight_tensor_name = f"{generator}Weight_tensor"
         add_syst_hist(
             results, df, name, axes, cols, weight_tensor_name, var_axis, **kwargs
@@ -1878,7 +1878,7 @@ def add_theory_corr_hists(
             # include nominal as well
             omegaidxs = [0] + omegaidxs
 
-            tensor_name = f"{generator}FlavDepNP"
+            tensor_name = f"{generator}_FlavDepNP"
             if tensor_name not in df.GetColumnNames():
                 np_idx_helper = ROOT.wrem.index_taker[
                     df.GetColumnType(weight_tensor_name), len(omegaidxs)
@@ -1934,7 +1934,7 @@ def add_theory_corr_hists(
             # include nominal as well
             scaleidxs = [0] + scaleidxs
 
-            tensor_name = f"{generator}PtDepScales"
+            tensor_name = f"{generator}_PtDepScales"
             if tensor_name not in df.GetColumnNames():
                 scale_idx_helper = ROOT.wrem.index_taker[
                     df.GetColumnType(weight_tensor_name), len(scaleidxs)

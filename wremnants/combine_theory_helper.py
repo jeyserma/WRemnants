@@ -41,7 +41,7 @@ class TheoryHelper(object):
 
         self.datagroups = datagroups
         corr_hists = self.datagroups.args_from_metadata("theoryCorr")
-        self.corr_hist_name = (corr_hists[0] + "Corr") if corr_hists else None
+        self.corr_hist_name = (corr_hists[0] + "_Corr") if corr_hists else None
 
         self.syst_ax = "vars"
         self.corr_hist = None
@@ -915,10 +915,14 @@ class TheoryHelper(object):
         pdf_hist = pdfName
 
         if self.pdf_from_corr:
-            pdf_name_stripped = pdfName[3:] if pdfName.startswith("pdf") else pdfName
-            pdf_corr_hist = (
-                f"{self.corr_hist_name.replace("Corr", "")}{pdf_name_stripped}VarsCorr"
-            )
+            pdf_corr_hist = f"{self.corr_hist_name.replace("Corr", "pdfvars_Corr")}"
+            if pdf_corr_hist.replace(
+                "_Corr", ""
+            ) not in self.datagroups.args_from_metadata("theoryCorr"):
+                raise RuntimeError(
+                    f"PDF correction histogram {pdf_corr_hist} not found in metadata. "
+                    "Cannot add PDF uncertainty from corrections!"
+                )
             pdf_hist = pdf_corr_hist
 
         if self.from_hels:
@@ -978,22 +982,27 @@ class TheoryHelper(object):
         pdf = self.datagroups.args_from_metadata("pdfs")[0]
         pdfInfo = theory_tools.pdf_info_map("ZmumuPostVFP", pdf)
         pdfName = pdfInfo["name"]
-        pdf_name_stripped = pdfName[3:] if pdfName.startswith("pdf") else pdfName
         as_range = pdfInfo["alphasRange"]
 
         if self.as_from_corr:
-            asname = f"{self.corr_hist_name.replace("Corr", "")}{pdf_name_stripped}_pdfasCorr"
+            asname = f"{self.corr_hist_name.replace("Corr", "pdfas_Corr")}"
+
+            print("\n\n\n\n\n")
+            print(self.datagroups.args_from_metadata("theoryCorr"))
+            print(asname)
 
             # alphaS from correction histograms only available for some pdf sets,
             # so fall back to CT18Z for other sets
-            if asname.replace("Corr", "") not in self.datagroups.args_from_metadata(
+            if asname.replace("_Corr", "") not in self.datagroups.args_from_metadata(
                 "theoryCorr"
             ):
-                asname = "scetlib_dyturboCT18Z_pdfasCorr"
-                if asname in self.datagroups.args_from_metadata("theoryCorr"):
+                asname = "scetlib_dyturbo_CT18Z_N3p0LL_N2LO_pdfas_Corr"
+                if asname.replace("_Corr", "") in self.datagroups.args_from_metadata(
+                    "theoryCorr"
+                ):
                     logger.warning(
-                        f"AlphaS correction histogram {asname} not found in theoryCorrs."
-                        "Falling back to scetlib_dyturboCT18Z alphaS corrections (scetlib_dyturboCT18Z_pdfasCorr)."
+                        f"AlphaS correction histogram {asname} not found in theoryCorrs. "
+                        "Falling back to default alphaS corrections scetlib_dyturbo_CT18Z_N3p0LL_N2LO_pdfasCorr."
                     )
                     pdf = "ct18z"
                     pdfInfo = theory_tools.pdf_info_map("ZmumuPostVFP", pdf)
@@ -1002,7 +1011,7 @@ class TheoryHelper(object):
                     as_range = theory_tools.pdfMap[pdf]["alphasRange"]
                 else:
                     raise RuntimeError(
-                        f"AlphaS correction histogram {asname} not found in theoryCorrs."
+                        f"AlphaS correction histogram {asname} not found in theoryCorrs. "
                         "Cannot add alphaS uncertainty!"
                     )
         else:

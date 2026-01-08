@@ -282,28 +282,36 @@ def define_scale_tensor(df):
 
 
 theory_corr_weight_map = {
-    "scetlib_dyturboMSHT20_pdfas": expand_pdf_entries("msht20", alphas=True),
-    "scetlib_dyturboMSHT20Vars": expand_pdf_entries("msht20"),
-    "scetlib_dyturboCT18ZVars": expand_pdf_entries("ct18z"),
-    "scetlib_dyturboN3p0LL_LatticeNP_CT18ZVars": expand_pdf_entries("ct18z"),
-    "scetlib_dyturboCT18Z_pdfas": expand_pdf_entries("ct18z", alphas=True, renorm=True),
-    "scetlib_dyturboN3p1LL_pdfas": expand_pdf_entries(
+    "scetlib_dyturbo_MSHT20_N3p0LL_N2LO_pdfas": expand_pdf_entries(
+        "msht20", alphas=True
+    ),
+    "scetlib_dyturbo_MSHT20_N3p0LL_N2LO_pdfvars": expand_pdf_entries("msht20"),
+    "scetlib_dyturbo_CT18Z_N3p0LL_N2LO_pdfvars": expand_pdf_entries("ct18z"),
+    "scetlib_dyturbo_LatticeNP_CT18Z_N3p0LL_N2LO_pdfvars": expand_pdf_entries("ct18z"),
+    "scetlib_dyturbo_CT18Z_N3p0LL_N2LO_pdfas": expand_pdf_entries(
         "ct18z", alphas=True, renorm=True
     ),
-    "scetlib_dyturboN4p0LL_pdfas": expand_pdf_entries(
+    "scetlib_dyturbo_CT18Z_N3p1LL_N2LO_pdfas": expand_pdf_entries(
         "ct18z", alphas=True, renorm=True
     ),
-    "scetlib_nnlojetN3p1LLN3LO_pdfas": expand_pdf_entries(
+    "scetlib_dyturbo_CT18Z_N4p0LL_N2LO_pdfas": expand_pdf_entries(
         "ct18z", alphas=True, renorm=True
     ),
-    "scetlib_nnlojetN4p0LLN3LO_pdfas": expand_pdf_entries(
+    "scetlib_nnlojet_CT18Z_N3p1LL_N3LO_pdfas": expand_pdf_entries(
         "ct18z", alphas=True, renorm=True
     ),
-    "scetlib_dyturboN3p0LL_LatticeNP_pdfas": expand_pdf_entries(
+    "scetlib_nnlojet_CT18Z_N4p0LLN3LO_pdfas": expand_pdf_entries(
         "ct18z", alphas=True, renorm=True
     ),
-    "scetlib_dyturboMSHT20an3lo_pdfas": expand_pdf_entries("msht20an3lo", alphas=True),
-    "scetlib_dyturboMSHT20an3loVars": expand_pdf_entries("msht20an3lo"),
+    "scetlib_dyturbo_LatticeNP_CT18Z_N3p0LL_N2LO_pdfas": expand_pdf_entries(
+        "ct18z", alphas=True, renorm=True
+    ),
+    "scetlib_dyturbo_MSHT20an3lo_N3p0LL_N2LO_pdfas": expand_pdf_entries(
+        "msht20an3lo", alphas=True
+    ),
+    "scetlib_dyturbo_MSHT20an3lo_N3p0LL_N2LO_pdfvars": expand_pdf_entries(
+        "msht20an3lo"
+    ),
     # Tested this, better not to treat this way unless using MSHT20nnlo as central set
     # "scetlib_dyturboMSHT20mbrange" : expand_pdf_entries("msht20mbrange", renorm=True),
     # "scetlib_dyturboMSHT20mcrange" : expand_pdf_entries("msht20mcrange", renorm=True),
