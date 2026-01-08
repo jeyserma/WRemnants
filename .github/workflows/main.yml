@@ -323,7 +323,7 @@ jobs:
           scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run.sh rabbit_fit.py 
           $WREMNANTS_OUTDIR/WMass_eta_pt_charge_bsm/WMass.hdf5 -o $WREMNANTS_OUTDIR/WMass_eta_pt_charge_bsm/ 
           -t -1 --doImpacts --globalImpacts --saveHists --computeHistErrors --saveHistsPerProcess --computeVariations --computeHistImpacts
-          --expectSignal 0 --allowNegativePOI --binByBinStatMode full
+          --expectSignal WtoNMu_5 0 --allowNegativePOI --binByBinStatMode full
           -m Project ch0 pt -m Project ch0 eta -m Normalize ch0 pt -m Select WtoNMu_5_masked 
           
       #--scan 'WtoNMu_5'
@@ -943,8 +943,8 @@ jobs:
       - name: alphaS impacts
         run: >-
           scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run.sh rabbit_plot_pulls_and_impacts.py
-          ${WREMNANTS_OUTDIR}/ZMassDilepton_ptll_yll/fitresults.hdf5 --title CMS --subtitle Preliminary
-          --showNumbers --pullrange '2.1' --config utilities/styles/styles.py --oneSidedImpacts --grouping max 
+          ${WREMNANTS_OUTDIR}/ZMassDilepton_ptll_yll/fitresults.hdf5 --title CMS --subtitle Preliminary 
+          --showNumbers --pullrange '2.1' --config utilities/styles/styles.py --oneSidedImpacts --grouping min 
           -o $WEB_DIR/$PLOT_DIR --otherExtensions pdf png -n 50 --scaleImpacts 2.0
 
       - name: setup

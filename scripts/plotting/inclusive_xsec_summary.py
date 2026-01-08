@@ -43,17 +43,16 @@ grouping = getattr(config, "nuisance_grouping", {}).get("xsecs", None)
 translate_label = getattr(config, "systematics_labels", {})
 
 fitresult, meta = rabbit.io_tools.get_fitresult(args.infile, meta=True)
-result = fitresult["physics_models"]
+result = fitresult["mappings"]
 
 pdf_results = {}
 comp_result = {}
-# pdf_lumis = {}
 for pdf_file in args.pdfFiles:
     pdf_name = pdf_file.split("/")[-2].split("_")[-1]
 
     pdf_result, pdf_meta = rabbit.io_tools.get_fitresult(pdf_file, meta=True)
 
-    pdf_model = pdf_result["physics_models"]
+    pdf_model = pdf_result["mappings"]
 
     if "CompositeModel" in pdf_model.keys():
         comp_result[pdf_name] = pdf_model["CompositeModel"]
