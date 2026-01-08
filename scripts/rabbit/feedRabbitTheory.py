@@ -476,7 +476,7 @@ parser.add_argument(
     help="Input unfolded fit result for the Z distributions.",
 )
 parser.add_argument(
-    "-m", "--physicsModel", type=str, default="Select helicitySig:slice(0,1)"
+    "--fitresultMapping", type=str, default="Select helicitySig:slice(0,1)"
 )
 parser.add_argument(
     "--channelSigmaUL",
@@ -590,15 +590,13 @@ else:
         args.infile, result="asimov", meta=True
     )
     logger.debug(
-        f"Available models in fit result: {list(fitresult['physics_models'].keys())}"
+        f"Available models in fit result: {list(fitresult['mappings'].keys())}"
     )
 
     # covariance across any number of physics models
     logger.debug("Reading data covariance matrix from fit result")
     h_data_cov = (
-        fitresult["physics_models"][args.physicsModel][
-            "hist_postfit_inclusive_cov"
-        ].get()
+        fitresult["mappings"][args.fitresultMapping]["hist_postfit_inclusive_cov"].get()
         * 16800**2
     )
     writer.add_data_covariance(h_data_cov)  # N.B: run fit with --externalCovariance
@@ -606,12 +604,12 @@ else:
     # the order of add_channel must be OPPOSITE of what is in postfit_cov due to rabbit
 
     logger.debug(
-        f"Available channels in fit result model {args.physicsModel}: {list(fitresult['physics_models'][args.physicsModel]['channels'].keys())}"
+        f"Available channels in fit result model {args.fitresultMapping}: {list(fitresult['mappings'][args.fitresultMapping]['channels'].keys())}"
     )
     # if set, read and initialize the W lepton channel
     if args.fitW:
         h_data_prefsrLep = (
-            fitresult["physics_models"][args.physicsModel]["channels"][args.channelW][
+            fitresult["mappings"][args.fitresultMapping]["channels"][args.channelW][
                 "hist_postfit_inclusive"
             ].get()
             * 16800
@@ -621,7 +619,7 @@ else:
 
     # if set, read and initialize Ai's channel
     if args.fitAngularCoeffs:
-        h_data_ai = fitresult["physics_models"][args.physicsModel]["channels"][
+        h_data_ai = fitresult["mappings"][args.fitresultMapping]["channels"][
             args.channelAis
         ]["hist_postfit_inclusive"].get()
         writer.add_channel(h_data_ai.axes, "chAis")
@@ -633,7 +631,7 @@ else:
     # read and initialize sigmaUL channel
     if not args.noFitSigmaUL:
         h_data = (
-            fitresult["physics_models"][args.physicsModel]["channels"][
+            fitresult["mappings"][args.fitresultMapping]["channels"][
                 args.channelSigmaUL
             ]["hist_postfit_inclusive"].get()
             * 16800
