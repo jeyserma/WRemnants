@@ -76,12 +76,6 @@ xsec_keys = [
     (r"$\mathrm{W}^{+}$", "Project ch1_masked qGen", "ch1_masked", {"qGen": 1}),
     (r"$\mathrm{W}$", "Project ch1_masked", "ch1_masked", None),
     (r"$\mathrm{Z}$", "Project ch0_masked", "ch0_masked", None),
-    # (
-    #     r"$\mathrm{W}^{-}/\mathrm{W}^{+}$",
-    #     "Ratio ch1_masked ch1_masked qGen:0,ptGen:sum,absEtaGen:sum qGen:1,ptGen:sum,absEtaGen:sum",
-    #     "ch1_masked",
-    #     None,
-    # ),
     (
         r"$\mathrm{W}^{+}/\mathrm{W}^{-}$",
         "Ratio ch1_masked ch1_masked qGen:1,ptGen:sum,absEtaGen:sum qGen:0,ptGen:sum,absEtaGen:sum",

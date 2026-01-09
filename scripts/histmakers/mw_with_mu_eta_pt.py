@@ -786,7 +786,7 @@ def build_graph(df, dataset):
             )
         cols = [*cols, "run4axis"]
 
-    if isWmunu:
+    if isBSM or isWmunu:
         # to compute inclusive cross section
         unfolding_tools.add_xnorm_histograms(
             results,

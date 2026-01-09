@@ -3,9 +3,7 @@ from wums import logging
 logger = logging.child_logger(__name__)
 
 
-def make_datagroups_lowPU(
-    dg, combine=False, excludeGroups=None, filterGroups=None, bsm_model=None
-):
+def make_datagroups_lowPU(dg, combine=False, excludeGroups=None, filterGroups=None):
     # reset datagroups
     dg.groups = {}
 

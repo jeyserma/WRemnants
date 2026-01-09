@@ -9,7 +9,6 @@ def make_datagroups_2016(
     pseudodata_pdfset=None,
     excludeGroups=None,
     filterGroups=None,
-    bsm_model=None,
 ):
     # reset datagroups
     dg.groups = {}
@@ -70,12 +69,6 @@ def make_datagroups_2016(
             "QCD",
             members=dg.get_members_from_results(startswith=["QCD"]),
         )
-        if bsm_model is not None:
-            model, mass = bsm_model.split("_")
-            dg.addGroup(
-                bsm_model,
-                members=dg.get_members_from_results(startswith=[f"{model}_MN-{mass}-"]),
-            )
     else:
         dg.addGroup(
             "Other",

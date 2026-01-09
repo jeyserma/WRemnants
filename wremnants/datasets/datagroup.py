@@ -61,7 +61,7 @@ class Datagroup(object):
                 "'member_operations' has to be a string or a list with the same length as 'members'!"
             )
 
-    def addMember(self, member, member_operation=None, deepcopy_member=False):
+    def addMember(self, member, member_operation=None):
         # adds a member to the existing members of a given group
 
         # add member operation
@@ -69,10 +69,7 @@ class Datagroup(object):
             self.memberOp = [None] * len(self.members)
 
         self.memberOp.append(deepcopy(member_operation))
-        if deepcopy_member:
-            self.members.append(deepcopy(member))
-        else:
-            self.members.append(member)
+        self.members.append(member)
 
     def deleteMembers(self, members=None):
         if members is None:

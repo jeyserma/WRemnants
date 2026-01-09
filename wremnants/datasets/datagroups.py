@@ -174,7 +174,7 @@ class Datagroups(object):
         # remove duplicates selected by multiple filters
         return list(set(new_groupnames))
 
-    def mergeGroups(self, groups, new_name, deepcopy_member=False):
+    def mergeGroups(self, groups, new_name):
         groups_to_merge = []
         for g in groups:
             if g in self.groups:
@@ -194,7 +194,6 @@ class Datagroups(object):
             self.groups[new_name].addMembers(
                 self.groups[group].members,
                 member_operations=self.groups[group].memberOp,
-                deepcopy_member=deepcopy_member,
             )
         self.deleteGroups([g for g in groups_to_merge if g != new_name])
 
@@ -896,10 +895,9 @@ class Datagroups(object):
 
         if self.groups[group_name].memberOp is not None:
             base_member_op = self.groups[group_name].memberOp[base_member_idx]
-            if base_member_op is not None:
-                return base_member_op(nominal_hist)
-
-        return nominal_hist
+            return base_member_op(nominal_hist)
+        else:
+            return nominal_hist
 
     def getPOINames(self, gen_bin_indices, axes_names, base_name, flow=True):
         poi_names = []

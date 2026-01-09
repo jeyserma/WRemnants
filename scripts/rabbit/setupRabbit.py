@@ -18,7 +18,6 @@ from wremnants import (
     theory_tools,
 )
 from wremnants.datasets import datagroups
-from wremnants.datasets.datagroup import Datagroup_member
 from wremnants.datasets.datagroups import Datagroups
 from wremnants.histselections import FakeSelectorSimpleABCD
 from wremnants.regression import Regressor
@@ -177,11 +176,20 @@ def make_parser(parser=None):
         default=[],
     )
     parser.add_argument(
-        "--addBSM",
+        "--addBSMProcess",
         type=str,
         default=None,
-        help="Add BSM model",
+        help="Add BSM as independent process, not propagating the effect into the fakes",
         choices=["WtoNMu_0", "WtoNMu_5", "WtoNMu_10", "WtoNMu_30", "WtoNMu_50"],
+    )
+    parser.add_argument(
+        "--addBSMMixing",
+        nargs=2,
+        default=None,
+        help="""
+        Add BSM as systematic variation on SM signal by mixing (i.e. reduce SM with by amount of BSM), the effect is also propagated into the fakes. 
+        First argument is the BSM sample name, second is the mixing (number from 0 to 1).
+        """,
     )
     parser.add_argument(
         "-x",
@@ -939,8 +947,12 @@ def setup(
         xnorm=any(
             inputBaseName.startswith(x) for x in ["gen", "xnorm", "prefsr", "postfsr"]
         ),
-        # bsm_model=args.addBSM,
     )
+
+    bsm_signals = []
+    if args.addBSMProcess:
+        combine_helpers.add_bsm_process(datagroups, args.addBSMProcess)
+        bsm_signals.append(args.addBSMProcess)
 
     datagroups.fit_axes = fitvar
     datagroups.channel = channel
@@ -1007,15 +1019,6 @@ def setup(
         else:
             base_group = "Zee" if datagroups.flavor == "ee" else "Zmumu"
 
-    # if args.addBSM == "WtoNMu_0":
-    #     # an empty group should have been created, add SM W members as proxy for BSM
-    #     datagroups.groups["WtoNMu_0"].addMembers(datagroups.groups["Wmunu"].members, deepcopy_member=True)
-
-    #     # normalize total cross section to BSM default
-    #     total_xsec = sum([m.xsec for m in datagroups.groups["WtoNMu_0"].members])
-    #     for member in datagroups.groups["WtoNMu_0"].members:
-    #         member.xsec = common.xsec_WtoNMu * member.xsec / total_xsec
-
     if args.addTauToSignal:
         # add tau signal processes to signal group
         datagroups.groups[base_group].addMembers(
@@ -1061,16 +1064,8 @@ def setup(
             )
         )
 
-    # bsm_signals = []
-    # for bsm_signal in filter(
-    #     lambda x: x.startswith("WtoNMu"), datagroups.allMCProcesses()
-    # ):
-    #     datagroups.unconstrainedProcesses.append(bsm_signal)
-    #     bsm_signals.append(bsm_signal)
-
     if datagroups.xnorm:
-        # datagroups.select_xnorm_groups([base_group, *bsm_signals], inputBaseName)
-        datagroups.select_xnorm_groups(base_group, inputBaseName)
+        datagroups.select_xnorm_groups([base_group, *bsm_signals], inputBaseName)
 
     if datagroups.xnorm or isUnfolding or isPoiAsNoi:
         datagroups.setGenAxes(
@@ -1596,55 +1591,15 @@ def setup(
             label=label,
         )
 
-    if args.addBSM is not None and wmass:
+    if args.addBSMMixing is not None and wmass:
         # add BSM sample as variation on top of SM W
-        # load bsm members
-        model, mass = args.addBSM.split("_")
-        bsm_member_info = datagroups.get_members_from_results(
-            startswith=[f"{model}_MN-{mass}-"]
+        combine_helpers.add_bsm_mixing(
+            datagroups,
+            inputBaseName,
+            args.addBSMMixing[0],
+            mixing=float(args.addBSMMixing[1]),
+            passSystToFakes=passSystToFakes,
         )
-        bsm_members = [Datagroup_member(k, v) for k, v in bsm_member_info.items()]
-
-        if len(bsm_members) != 1:
-            raise NotImplementedError(
-                f"Expected exactly 1 BSM member, but got {len(bsm_members)}"
-            )
-
-        # Get SM cross section
-        xsec = 0
-        for m in datagroups.groups["Wmunu"].members:
-            xsec += m.xsec
-
-        # scale BSM cross section to SM cross section
-        for m in bsm_members:
-            m.xsec = xsec
-
-        # Apply mixing:
-        x = 0.01  # mixing
-        # Scale BSM with `f(x) = x' ...
-        preOpMap = {m: lambda h: hh.scaleHists(h, x) for m in bsm_members}
-        # ... and SM with `f(x) = 1-x'
-        preOpMap = {
-            m: lambda h: hh.scaleHists(h, 1 - x)
-            for m in datagroups.groups["Wmunu"].members
-        }
-
-        # add BSM sample to Wmunu group for this systematic
-        datagroups.groups["Wmunu"].addMembers(bsm_members)
-
-        datagroups.addSystematic(
-            histname=inputBaseName,
-            name=f"{args.addBSM}_mixing",
-            processes=["Wmunu"],
-            mirror=True,
-            noi=True,
-            noConstraint=True,
-            passToFakes=passSystToFakes,
-            preOpMap=preOpMap,
-        )
-
-        # remove the sample again
-        datagroups.groups["Wmunu"].deleteMembers(bsm_members)
 
     if ("wwidth" in args.noi and not wmass) or (
         not datagroups.xnorm and not stat_only and not args.noTheoryUnc
@@ -2986,7 +2941,7 @@ if __name__ == "__main__":
             unfolding_scalemap=unfolding_scalemap,
         )
 
-        if args.addBSM is not None:
+        if args.addBSMMixing is not None:
             # add masked channel for SM inclusive cross section with BSM variation
             datagroups_xnorm = setup(
                 writer,
@@ -3000,9 +2955,9 @@ if __name__ == "__main__":
                 channel=f"Wmunu_BSM_masked",
                 base_group="Wmunu",
             )
-            # and without BSM variation
-            bsm_tmp = args.addBSM
-            args.addBSM = None
+            # and without BSM contribution
+            tmp_mixing = args.addBSMMixing[1]
+            args.addBSMMixing[1] = 0
             datagroups_xnorm = setup(
                 writer,
                 args,
@@ -3015,7 +2970,7 @@ if __name__ == "__main__":
                 channel=f"Wmunu_masked",
                 base_group="Wmunu",
             )
-            args.addBSM = bsm_tmp
+            args.addBSMMixing[1] = tmp_mixing
 
         for bsm_signal in filter(
             lambda x: x.startswith("WtoNMu"), datagroups.allMCProcesses()
