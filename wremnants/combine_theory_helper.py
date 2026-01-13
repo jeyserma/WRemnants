@@ -986,11 +986,6 @@ class TheoryHelper(object):
 
         if self.as_from_corr:
             asname = f"{self.corr_hist_name.replace("Corr", "pdfas_Corr")}"
-
-            print("\n\n\n\n\n")
-            print(self.datagroups.args_from_metadata("theoryCorr"))
-            print(asname)
-
             # alphaS from correction histograms only available for some pdf sets,
             # so fall back to CT18Z for other sets
             if asname.replace("_Corr", "") not in self.datagroups.args_from_metadata(

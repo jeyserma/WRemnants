@@ -244,16 +244,17 @@ extended_pdf_datasets = [
 
 def expand_pdf_entries(pdf, alphas=False, renorm=False):
     info = pdfMap[pdf]
+    first_entry = info.get("first_entry", 0)
+    pdfBranch = info["branch"]
     if alphas:
         vals = info["alphas"]
     else:
-        first_entry = info.get("first_entry", 0)
         last_entry = first_entry + info["entries"]
         vals = [info["branch"] + f"[{i}]" for i in range(first_entry, last_entry)]
 
     if renorm:
         vals = [
-            f"std::clamp<float>({x}/{vals[0]}*central_pdf_weight, -theory_weight_truncate, theory_weight_truncate)"
+            f"std::clamp<float>({x}/{vals[0]}*{pdfBranch}[{first_entry}], -theory_weight_truncate, theory_weight_truncate)"
             for x in vals
         ]
     else:
