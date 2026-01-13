@@ -926,7 +926,7 @@ class TheoryHelper(object):
             pdf_hist = pdf_corr_hist
 
         if self.from_hels:
-            pdf_hist += "UncertByHelicity"
+            pdf_hist += "ByHelicity"
 
         logger.info(f"Using PDF hist {pdf_hist}, apply scaling of {scale}")
 
@@ -1137,7 +1137,7 @@ class TheoryHelper(object):
 
         if from_minnlo:
             if self.from_hels:
-                bhist = "pdfMSHT20mbrangeUncertByHelicity"
+                bhist = "pdfMSHT20mbrangeByHelicity"
             else:
                 bhist = "pdfMSHT20mbrange"
         else:

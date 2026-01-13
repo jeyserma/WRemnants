@@ -1730,7 +1730,7 @@ def add_qcdScaleByHelicityUnc_hist(
 def add_pdfUncertByHelicity_hist(
     results, df, helper, pdf, pdf_name, axes, cols, base_name="nominal", **kwargs
 ):
-    name = Datagroups.histName(base_name, syst=f"{pdf_name}UncertByHelicity")
+    name = Datagroups.histName(base_name, syst=f"{pdf_name}ByHelicity")
     tensorName = f"helicity{pdf_name}Weight_tensor"
     if tensorName not in df.GetColumnNames():
         # usually already defined when calculating central PDF weight
