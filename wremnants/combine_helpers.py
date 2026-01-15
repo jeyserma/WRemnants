@@ -308,7 +308,7 @@ def add_electroweak_uncertainty(
             if w_samples:
                 # add renesance (virtual EW) uncertainty on W samples
                 card_tool.addSystematic(
-                    f"{ewUnc}Corr",
+                    f"{ewUnc}_Corr",
                     processes=w_samples,
                     preOp=lambda h: h[{"var": ["nlo_ew_virtual"]}],
                     labelsByAxis=[f"renesanceEWCorr"],
@@ -321,10 +321,10 @@ def add_electroweak_uncertainty(
         elif ewUnc == "powhegFOEW":
             if z_samples:
                 card_tool.addSystematic(
-                    f"{ewUnc}Corr",
+                    f"{ewUnc}_Corr",
                     preOp=lambda h: h[{"weak": ["weak_ps", "weak_aem"]}],
                     processes=z_samples,
-                    labelsByAxis=[f"{ewUnc}Corr"],
+                    labelsByAxis=[f"{ewUnc}_Corr"],
                     scale=1.0,
                     systAxes=["weak"],
                     mirror=True,
@@ -333,10 +333,10 @@ def add_electroweak_uncertainty(
                     name="ewScheme",
                 )
                 card_tool.addSystematic(
-                    f"{ewUnc}Corr",
+                    f"{ewUnc}_Corr",
                     preOp=lambda h: h[{"weak": ["weak_default"]}],
                     processes=z_samples,
-                    labelsByAxis=[f"{ewUnc}Corr"],
+                    labelsByAxis=[f"{ewUnc}_Corr"],
                     scale=1.0,
                     systAxes=["weak"],
                     mirror=True,
@@ -378,12 +378,12 @@ def add_electroweak_uncertainty(
                 preOp = lambda h: h[{"systIdx": s[1:2]}]
 
             card_tool.addSystematic(
-                f"{ewUnc}Corr",
+                f"{ewUnc}_Corr",
                 systAxes=["systIdx"],
                 mirror=True,
                 passToFakes=passSystToFakes,
                 processes=samples,
-                labelsByAxis=[f"{ewUnc}Corr"],
+                labelsByAxis=[f"{ewUnc}_Corr"],
                 scale=scale,
                 preOp=preOp,
                 groups=[f"theory_ew_{ewUnc}", "theory_ew", "theory"],

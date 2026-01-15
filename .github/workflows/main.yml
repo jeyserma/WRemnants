@@ -866,7 +866,7 @@ jobs:
         run: >- 
           scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/plotting/makeDataMCStackPlot.py 
           --yscale 1.3 --baseName nominal --nominalRef nominal --hists etaAbsEta-mll mll -o $WEB_DIR -f $PLOT_DIR -p z $HIST_FILE variation 
-          --varName 'powhegFOEWCorr' --selectEntries weak_default --varLabel 'EW(virtual)' --selectAxis weak --color blue
+          --varName 'powhegFOEW_Corr' --selectEntries weak_default --varLabel 'EW(virtual)' --selectAxis weak --color blue
 
       - name: dilepton rabbit mll setup
         run: >- 
