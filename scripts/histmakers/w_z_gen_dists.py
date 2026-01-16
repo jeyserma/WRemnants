@@ -164,7 +164,13 @@ axis_chargel_gen = hist.axis.Regular(
 )
 
 theory_corrs = [*args.theoryCorr, *args.ewTheoryCorr]
-corr_helpers = theory_corrections.load_corr_helpers(common.vprocs, theory_corrs)
+procsWithTheoryCorr = [d.name for d in datasets if d.name in common.vprocs]
+if len(procsWithTheoryCorr) and len(theory_corrs):
+    corr_helpers = theory_corrections.load_corr_helpers(
+        procsWithTheoryCorr, theory_corrs
+    )
+else:
+    corr_helpers = {}
 
 corrs = []
 if args.helicity and args.propagatePDFstoHelicity:
@@ -225,7 +231,7 @@ def build_graph(df, dataset):
                 },
                 "prefsr",
                 add_out_of_acceptance_axis=False,
-                rebin_pt=not args.genPtBinningAsReco,
+                rebin_pt=None if args.genPtBinningAsReco else unfolding_tools.rebin_pt,
             )
         )
         axis_absYVgen = hist.axis.Variable(

@@ -19,7 +19,9 @@ def make_datagroups_2016(
     )
     dg.addGroup(
         "Zmumu",
-        members=dg.get_members_from_results(startswith=["Zmumu"]),
+        members=dg.get_members_from_results(
+            startswith=["Zmumu"], not_startswith=["Zmumu10to50GeV"]
+        ),
     )
     dg.addGroup(
         "Ztautau",
@@ -50,10 +52,8 @@ def make_datagroups_2016(
             ),
         )
         dg.addGroup(
-            "DYlowMass",
-            members=dg.get_members_from_results(
-                startswith=["DYlowMass", "DYJetsToMuMuMass10to50"]
-            ),
+            "Zmumu10to50GeV",
+            members=dg.get_members_from_results(startswith=["Zmumu10to50GeV"]),
         )
         dg.addGroup(
             "Top",
