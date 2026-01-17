@@ -7,7 +7,7 @@ lumijson = (
     f"{common.data_dir}/Cert_271036-284044_13TeV_Legacy2016_Collisions16_JSON.txt"
 )
 
-dataDictV9 = {
+dataDictV9_PostVFP = {
     "dataPostVFP": {
         "filepaths": [
             "{BASE_PATH}/SingleMuon/NanoV9Run2016FDataPostVFP_{NANO_PROD_TAG}",
@@ -22,14 +22,14 @@ dataDictV9 = {
         "filepaths": [
             "{BASE_PATH}/DYJetsToMuMu_H2ErratumFix_PDFExt_TuneCP5_13TeV-powhegMiNNLO-pythia8-photos/NanoV9MCPostVFP_{NANO_PROD_TAG}",
         ],
-        "xsec": common.xsec_DYJetsToMuMu,
+        "xsec": common.xsec_DYJetsToLL,
         "group": "Zmumu",
     },
-    "DYJetsToMuMuMass10to50PostVFP": {
+    "Zmumu10to50GeVPostVFP": {
         "filepaths": [
             "{BASE_PATH}/DYJetsToMuMu_M-10to50_H2ErratumFix_TuneCP5_13TeV-powhegMiNNLO-pythia8-photos/NanoV9MCPostVFP_{NANO_PROD_TAG}",
         ],
-        "xsec": common.xsec_DYJetsToMuMuMass10to50,
+        "xsec": common.xsec_DYJetsToLLMass10to50,
         "group": "DYlowMass",
     },
     "ZtautauPostVFP": {
@@ -37,35 +37,35 @@ dataDictV9 = {
             "{BASE_PATH}/DYJetsToTauTau_M-50_AtLeastOneEorMuDecay_H2ErratumFix_PDF_TuneCP5_13TeV-powhegMiNNLO-pythia8-photos/NanoV9MCPostVFP_{NANO_PROD_TAG}",
         ],
         # At least one tau->e or mu decay, so everything that's not all other decays
-        "xsec": common.xsec_DYJetsToMuMu * common.Z_TAU_TO_LEP_RATIO,
+        "xsec": common.xsec_DYJetsToLL * common.Z_TAU_TO_LEP_RATIO,
         "group": "Ztautau",
     },
     "WplusmunuPostVFP": {
         "filepaths": [
             "{BASE_PATH}/WplusJetsToMuNu_H2ErratumFix_PDFExt_TuneCP5_13TeV-powhegMiNNLO-pythia8-photos/NanoV9MCPostVFP_{NANO_PROD_TAG}",
         ],
-        "xsec": common.xsec_WplusJetsToMuNu,
+        "xsec": common.xsec_WplusJetsToLNu,
         "group": "Wmunu",
     },
     "WminusmunuPostVFP": {
         "filepaths": [
             "{BASE_PATH}/WminusJetsToMuNu_H2ErratumFix_PDFExt_TuneCP5_13TeV-powhegMiNNLO-pythia8-photos/NanoV9MCPostVFP_{NANO_PROD_TAG}",
         ],
-        "xsec": common.xsec_WminusJetsToMuNu,
+        "xsec": common.xsec_WminusJetsToLNu,
         "group": "Wmunu",
     },
     "WplustaunuPostVFP": {
         "filepaths": [
             "{BASE_PATH}/WplusJetsToTauNu_TauToMu_H2ErratumFix_PDFExt_TuneCP5_13TeV-powhegMiNNLO-pythia8-photos/NanoV9MCPostVFP_{NANO_PROD_TAG}",
         ],
-        "xsec": common.BR_TAUToMU * common.xsec_WplusJetsToMuNu,
+        "xsec": common.BR_TAUToMU * common.xsec_WplusJetsToLNu,
         "group": "Wtaunu",
     },
     "WminustaunuPostVFP": {
         "filepaths": [
             "{BASE_PATH}/WminusJetsToTauNu_TauToMu_H2ErratumFix_PDFExt_TuneCP5_13TeV-powhegMiNNLO-pythia8-photos/NanoV9MCPostVFP_{NANO_PROD_TAG}",
         ],
-        "xsec": common.BR_TAUToMU * common.xsec_WminusJetsToMuNu,
+        "xsec": common.BR_TAUToMU * common.xsec_WminusJetsToLNu,
         "group": "Wtaunu",
     },
     "TTLeptonicPostVFP": {
@@ -135,49 +135,49 @@ dataDictV9 = {
         "filepaths": [
             "{BASE_PATH}/WWTo2L2Nu_TuneCP5_13TeV-powheg-pythia8/NanoV9MCPostVFP_{NANO_PROD_TAG}"
         ],
-        "xsec": 12.6,  # 118.7*0.1086*0.1086*9
+        "xsec": common.xsec_WWTo2L2Nu,
         "group": "Diboson",
     },
     "WWTo1L1Nu2QPostVFP": {
         "filepaths": [
             "{BASE_PATH}/WWTo1L1Nu2Q_4f_TuneCP5_13TeV-amcatnloFXFX-pythia8/NanoV9MCPostVFP_{NANO_PROD_TAG}"
         ],
-        "xsec": 52.146,  # 118.7*[(3*0.1086)*(1-3*0.1086)]*2 (2 is because one W or the other can go to Q)
+        "xsec": common.xsec_WWTo1L1Nu,
         "group": "Diboson",
     },
     "WZTo3LNuPostVFP": {
         "filepaths": [
             "{BASE_PATH}/WZTo3LNu_TuneCP5_13TeV-amcatnloFXFX-pythia8/NanoV9MCPostVFP_{NANO_PROD_TAG}"
         ],
-        "xsec": 4.91,  # 4.42965*1.109, 1.109 is the NLO to NNLO kfactor, for this one would need to make sure about the NLO XS, depends a lot on the dilepton mass cut
+        "xsec": common.xsec_WZTo3LNu,
         "group": "Diboson",
     },
     "WZTo2Q2LPostVFP": {
         "filepaths": [
             "{BASE_PATH}/WZTo2Q2L_mllmin4p0_TuneCP5_13TeV-amcatnloFXFX-pythia8/NanoV9MCPostVFP_{NANO_PROD_TAG}"
         ],
-        "xsec": 5.4341,  # 4.9*1.109
+        "xsec": common.xsec_WZTo2Q2L,
         "group": "Diboson",
     },
     "WZTo1L1Nu2QPostVFP": {
         "filepaths": [
             "{BASE_PATH}/WZTo1L1Nu2Q_4f_TuneCP5_13TeV-amcatnloFXFX-pythia8/NanoV9MCPostVFP_{NANO_PROD_TAG}"
         ],
-        "xsec": 11.781,  # 10.71*1.10
+        "xsec": common.xsec_WZTo1L1Nu2Q,
         "group": "Diboson",
     },
     "ZZTo2L2NuPostVFP": {
         "filepaths": [
             "{BASE_PATH}/ZZTo2L2Nu_TuneCP5_13TeV_powheg_pythia8/NanoV9MCPostVFP_{NANO_PROD_TAG}"
         ],
-        "xsec": 0.60,
+        "xsec": common.xsec_ZZTo2L2Nu,
         "group": "Diboson",
     },
     "ZZTo2Q2LPostVFP": {
         "filepaths": [
             "{BASE_PATH}/ZZTo2Q2L_mllmin4p0_TuneCP5_13TeV-amcatnloFXFX-pythia8/NanoV9MCPostVFP_{NANO_PROD_TAG}"
         ],
-        "xsec": 5.1,
+        "xsec": common.xsec_ZZTo2Q2L,
         "group": "Diboson",
     },
     "QCDmuEnrichPt15PostVFP": {
@@ -248,39 +248,39 @@ dataDictV9 = {
 }
 
 # extended version with additional samples (but missing some pdf sets)
-dataDictV9extended = copy.deepcopy(dataDictV9)
+dataDictV9_PostVFP_extended = copy.deepcopy(dataDictV9_PostVFP)
 
-dataDictV9extended["ZmumuPostVFP"]["filepaths"].extend(
+dataDictV9_PostVFP_extended["ZmumuPostVFP"]["filepaths"].extend(
     [
         "{BASE_PATH}/DYJetsToMuMu_H2ErratumFix_TuneCP5_13TeV-powhegMiNNLO-pythia8-photos/NanoV9MCPostVFP_{NANO_PROD_TAG}",
     ]
 )
 
-dataDictV9extended["ZtautauPostVFP"]["filepaths"].extend(
+dataDictV9_PostVFP_extended["ZtautauPostVFP"]["filepaths"].extend(
     [
         "{BASE_PATH}/DYJetsToTauTau_M-50_AtLeastOneEorMuDecay_H2ErratumFix_TuneCP5_13TeV-powhegMiNNLO-pythia8-photos/NanoV9MCPostVFP_{NANO_PROD_TAG}",
     ]
 )
 
-dataDictV9extended["WplusmunuPostVFP"]["filepaths"].extend(
+dataDictV9_PostVFP_extended["WplusmunuPostVFP"]["filepaths"].extend(
     [
         "{BASE_PATH}/WplusJetsToMuNu_H2ErratumFix_TuneCP5_13TeV-powhegMiNNLO-pythia8-photos/NanoV9MCPostVFP_{NANO_PROD_TAG}",
     ]
 )
 
-dataDictV9extended["WminusmunuPostVFP"]["filepaths"].extend(
+dataDictV9_PostVFP_extended["WminusmunuPostVFP"]["filepaths"].extend(
     [
         "{BASE_PATH}/WminusJetsToMuNu_H2ErratumFix_TuneCP5_13TeV-powhegMiNNLO-pythia8-photos/NanoV9MCPostVFP_{NANO_PROD_TAG}",
     ]
 )
 
-dataDictV9extended["WplustaunuPostVFP"]["filepaths"].extend(
+dataDictV9_PostVFP_extended["WplustaunuPostVFP"]["filepaths"].extend(
     [
         "{BASE_PATH}/WplusJetsToTauNu_TauToMu_H2ErratumFix_TuneCP5_13TeV-powhegMiNNLO-pythia8-photos/NanoV9MCPostVFP_{NANO_PROD_TAG}",
     ]
 )
 
-dataDictV9extended["WminustaunuPostVFP"]["filepaths"].extend(
+dataDictV9_PostVFP_extended["WminustaunuPostVFP"]["filepaths"].extend(
     [
         "{BASE_PATH}/WminusJetsToTauNu_TauToMu_H2ErratumFix_TuneCP5_13TeV-powhegMiNNLO-pythia8-photos/NanoV9MCPostVFP_{NANO_PROD_TAG}",
     ]

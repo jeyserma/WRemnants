@@ -279,6 +279,7 @@ def common_parser(analysis_label=""):
             "2023_PUAVE2",
             "2023_PUAVE5",
             "2023_PUAVE10",
+            "13TeVGen",
         ],
         help="Data set to process",
         default="2016PostVFP",

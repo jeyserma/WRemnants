@@ -5,15 +5,18 @@ import ROOT
 import XRootD.client
 
 import narf
+from wremnants.datasets.datasetDict13TeVGen import dataDict_13TeVGen
 from wremnants.datasets.datasetDict2017_v9 import dataDictV9_2017
 from wremnants.datasets.datasetDict2017G_v9 import dataDictV9_2017G
+from wremnants.datasets.datasetDict2017H import dataDict_2017H
 from wremnants.datasets.datasetDict2018_v9 import dataDictV9_2018
-from wremnants.datasets.datasetDict_gen import genDataDict
-from wremnants.datasets.datasetDict_lowPU import dataDictLowPU
 from wremnants.datasets.datasetDict_lowPU2023 import dataDictLowPU2023
 
 # set the debug level for logging incase of full printout
-from wremnants.datasets.datasetDict_v9 import dataDictV9, dataDictV9extended
+from wremnants.datasets.datasetDictPostVFP_v9 import (
+    dataDictV9_PostVFP,
+    dataDictV9_PostVFP_extended,
+)
 from wums import logging
 
 logger = logging.child_logger(__name__)
@@ -246,9 +249,9 @@ def getDatasets(
     # TODO avoid use of nested if statements with e.g. a unified dict
     if nanoVersion == "v9":
         if era == "2016PostVFP":
-            dataDict = dataDictV9
+            dataDict = dataDictV9_PostVFP
             if extended:
-                dataDict = dataDictV9extended
+                dataDict = dataDictV9_PostVFP_extended
             logger.info("Using NanoAOD V9 for 2016PostVFP")
         elif era == "2017":
             dataDict = dataDictV9_2017
@@ -257,19 +260,21 @@ def getDatasets(
             dataDict = dataDictV9_2017G
             logger.info("Using NanoAOD V9 for 2017G")
         elif era == "2017H":
-            dataDict = dataDictLowPU
+            dataDict = dataDict_2017H
             logger.info("Using NanoAOD V9 for 2017H")
         elif era == "2018":
             dataDict = dataDictV9_2018
             logger.info("Using NanoAOD V9 for 2018")
-        elif era == "gen":
-            dataDict = dataDictV9extended if extended else genDataDict
+        elif era == "13TeVGen":
+            genDataDict = dataDict_13TeVGen
+            dataDict = dataDictV9_PostVFP_extended if extended else dataDictV9_PostVFP
             dataDict.update(
                 {
-                    **{k: v for k, v in dataDictV9.items() if v["group"] != "Data"},
+                    **dataDict_13TeVGen,
                     **{
                         k: v for k, v in dataDictV9_2017.items() if v["group"] != "Data"
                     },
+                    **{k: v for k, v in dataDict_2017H.items() if v["group"] != "Data"},
                     **{
                         k: v for k, v in dataDictV9_2018.items() if v["group"] != "Data"
                     },

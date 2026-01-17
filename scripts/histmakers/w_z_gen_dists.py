@@ -109,7 +109,7 @@ parser.add_argument(
 )
 
 parser = parsing.set_parser_default(parser, "filterProcs", common.vprocs)
-parser = parsing.set_parser_default(parser, "era", "gen")
+parser = parsing.set_parser_default(parser, "era", "13TeVGen")
 args = parser.parse_args()
 
 if not args.theoryCorrections:

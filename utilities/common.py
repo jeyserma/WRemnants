@@ -8,14 +8,32 @@ base_dir = f"{pathlib.Path(__file__).parent}/../"
 wremnants_dir = f"{pathlib.Path(__file__).parent}/../wremnants"
 data_dir = f"{pathlib.Path(__file__).parent}/../wremnants-data/data/"
 
+BR_Z_LEP = 3 * 0.0336  # PDG
+BR_Z_Nu = 3 * 0.067
+BR_Z_Q = 1 - (BR_Z_LEP + BR_Z_Nu)
+BR_W_LEP = 3 * 0.1086  # PDG
 BR_TAUToMU = 0.1739
 BR_TAUToE = 0.1782
-# cross sections in pb at sqrt(s)=13Tev
-xsec_DYJetsToMuMu = 2001.9
-xsec_WplusJetsToMuNu = 11765.9
-xsec_WminusJetsToMuNu = 8703.87
-xsec_DYJetsToMuMuMass10to50 = 6997.0
 Z_TAU_TO_LEP_RATIO = 1.0 - (1.0 - BR_TAUToMU - BR_TAUToE) ** 2
+
+# cross sections in pb at sqrt(s)=13Tev (TODO: add source information)
+xsec_DYJetsToLL = 2001.9
+xsec_WplusJetsToLNu = 11765.9
+xsec_WminusJetsToLNu = 8703.87
+xsec_DYJetsToLLMass10to50 = 6997.0
+
+xsec_WW = 118.7
+xsec_WZ = 47.13  # from https://twiki.cern.ch/twiki/bin/view/CMS/SummaryTable1G25ns
+xsec_ZZ = 16.523  # from https://twiki.cern.ch/twiki/bin/view/CMS/SummaryTable1G25ns
+
+# TODO replace by BR
+xsec_WWTo2L2Nu = 12.6  # xsec_WW * BR_W_LEP * BR_W_LEP
+xsec_WWTo1L1Nu = 52.146  # xsec_WW * BR_W_LEP * (1 - BR_W_LEP) * 2 # (2 is because one W or the other can go to Q)
+xsec_WZTo3LNu = 4.91  # 4.42965*1.109, 1.109 is the NLO to NNLO kfactor, for this one would need to make sure about the NLO XS, depends a lot on the dilepton mass cut
+xsec_WZTo2Q2L = 5.4341  # 4.9*1.109
+xsec_WZTo1L1Nu2Q = (11.781,)  # 10.71*1.10
+xsec_ZZTo2L2Nu = 0.60  # check xsec_ZZ * BR_Z_Nu * BR_Z_LEP * 2
+xsec_ZZTo2Q2L = 5.1  # check xsec_ZZ * BR_Z_Q * (BR_Z_LEP+BR_Z_Nu) * 2
 
 # ------------------------------------
 # GenXsecAnalyzer:
@@ -28,7 +46,7 @@ Z_TAU_TO_LEP_RATIO = 1.0 - (1.0 - BR_TAUToMU - BR_TAUToE) ** 2
 # After filter: final equivalent lumi for 1M events (1/fb) = 1.780e+02 +- 2.178e-01
 xsec_GGtoMuMu = 5.619
 
-# BSM heavy neutrino samples
+# BSM heavy neutrino samples, just a dummy number
 xsec_WtoNMu = 100
 
 wprocs = [
