@@ -140,7 +140,9 @@ columns_fakerate = [
     "transverseMass",
 ]  ## was transverseMass
 
-theory_helpers_procs = theory_corrections.make_theory_helpers(args)
+theory_helpers_procs = theory_corrections.make_theory_helpers(
+    args.pdfs, args.theoryCorr
+)
 axis_ptVgen = theory_helpers_procs["W"]["qcdScale"].hist.axes["ptVgen"]
 axis_chargeVgen = theory_helpers_procs["W"]["qcdScale"].hist.axes["chargeVgen"]
 

@@ -513,7 +513,8 @@ def make_corr_by_helicity(
 
 
 def make_theory_helpers(
-    args,
+    pdfs,
+    theory_corr=[],
     procs=["Z", "W"],
     corrs=["qcdScale", "pdf", "pdf_from_corr", "alphaS", "pdf_central"],
 ):
@@ -535,11 +536,11 @@ def make_theory_helpers(
             theory_helpers_procs[proc]["pdf"] = (
                 make_pdfs_uncertainties_helper_by_helicity(
                     proc=proc,
-                    pdfs=args.pdfs,
+                    pdfs=pdfs,
                 )
             )
         if "pdf_from_corr" in corrs:
-            pdf_from_corrs = [x + "_Corr" for x in args.theoryCorr if "pdfvar" in x]
+            pdf_from_corrs = [x + "_Corr" for x in theory_corr if "pdfvar" in x]
             theory_helpers_procs[proc]["pdf_from_corr"] = (
                 make_pdfs_from_corrs_uncertainties_helper_by_helicity(
                     proc=proc,
@@ -547,7 +548,7 @@ def make_theory_helpers(
                 )
             )
         if "alphaS" in corrs:
-            as_vars = [x + "_Corr" for x in args.theoryCorr if "pdfas" in x]
+            as_vars = [x + "_Corr" for x in theory_corr if "pdfas" in x]
             theory_helpers_procs[proc]["alphaS"] = (
                 make_alphaS_uncertainties_helper_by_helicity(
                     proc=proc,
@@ -558,11 +559,11 @@ def make_theory_helpers(
             theory_helpers_procs[proc]["pdf_central"] = (
                 make_uncertainty_helper_by_helicity(
                     proc=proc,
-                    nom=theory_tools.pdfMap[args.pdfs[0]]["name"],
+                    nom=theory_tools.pdfMap[pdfs[0]]["name"],
                     den="pdf_uncorr",
                     central_weights=True,
                     filename=common.data_dir
-                    + f"/TheoryCorrections/ByHelicity/PDFs/w_z_gen_dists_maxFiles_m1_{args.pdfs[0]}_pdfByHelicity_skimmed.hdf5",
+                    + f"/TheoryCorrections/ByHelicity/PDFs/w_z_gen_dists_maxFiles_m1_{pdfs[0]}_pdfByHelicity_skimmed.hdf5",
                 )
             )
 
@@ -571,10 +572,10 @@ def make_theory_helpers(
 
 def make_qcd_uncertainty_helper_by_helicity(
     is_z=False,
-    filename=f"{common.data_dir}/angularCoefficients/w_z_gen_dists_maxFiles_m1.hdf5",
+    filename=f"{common.data_dir}/angularCoefficients/w_z_helicity_xsecs.hdf5",
     rebin_ptVgen=common.ptV_binning,
     rebin_absYVgen=False,
-    rebin_massVgen=True,
+    rebin_massVgen=False,
     return_tensor=True,
 ):
 

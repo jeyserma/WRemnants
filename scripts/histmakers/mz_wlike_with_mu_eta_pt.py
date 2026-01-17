@@ -292,7 +292,7 @@ muon_prefiring_helper, muon_prefiring_helper_stat, muon_prefiring_helper_syst = 
 )
 
 theory_helpers_procs = theory_corrections.make_theory_helpers(
-    args, corrs=["qcdScale", "alphaS", "pdf"]
+    args.pdfs, args.theoryCorr, corrs=["qcdScale", "alphaS", "pdf"]
 )
 
 # extra axes which can be used to label tensor_axes

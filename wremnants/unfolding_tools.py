@@ -375,13 +375,15 @@ class UnfolderZ:
 
             if self.add_helicity_axis:
                 if self.weightsByHelicity_helper_unfolding is None:
-                    edges = [ax for ax in a if ax.name == "ptVGen"][0].edges
+                    # need to rebin to the edges used for the unfolding, and remove of out of acceptance bins (|Y|>2.5 and pT>44)
+                    pt_edges = [ax for ax in a if ax.name == "ptVGen"][0].edges
+                    absY_edges = [ax for ax in a if ax.name == "absYVGen"][0].edges
                     # helper to derive helicity xsec shape from event by event reweighting
-                    self.weightsByHelicity_helper_unfolding = (
-                        helicity_utils.make_helicity_weight_helper(
-                            is_z=True,
-                            rebin_ptVgen_edges=edges,
-                        )
+                    self.weightsByHelicity_helper_unfolding = helicity_utils.make_helicity_weight_helper(
+                        is_z=True,
+                        rebin_ptVgen_edges=pt_edges,
+                        rebin_absYVgen_edges=absY_edges,
+                        filename=f"{common.data_dir}/angularCoefficients/w_z_helicity_xsecs.hdf5",
                     )
 
                 for ax in a:

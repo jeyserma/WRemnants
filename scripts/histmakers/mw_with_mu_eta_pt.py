@@ -442,7 +442,9 @@ if args.unfolding:
     if args.fitresult:
         unfolding_corr_helper = unfolding_tools.reweight_to_fitresult(args.fitresult)
 
-theory_helpers_procs = theory_corrections.make_theory_helpers(args, procs=["Z", "W"])
+theory_helpers_procs = theory_corrections.make_theory_helpers(
+    args.pdfs, args.theoryCorr, procs=["Z", "W"]
+)
 
 if args.theoryAgnostic:
     theoryAgnostic_axes, theoryAgnostic_cols = differential.get_theoryAgnostic_axes(

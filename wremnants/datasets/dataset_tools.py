@@ -247,50 +247,39 @@ def getDatasets(
     logger.info(f"Loading samples from {base_path}.")
 
     # TODO avoid use of nested if statements with e.g. a unified dict
-    if nanoVersion == "v9":
-        if era == "2016PostVFP":
-            dataDict = dataDictV9_PostVFP
-            if extended:
-                dataDict = dataDictV9_PostVFP_extended
-            logger.info("Using NanoAOD V9 for 2016PostVFP")
-        elif era == "2017":
-            dataDict = dataDictV9_2017
-            logger.info("Using NanoAOD V9 for 2017")
-        elif era == "2017G":
-            dataDict = dataDictV9_2017G
-            logger.info("Using NanoAOD V9 for 2017G")
-        elif era == "2017H":
-            dataDict = dataDict_2017H
-            logger.info("Using NanoAOD V9 for 2017H")
-        elif era == "2018":
-            dataDict = dataDictV9_2018
-            logger.info("Using NanoAOD V9 for 2018")
-        elif era == "13TeVGen":
-            genDataDict = dataDict_13TeVGen
-            dataDict = dataDictV9_PostVFP_extended if extended else dataDictV9_PostVFP
-            dataDict.update(
-                {
-                    **dataDict_13TeVGen,
-                    **{
-                        k: v for k, v in dataDictV9_2017.items() if v["group"] != "Data"
-                    },
-                    **{k: v for k, v in dataDict_2017H.items() if v["group"] != "Data"},
-                    **{
-                        k: v for k, v in dataDictV9_2018.items() if v["group"] != "Data"
-                    },
-                }
-            )
-            logger.info("Using NanoAOD V9 for all eras")
-        else:
-            raise ValueError(f"Unsupported era {era}")
-    elif nanoVersion == "v12":  # 2022/2023
-        if "2023_PUAVE" in era:
-            dataDict = dataDictLowPU2023
-            logger.info("Using NanoAOD V9 for 2018")
-        else:
-            raise ValueError(f"Unsupported era {era}")
+    if era == "2016PostVFP":
+        dataDict = dataDictV9_PostVFP
+        if extended:
+            dataDict = dataDictV9_PostVFP_extended
+        logger.info("Using NanoAOD V9 for 2016PostVFP")
+    elif era == "2017":
+        dataDict = dataDictV9_2017
+        logger.info("Using NanoAOD V9 for 2017")
+    elif era == "2017G":
+        dataDict = dataDictV9_2017G
+        logger.info("Using NanoAOD V9 for 2017G")
+    elif era == "2017H":
+        dataDict = dataDict_2017H
+        logger.info("Using NanoAOD V9 for 2017H")
+    elif era == "2018":
+        dataDict = dataDictV9_2018
+        logger.info("Using NanoAOD V9 for 2018")
+    elif era == "13TeVGen":
+        dataDict = dataDictV9_PostVFP_extended if extended else dataDictV9_PostVFP
+        dataDict.update(
+            {
+                **dataDict_13TeVGen,
+                **{k: v for k, v in dataDictV9_2017.items() if v["group"] != "Data"},
+                **{k: v for k, v in dataDict_2017H.items() if v["group"] != "Data"},
+                **{k: v for k, v in dataDictV9_2018.items() if v["group"] != "Data"},
+            }
+        )
+        logger.info("Using NanoAOD V9 for all eras")
+    elif "2023_PUAVE" in era:
+        dataDict = dataDictLowPU2023
+        logger.info("Using NanoAOD V9 for 2018")
     else:
-        raise ValueError("Only NanoAODv9/v12 is supported")
+        raise ValueError(f"Unsupported era {era}")
 
     narf_datasets = []
     for sample, info in dataDict.items():
@@ -299,7 +288,7 @@ def getDatasets(
         if excl not in [None, []] and (info["group"] in excl or sample in excl):
             continue
 
-        if sample in genDataDict:
+        if sample in dataDict_13TeVGen:
             base_path_sample = base_path.replace("NanoAOD", "NanoGen")
         else:
             base_path_sample = base_path

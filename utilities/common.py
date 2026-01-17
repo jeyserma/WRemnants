@@ -31,7 +31,7 @@ xsec_WWTo2L2Nu = 12.6  # xsec_WW * BR_W_LEP * BR_W_LEP
 xsec_WWTo1L1Nu = 52.146  # xsec_WW * BR_W_LEP * (1 - BR_W_LEP) * 2 # (2 is because one W or the other can go to Q)
 xsec_WZTo3LNu = 4.91  # 4.42965*1.109, 1.109 is the NLO to NNLO kfactor, for this one would need to make sure about the NLO XS, depends a lot on the dilepton mass cut
 xsec_WZTo2Q2L = 5.4341  # 4.9*1.109
-xsec_WZTo1L1Nu2Q = (11.781,)  # 10.71*1.10
+xsec_WZTo1L1Nu2Q = 11.781  # 10.71*1.10
 xsec_ZZTo2L2Nu = 0.60  # check xsec_ZZ * BR_Z_Nu * BR_Z_LEP * 2
 xsec_ZZTo2Q2L = 5.1  # check xsec_ZZ * BR_Z_Q * (BR_Z_LEP+BR_Z_Nu) * 2
 

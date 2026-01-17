@@ -179,7 +179,7 @@ if args.helicity and args.propagatePDFstoHelicity:
 if args.centralBosonPDFWeight:
     corrs.append("pdf_central")
 theory_helpers_procs = theory_corrections.make_theory_helpers(
-    args, procs=["Z", "W"], corrs=corrs
+    args.pdfs, args.theoryCorr, procs=["Z", "W"], corrs=corrs
 )
 
 
@@ -213,7 +213,9 @@ def build_graph(df, dataset):
     axis_massWgen = hist.axis.Variable(
         [4.0, 13000.0], name="massVgen", underflow=True, overflow=False
     )
-    axis_massZgen = hist.axis.Regular(12, 0.0, 120.0, name="massVgen")
+    axis_massZgen = hist.axis.Variable(
+        [0, 20, 30, 40, 50, 60, 70, 80, 90, 100, 110, 120, 13000], name="massVgen"
+    )
 
     theoryAgnostic_axes, _ = differential.get_theoryAgnostic_axes(
         ptV_flow=True, absYV_flow=True, wlike="Z" in dataset.name

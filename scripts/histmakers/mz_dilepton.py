@@ -361,7 +361,9 @@ procs = [
     for p, grp in (("W", common.wprocs), ("Z", common.zprocs))
     if any(d.name in grp for d in datasets)
 ]
-theory_helpers_procs = theory_corrections.make_theory_helpers(args, procs=procs)
+theory_helpers_procs = theory_corrections.make_theory_helpers(
+    args.pdfs, args.theoryCorr, procs=procs
+)
 
 # extra axes which can be used to label tensor_axes
 if args.binnedScaleFactors:
