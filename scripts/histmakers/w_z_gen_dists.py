@@ -126,7 +126,6 @@ datasets = getDatasets(
     extended="msht20an3lo" not in args.pdfs,
     nanoVersion="v9",
     base_path=args.dataPath,
-    mode=analysis_label,
     era=args.era,
 )
 

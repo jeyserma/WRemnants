@@ -681,15 +681,10 @@ smearing_weights_procs = []
 def build_graph(df, dataset):
     logger.info(f"build graph for dataset: {dataset.name}")
     results = []
-    isW = dataset.name in common.wprocs
+    isW = dataset.group in ["Wmunu", "Wtaunu"]
     isBSM = dataset.name.startswith("WtoNMu")
-    isWmunu = isBSM or dataset.name in [
-        "WplusmunuPostVFP",
-        "WminusmunuPostVFP",
-    ]
-
-    isZ = dataset.name in common.zprocs
-    isZveto = isZ or dataset.name in ["DYJetsToMuMuMass10to50PostVFP"]
+    isWmunu = isBSM or dataset.group in ["Wmunu"]
+    isZ = dataset.group in ["Zmumu", "Ztautau", "DYlowMass"]
     isWorZ = isW or isZ
     isTop = dataset.group == "Top"
     isQCDMC = dataset.group == "QCD"
@@ -1244,7 +1239,7 @@ def build_graph(df, dataset):
             )
             weight_expr += "*weight_fullMuonSF_withTrackingReco"
 
-            if isZveto and not args.noGenMatchMC:
+            if isZ and not args.noGenMatchMC:
                 if args.scaleDYvetoFraction > 0.0:
                     # weight different from 1 only for events with >=2 gen muons in acceptance but only 1 reco muon
                     df = df.Define(
@@ -2023,7 +2018,7 @@ def build_graph(df, dataset):
                         step=es,
                         storage_type=storage_type,
                     )
-                if isZveto and not args.noGenMatchMC and not args.noVetoSF:
+                if isZ and not args.noGenMatchMC and not args.noVetoSF:
                     df = syst_tools.add_muon_efficiency_veto_unc_hists(
                         results,
                         df,

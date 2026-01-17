@@ -180,23 +180,15 @@ def makeFilelist(
     return toreturn
 
 
-def getDataPath(mode=None):
+def getDataPath():
     import socket
 
     hostname = socket.gethostname()
 
     if hostname.endswith(".cern.ch"):
-        if mode and "lowpu" in mode:
-            base_path = "root://eoscms.cern.ch//store/cmst3/group/wmass/LowPU"
-        else:
-            base_path = (
-                "root://eoscms.cern.ch//store/cmst3/group/wmass/w-mass-13TeV/NanoAOD"
-            )
+        base_path = "/scratch/shared/NanoAOD"
     elif hostname.endswith(".mit.edu"):
-        if mode and "lowpu" in mode:
-            base_path = "/scratch/submit/cms/wmass/NanoAOD/LowPU"
-        else:
-            base_path = "/scratch/submit/cms/wmass/NanoAOD"
+        base_path = "/scratch/submit/cms/wmass/NanoAOD"
     elif hostname == "cmsanalysis.pi.infn.it":
         # NOTE: If anyone wants to run lowpu analysis at Pisa they'd probably want a different path
         base_path = "/scratchnvme/wmass/NANOV9/postVFP"
@@ -219,7 +211,6 @@ def getDatasets(
     maxFiles=default_nfiles,
     filt=None,
     excl=None,
-    mode=None,
     base_path=None,
     nanoVersion="v9",
     data_tags=[
@@ -243,7 +234,7 @@ def getDatasets(
         maxFiles = default_nfiles
 
     if not base_path:
-        base_path = getDataPath(mode)
+        base_path = getDataPath()
     logger.info(f"Loading samples from {base_path}.")
 
     # TODO avoid use of nested if statements with e.g. a unified dict
@@ -326,8 +317,6 @@ def getDatasets(
         )
 
         if is_data:
-            if mode == "gen":
-                continue
             narf_info.update(
                 dict(
                     is_data=True,

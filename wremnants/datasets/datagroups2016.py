@@ -52,7 +52,7 @@ def make_datagroups_2016(
             ),
         )
         dg.addGroup(
-            "Zmumu10to50GeV",
+            "DYlowMass",
             members=dg.get_members_from_results(startswith=["Zmumu10to50GeV"]),
         )
         dg.addGroup(
