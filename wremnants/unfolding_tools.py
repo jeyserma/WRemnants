@@ -377,10 +377,11 @@ class UnfolderZ:
                 if self.weightsByHelicity_helper_unfolding is None:
                     edges = [ax for ax in a if ax.name == "ptVGen"][0].edges
                     # helper to derive helicity xsec shape from event by event reweighting
-                    self.weightsByHelicity_helper_unfolding = helicity_utils.make_helicity_weight_helper(
-                        is_z=True,
-                        filename=f"{common.data_dir}/angularCoefficients/w_z_helicity_xsecs_maxFiles_m1_alphaSunfoldingBinning_helicity.hdf5",
-                        rebin_ptVgen_edges=edges,
+                    self.weightsByHelicity_helper_unfolding = (
+                        helicity_utils.make_helicity_weight_helper(
+                            is_z=True,
+                            rebin_ptVgen_edges=edges,
+                        )
                     )
 
                 for ax in a:

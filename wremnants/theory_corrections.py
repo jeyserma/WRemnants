@@ -520,26 +520,16 @@ def make_theory_helpers(
 
     theory_helpers_procs = {p: {} for p in procs}
 
-    if "Z" in procs and "qcdScale" in corrs:
-        theory_helpers_procs["Z"]["qcdScale"] = make_qcd_uncertainty_helper_by_helicity(
-            is_z=True,
-            filename=(
-                f"{common.data_dir}/angularCoefficients/w_z_helicity_xsecs_maxFiles_m1_alphaSunfoldingBinning_helicity.hdf5"
-                if args.unfolding
-                else f"{common.data_dir}/angularCoefficients/w_z_moments.hdf5"
-            ),
-            rebin_ptVgen=False,
-            return_tensor=True,
-        )
-    if "W" in procs and "qcdScale" in corrs:
-        theory_helpers_procs["W"]["qcdScale"] = make_qcd_uncertainty_helper_by_helicity(
-            is_z=False,
-            filename=(f"{common.data_dir}/angularCoefficients/w_z_moments.hdf5"),
-            rebin_ptVgen=False,
-            return_tensor=True,
-        )
-
     for proc in theory_helpers_procs.keys():
+
+        if "qcdScale" in corrs:
+            theory_helpers_procs[proc]["qcdScale"] = (
+                make_qcd_uncertainty_helper_by_helicity(
+                    is_z=proc == "Z",
+                    rebin_ptVgen=False,
+                    return_tensor=True,
+                )
+            )
 
         if "pdf" in corrs:
             theory_helpers_procs[proc]["pdf"] = (
@@ -581,7 +571,7 @@ def make_theory_helpers(
 
 def make_qcd_uncertainty_helper_by_helicity(
     is_z=False,
-    filename=f"{common.data_dir}/angularCoefficients/w_z_moments.hdf5",
+    filename=f"{common.data_dir}/angularCoefficients/w_z_gen_dists_maxFiles_m1.hdf5",
     rebin_ptVgen=common.ptV_binning,
     rebin_absYVgen=False,
     rebin_massVgen=True,

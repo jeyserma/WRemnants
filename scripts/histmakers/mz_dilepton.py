@@ -155,7 +155,7 @@ if args.useTheoryAgnosticBinning:
     axis_ptV_thag = theoryAgnostic_axes[0]
     dilepton_ptV_binning = axis_ptV_thag.edges
 else:
-    dilepton_ptV_binning = common.get_dilepton_ptV_binning(args.finePtBinning)
+    dilepton_ptV_binning = common.ptZ_binning if not args.finePtBinning else range(200)
 
 if "yll" in args.axes:
     # use 20 quantiles in case "yll" is used as nominal axis

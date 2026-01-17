@@ -100,7 +100,9 @@ processes = (
 )
 
 binning = {
-    "qT": common.ptV_corr_binning,
+    "qT": (
+        common.ptZgen_binning_corr if args.proc == "z" else common.ptWgen_binning_corr
+    ),
     "absY": [0 + 0.5 * i for i in range(9)] + [5.0],
 }
 binning["absy"] = binning["absY"]

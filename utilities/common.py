@@ -209,58 +209,11 @@ ptV_binning = [
     54,
     13000,
 ]
-ptV_corr_binning = ptV_binning[:-4] + list(range(30, 110, 10))
-absYV_binning = [
-    0,
-    0.25,
-    0.5,
-    0.75,
-    1,
-    1.25,
-    1.5,
-    1.75,
-    2,
-    2.25,
-    2.5,
-    2.75,
-    3,
-    3.25,
-    3.5,
-    3.75,
-    4,
-]
-
-yll_10quantiles_binning = [-2.5, -1.5, -1.0, -0.5, -0.25, 0, 0.25, 0.5, 1.0, 1.5, 2.5]
-yll_20quantiles_binning = [
-    -2.5,
-    -1.8,
-    -1.5,
-    -1.3,
-    -1.1,
-    -0.9,
-    -0.7,
-    -0.5,
-    -0.3,
-    -0.15,
-    0,
-    0.15,
-    0.3,
-    0.5,
-    0.7,
-    0.9,
-    1.1,
-    1.3,
-    1.5,
-    1.8,
-    2.5,
-]
-
-absYVgen_binning_corr = np.concatenate(
-    (np.arange(0, 2.6, 0.25), [2.75, 3.0, 3.25, 3.5, 3.75, 4.0, 5.0])
-)
-ptVgen_binning_corr = [
+# approximate 2.5% quantiles, used in SMP-25-16, SMP-25-17 for the Z detector level fits
+ptZ_binning = [
     0,
     1,
+    1.5,
     2,
     2.5,
     3,
@@ -298,11 +251,58 @@ ptVgen_binning_corr = [
     33,
     37,
     44,
-    54,
-    75,
     100,
-    1300,
 ]
+# for the Z for SMP-25-016, SMP-25-17
+yll_10quantiles_binning = [-2.5, -1.5, -1.0, -0.5, -0.25, 0, 0.25, 0.5, 1.0, 1.5, 2.5]
+yll_20quantiles_binning = [
+    -2.5,
+    -1.8,
+    -1.5,
+    -1.3,
+    -1.1,
+    -0.9,
+    -0.7,
+    -0.5,
+    -0.3,
+    -0.15,
+    0,
+    0.15,
+    0.3,
+    0.5,
+    0.7,
+    0.9,
+    1.1,
+    1.3,
+    1.5,
+    1.8,
+    2.5,
+]
+# for the W, used for corrections
+ptWgen_binning_corr = ptV_binning
+absYWgen_binning_corr = [
+    0,
+    0.25,
+    0.5,
+    0.75,
+    1,
+    1.25,
+    1.5,
+    1.75,
+    2,
+    2.25,
+    2.5,
+    2.75,
+    3.0,
+    3.25,
+    3.5,
+    3.75,
+    4.0,
+    5.0,
+]
+# for the Z, used for corrections (based on reco binning)
+ptZgen_binning_corr = [*ptZ_binning, 1300]
+absYZgen_binning_corr = [*yll_20quantiles_binning[10:], 5.0]
 
 # categorical axes in python bindings always have an overflow bin, so use a regular axis for the charge
 axis_charge = hist.axis.Regular(
@@ -403,56 +403,6 @@ def get_binning_fakes_relIso(high_iso_bins=False):
         # needed for extended 2D method
         edges.append(0.3)
     return edges
-
-
-def get_dilepton_ptV_binning(fine=False):
-    return (
-        [
-            0,
-            1,
-            1.5,
-            2,
-            2.5,
-            3,
-            3.5,
-            4,
-            4.5,
-            5,
-            5.5,
-            6,
-            6.5,
-            7,
-            7.5,
-            8,
-            8.5,
-            9,
-            9.5,
-            10,
-            10.5,
-            11,
-            11.5,
-            12,
-            13,
-            14,
-            15,
-            16,
-            17,
-            18,
-            19,
-            20,
-            22,
-            24,
-            26,
-            28,
-            30,
-            33,
-            37,
-            44,
-            100,
-        ]
-        if not fine
-        else range(200)
-    )
 
 
 def get_default_ptbins(analysis_label, unfolding=False, gen=False):

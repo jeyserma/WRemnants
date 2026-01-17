@@ -429,7 +429,7 @@ if args.unfolding:
 
     unfolder_z = unfolding_tools.UnfolderZ(
         reco_axes_edges={
-            "ptll": common.get_dilepton_ptV_binning(),
+            "ptll": common.ptZ_binning,
             "yll": common.yll_20quantiles_binning,
         },
         unfolding_axes_names=["ptVGen", "absYVGen", "helicitySig"],
