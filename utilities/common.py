@@ -50,32 +50,23 @@ xsec_GGtoMuMu = 5.619
 xsec_WtoNMu = 100
 
 ## Samples with sqrt{S} = 13 TeV
+eras_run2 = ["2016PostVFP", "2017", "2018"]
 # central MiNNLO samples with muon decay
-wprocs_mu_minnlo_run2 = [
-    "WplusmunuPostVFP",
-    "Wplusmunu2017",
-    "Wplusmunu2018",
-    "WminusmunuPostVFP",
-    "Wminusmunu2017",
-    "Wminusmunu2018",
+wprocs_mu_minnlo_run2 = [f"Wplusmunu_{e}" for e in eras_run2] + [
+    f"Wminusmunu_{e}" for e in eras_run2
+]
+zprocs_mu_minnlo_run2 = [f"Zmumu_{e}" for e in eras_run2] + [
+    f"Zmumu10to50_{e}" for e in eras_run2
 ]
 
-zprocs_mu_minnlo_run2 = [
-    "ZmumuPostVFP",
-    "Zmumu2017",
-    "Zmumu2018",
-    "Zmumu10to50GeVPostVFP",
-    "Zmumu10to50GeV2017",
-    "Zmumu10to50GeV2018",
-]
 # central MiNNLO samples with muon or e decay
 wprocs_emu_minnlo_2017H = [
-    "Wplusmunu2017H",
-    "Wminusmunu2017H",
-    "Wplusenu2017H",
-    "Wminusenu2017H",
+    "Wplusmunu_2017H",
+    "Wminusmunu_2017H",
+    "Wplusenu_2017H",
+    "Wminusenu_2017H",
 ]
-zprocs_emu_minnlo_2017H = ["Zmumu2017H", "Zee2017H"]
+zprocs_emu_minnlo_2017H = ["Zmumu_2017H", "Zee_2017H"]
 vprocs_emu_minnlo_2017H = wprocs_emu_minnlo_2017H + zprocs_emu_minnlo_2017H
 
 wprocs_emu_minnlo = wprocs_mu_minnlo_run2 + wprocs_emu_minnlo_2017H
@@ -83,26 +74,19 @@ zprocs_emu_minnlo = zprocs_mu_minnlo_run2 + zprocs_emu_minnlo_2017H
 vprocs_emu_minnlo = wprocs_emu_minnlo + zprocs_emu_minnlo
 
 # central MiNNLO samples with tau
-wprocs_tau_minnlo_run2 = [
-    "WplustaunuPostVFP",
-    "Wplustaunu2017",
-    "Wplustaunu2018",
-    "WminustaunuPostVFP",
-    "Wminustaunu2017",
-    "Wminustaunu2018",
+wprocs_tau_minnlo_run2 = [f"Wplustaunu_{e}" for e in eras_run2] + [
+    f"Wminusmutau_{e}" for e in eras_run2
+]
+zprocs_tau_minnlo_run2 = [f"Ztautau_{e}" for e in eras_run2] + [
+    f"Ztautau10to50_{e}" for e in eras_run2
 ]
 
-zprocs_tau_minnlo_run2 = [
-    "ZtautauPostVFP",
-    "Ztautau2017",
-    "Ztautau2018",
-]
 wprocs_tau_minnlo_2017H = [
-    "Wplustaunu2017H",
-    "Wminustaunu2017H",
+    "Wplustaunu_2017H",
+    "Wminustaunu_2017H",
 ]
 zprocs_tau_minnlo_2017H = [
-    "Ztautau2017H",
+    "Ztautau_2017H",
 ]
 
 wprocs_tau_minnlo = wprocs_tau_minnlo_run2 + wprocs_tau_minnlo_2017H
@@ -139,10 +123,6 @@ wprocs_alt = [
     "Wminusmunu_winhac-nlo",
     "WplusCharmToMuNu",
     "WminusCharmToMuNu",
-    "WtoNMu_MN-5-V-0p001",
-    "WtoNMu_MN-10-V-0p001",
-    "WtoNMu_MN-30-V-0p001",
-    "WtoNMu_MN-50-V-0p001",
 ]
 zprocs_alt = [
     "ZmumuMiNLO",
@@ -165,22 +145,29 @@ zprocs_alt = [
     "Zmumu_powheg-nloew",
 ]
 
+wprocs_bsm = [
+    "WtoNMuMN5V0p001_2016PostVFP",
+    "WtoNMuMN10V0p001_2016PostVFP",
+    "WtoNMuMN30V0p001_2016PostVFP",
+    "WtoNMuMN50V0p001_2016PostVFP",
+]
+
 ## Samples with sqrt{S} = 5020GeV
 wprocs_emu_minnlo_2017G = [
-    "Wplusmunu2017G",
-    "Wminusmunu2017G",
-    "Wplusenu2017G",
-    "Wminusenu2017G",
+    "Wplusmunu_2017G",
+    "Wminusmunu_2017G",
+    "Wplusenu_2017G",
+    "Wminusenu_2017G",
 ]
-zprocs_emu_minnlo_2017G = ["Zmumu2017G", "Zee2017G"]
+zprocs_emu_minnlo_2017G = ["Zmumu_2017G", "Zee_2017G"]
 vprocs_emu_minnlo_2017G = wprocs_emu_minnlo_2017G + zprocs_emu_minnlo_2017G
 
 wprocs_tau_minnlo_2017G = [
-    "Wplustaunu2017G",
-    "Wminustaunu2017G",
+    "Wplustaunu_2017G",
+    "Wminustaunu_2017G",
 ]
 zprocs_tau_minnlo_2017G = [
-    "Ztautau2017G",
+    "Ztautau_2017G",
 ]
 vprocs_tau_minnlo_2017G = wprocs_tau_minnlo_2017G + zprocs_tau_minnlo_2017G
 
@@ -189,12 +176,12 @@ zprocs_minnlo_2017G = zprocs_emu_minnlo_2017G + zprocs_tau_minnlo_2017G
 vprocs_minnlo_2017G = wprocs_minnlo_2017G + zprocs_minnlo_2017G
 
 # all W and Z samples
-wprocs = wprocs_minnlo + wprocs_alt + wprocs_minnlo_2017G
+wprocs = wprocs_minnlo + wprocs_alt + wprocs_bsm + wprocs_minnlo_2017G
 zprocs = zprocs_minnlo + zprocs_alt + zprocs_minnlo_2017G
 vprocs = wprocs + zprocs + vprocs_minnlo_2017G
 
-zprocs_recoil = ["ZmumuPostVFP"]
-wprocs_recoil = ["WplusmunuPostVFP", "WminusmunuPostVFP"]
+zprocs_recoil = ["Zmumu_2016PostVFP"]
+wprocs_recoil = ["Wplusmunu_2016PostVFP", "Wminusmunu_2016PostVFP"]
 
 zprocs_recoil_lowpu = ["Zmumu", "Zee"]
 wprocs_recoil_lowpu = ["Wminusmunu", "Wminusenu", "Wplusmunu", "Wplusenu"]

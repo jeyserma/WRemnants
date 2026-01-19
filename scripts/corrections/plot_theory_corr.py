@@ -31,7 +31,7 @@ parser.add_argument(
 parser.add_argument(
     "--datasets",
     nargs="*",
-    default=["ZmumuPostVFP"],
+    default=["Zmumu_2016PostVFP"],
     help="Apply corrections from indicated generator. First will be nominal correction.",
 )
 parser.add_argument(

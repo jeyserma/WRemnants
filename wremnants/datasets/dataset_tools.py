@@ -22,12 +22,12 @@ from wums import logging
 logger = logging.child_logger(__name__)
 
 default_nfiles = {
-    "WminusmunuPostVFP": 1700,
-    "WplusmunuPostVFP": 2000,
-    "WminustaunuPostVFP": 400,
-    "WplustaunuPostVFP": 500,
-    "ZmumuPostVFP": 900,
-    "ZtautauPostVFP": 1200,
+    "Wminusmunu_2016PostVFP": 1700,
+    "Wplusmunu_2016PostVFP": 2000,
+    "Wminustaunu_2016PostVFP": 400,
+    "Wplustaunu_2016PostVFP": 500,
+    "Zmumu_2016PostVFP": 900,
+    "Ztautau_2016PostVFP": 1200,
 }
 
 

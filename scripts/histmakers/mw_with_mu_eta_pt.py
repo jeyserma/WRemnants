@@ -883,8 +883,8 @@ def build_graph(df, dataset):
                         cols = [*nominal_cols, *unfolding_cols[level]]
                         break
 
-        elif dataset.name == "ZmumuPostVFP":
-            if args.unfolding and dataset.name == "ZmumuPostVFP":
+        elif dataset.name == "Zmumu_2016PostVFP":
+            if args.unfolding and dataset.name == "Zmumu_2016PostVFP":
                 df = unfolder_z.add_gen_histograms(
                     args, df, results, dataset, corr_helpers, theory_helpers
                 )
@@ -1824,7 +1824,7 @@ def build_graph(df, dataset):
                         )
                     )
 
-            elif dataset.name == "ZmumuPostVFP":
+            elif dataset.name == "Zmumu_2016PostVFP":
                 unfolder_z.add_poi_as_noi_histograms(
                     df,
                     results,
@@ -1841,13 +1841,13 @@ def build_graph(df, dataset):
             "nominal_weight",
         ]
         # assume to have same coeffs for plus and minus (no reason for it not to be the case)
-        if dataset.name in ["WplusmunuPostVFP", "WplustaunuPostVFP"]:
+        if dataset.name in ["Wplusmunu_2016PostVFP", "Wplustaunu_2016PostVFP"]:
             helpers_class = muRmuFPolVar_helpers_plus
             process_name = "W"
-        elif dataset.name in ["WminusmunuPostVFP", "WminustaunuPostVFP"]:
+        elif dataset.name in ["Wminusmunu_2016PostVFP", "Wminustaunu_2016PostVFP"]:
             helpers_class = muRmuFPolVar_helpers_minus
             process_name = "W"
-        elif dataset.name in ["ZmumuPostVFP", "ZtautauPostVFP"]:
+        elif dataset.name in ["Zmumu_2016PostVFP", "Ztautau_2016PostVFP"]:
             helpers_class = muRmuFPolVar_helpers_Z
             process_name = "Z"
         else:

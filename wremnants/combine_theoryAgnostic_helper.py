@@ -163,21 +163,21 @@ class TheoryAgnosticHelper(object):
                         else:
                             result[m.name] = lambda h: slice_histogram(h)
                 else:
-                    scale_hist = scale_hists["WplusmunuPostVFP"]
-                    result["WplusmunuPostVFP"] = (
+                    scale_hist = scale_hists["Wplusmunu_2016PostVFP"]
+                    result["Wplusmunu_2016PostVFP"] = (
                         lambda h, scale_hist=scale_hist: apply_transformations(
                             h, scale_hist
                         )
                     )
-                    scale_hist = scale_hists["WminusmunuPostVFP"]
-                    result["WminusmunuPostVFP"] = (
+                    scale_hist = scale_hists["Wminusmunu_2016PostVFP"]
+                    result["Wminusmunu_2016PostVFP"] = (
                         lambda h, scale_hist=scale_hist: apply_transformations(
                             h, scale_hist
                         )
                     )
             else:
-                scale_hist = scale_hists["ZmumuPostVFP"]
-                result["ZmumuPostVFP"] = (
+                scale_hist = scale_hists["Zmumu_2016PostVFP"]
+                result["Zmumu_2016PostVFP"] = (
                     lambda h, scale_hist=scale_hist: apply_transformations(
                         h, scale_hist
                     )

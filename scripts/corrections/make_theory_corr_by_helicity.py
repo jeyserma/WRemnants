@@ -96,7 +96,9 @@ if all(getattr(args, x) is None for x in ["corr_ul", "corr_a4", "other_coeffs"])
     raise ValueError("Must specify at least one correction file")
 
 processes = (
-    ["ZmumuPostVFP"] if args.proc == "z" else ["WplusmunuPostVFP", "WminusmunuPostVFP"]
+    ["Zmumu_2016PostVFP"]
+    if args.proc == "z"
+    else ["Wplusmunu_2016PostVFP", "Wminusmunu_2016PostVFP"]
 )
 
 binning = {

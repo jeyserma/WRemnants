@@ -800,8 +800,8 @@ def make_uncertainty_helper_by_helicity(
 
     # load helicity cross sections from file
     proc_map = {
-        "Z": ("ZmumuPostVFP",),
-        "W": ("WplusmunuPostVFP", "WminusmunuPostVFP"),
+        "Z": ("Zmumu_2016PostVFP",),
+        "W": ("Wplusmunu_2016PostVFP", "Wminusmunu_2016PostVFP"),
     }
 
     def _collect_hist(hist_name, filename):
