@@ -798,27 +798,33 @@ def make_uncertainty_helper_by_helicity(
     if filename_den is None:
         filename_den = filename
 
-    # load helicity cross sections from file
+    # load helicity cross sections from file #TODO: include Zmumu10to50
     proc_map = {
-        "Z": ("Zmumu_2016PostVFP",),
-        "W": ("Wplusmunu_2016PostVFP", "Wminusmunu_2016PostVFP"),
+        "Z": ("Zmumu",),
+        "W": ("Wplusmunu", "Wminusmunu"),
     }
 
     def _collect_hist(hist_name, filename):
         hist_key = f"nominal_gen_{hist_name}"
         hists = []
-        for process in proc_map.get(proc, ()):
-            if not os.path.exists(filename):
-                logger.warning(
-                    f"File {filename} does not exist. Not creating histogram of variations by helicities for process {proc} and variation {nom}."
-                )
-                return None
-            with h5py.File(filename, "r") as h5file:
+        if not os.path.exists(filename):
+            logger.warning(
+                f"File {filename} does not exist. Not creating histogram of variations by helicities."
+            )
+            return None
+        with h5py.File(filename, "r") as h5file:
+            for process in proc_map.get(proc, ()):
                 results = input_tools.load_results_h5py(h5file)
-                outputs = results.get(process, {}).get("output", {})
+                process_key = [k for k in results.keys() if k.startswith(process)]
+                if len(process_key) == 0:
+                    logger.warning(
+                        f"Did not find key for process {process} in {filename}. Not creating histogram of variations by helicities for process {process} and variation {nom}."
+                    )
+                    return None
+                outputs = results[process_key[0]].get("output", {})
                 if hist_key not in outputs:
                     logger.warning(
-                        f"Did not find {hist_key} in {filename}. Not creating histogram of variations by helicities for process {proc} and variation {nom}."
+                        f"Did not find {hist_key} in {filename}. Not creating histogram of variations by helicities for process {process} and variation {nom}."
                     )
                     return None
                 hists.append(outputs[hist_key].get())

@@ -255,10 +255,10 @@ def main():
             eventgen_procs = ["Wplusmunu", "Wminusmunu"]
         elif args.proc == "bsm":
             eventgen_procs = [
-                "WtoNMu_MN-5-V-0p001",
-                "WtoNMu_MN-10-V-0p001",
-                "WtoNMu_MN-30-V-0p001",
-                "WtoNMu_MN-50-V-0p001",
+                "WtoNMuMN5V0p001",
+                "WtoNMuMN10V0p001",
+                "WtoNMuMN30V0p001",
+                "WtoNMuMN50V0p001",
             ]
 
     minnloh = hh.sumHists(
