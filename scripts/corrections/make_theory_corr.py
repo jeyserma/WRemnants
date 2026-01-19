@@ -114,6 +114,14 @@ def parse_args():
         action="store_true",
         help="Normalize the corrections",
     )
+    parser.add_argument(
+        "--eras",
+        type=str,
+        nargs="+",
+        choices=common.supported_eras,
+        help="Data set to process",
+        default=["2016PostVFP", "2017", "2018"],
+    )
     args = parser.parse_args()
 
     return args
@@ -147,9 +155,11 @@ def read_corr(procName, generator, corrFiles, axes, smooth=None):
 
             fo_func = getattr(input_tools, f"read_matched_scetlib_{fo_generator}_hist")
 
-            zero_nons_bins = (
-                0 if "nnlojet" not in fo_generator else hist.tag.Slicer()[0:2]
-            )
+            if procName[0] == "Z" or "nnlojet" in fo_generator:
+                zero_nons_bins = hist.tag.Slicer()[0:2]
+            else:
+                zero_nons_bins = 0
+
             # TODO: Should probably be more general...
             smooth_args = {}
             if smooth == "fo_sing":
@@ -212,8 +222,8 @@ def main():
     }
 
     if args.proc == "z":
-        eventgen_procs = ["ZmumuPostVFP"]
-        filesByProc = {"ZmumuPostVFP": args.corrFiles}
+        eventgen_procs = ["Zmumu", "Zmumu10to50"]
+        filesByProc = {"Zmumu": args.corrFiles}
     else:
         wpfiles = list(
             filter(
@@ -232,20 +242,17 @@ def main():
         if len(wpfiles) != len(wmfiles):
             if args.duplicateWminus:
                 logger.warning("Using W- correction as a proxy for W+!")
-                filesByProc = {
-                    "WplusmunuPostVFP": wmfiles,
-                    "WminusmunuPostVFP": wmfiles,
-                }
+                filesByProc = {"Wplusmunu": wmfiles, "Wminusmunu": wmfiles}
 
             else:
                 raise ValueError(
                     f"Expected equal number of files for W+ and W-, found {len(wpfiles)} (Wp) and {len(wmfiles)} (Wm)"
                 )
         else:
-            filesByProc = {"WplusmunuPostVFP": wpfiles, "WminusmunuPostVFP": wmfiles}
+            filesByProc = {"Wplusmunu": wpfiles, "Wminusmunu": wmfiles}
 
         if args.proc == "w":
-            eventgen_procs = ["WplusmunuPostVFP", "WminusmunuPostVFP"]
+            eventgen_procs = ["Wplusmunu", "Wminusmunu"]
         elif args.proc == "bsm":
             eventgen_procs = [
                 "WtoNMu_MN-5-V-0p001",
@@ -257,7 +264,11 @@ def main():
     minnloh = hh.sumHists(
         [
             input_tools.read_mu_hist_combine_tau(
-                args.minnloFile, proc, args.minnloh, combine_with_tau=args.proc != "bsm"
+                args.minnloFile,
+                proc,
+                args.minnloh,
+                eras=args.eras,
+                combine_with_tau=args.proc != "bsm",
             )
             for proc in eventgen_procs
         ]
@@ -420,48 +431,65 @@ def main():
                 proc = "Wp" if charge.imag > 0 else "Wm"
                 final_state = "\\ell^{+}\\nu" if charge.imag > 0 else "\\ell^{-}\\nu"
 
-            fig, ax = plt.subplots(figsize=(6, 6))
-            corrh[{"vars": 0, "charge": charge, "Q": 0}].plot(ax=ax, cmin=0.5, cmax=1.5)
+            for imass, mass_edges in enumerate(minnloh.axes["Q"]):
+                if len(minnloh.axes["Q"].centers) > 1:
+                    suffix = f"_{int(mass_edges[0])}to{int(mass_edges[1])}GeV"
+                    extra_text = [
+                        f"{int(mass_edges[0])} < Q < {int(mass_edges[1])} GeV"
+                    ]
+                else:
+                    suffix = ""
+                    extra_text = None
 
-            outdir = output_tools.make_plot_dir(
-                *args.plotdir.rsplit("/", 1), eoscp=args.eoscp
-            )
-            plot_name = f"corr2D_{generator}_MiNNLO_{proc}"
-            plot_tools.save_pdf_and_png(outdir, plot_name)
-            output_tools.write_index_and_log(
-                outdir, plot_name, args=args, analysis_meta_info=meta_dict
-            )
+                iminnloh = minnloh[{"Q": imass, "charge": charge}]
+                inumh = numh[{"Q": imass, "charge": charge, "vars": 0}]
+                icorrh = corrh[{"Q": imass, "charge": charge, "vars": 0}]
 
-            for varm, varn in zip(minnloh.axes.name[:-1], numh.axes.name[:-2]):
-                fig = plot_tools.makePlotWithRatioToRef(
-                    [
-                        minnloh[{"charge": charge}].project(varm),
-                        numh[{"vars": 0, "charge": charge}].project(varn),
-                    ],
-                    [
-                        "MiNNLO",
-                        generator,
-                    ],
-                    colors=["orange", "mediumpurple"],
-                    linestyles=[
-                        "solid",
-                        "dashed",
-                    ],
-                    xlabel=xlabel[varm].format(final_state=final_state),
-                    ylabel="Events/bin",
-                    rlabel="x/MiNNLO",
-                    legtext_size=24,
-                    rrange=[0.8, 1.2],
-                    yscale=1.1,
-                    xlim=None,
-                    binwnorm=1.0,
-                    baseline=True,
+                fig, ax = plt.subplots(figsize=(6, 6))
+                icorrh.plot(ax=ax, cmin=0.5, cmax=1.5)
+
+                outdir = output_tools.make_plot_dir(
+                    *args.plotdir.rsplit("/", 1), eoscp=args.eoscp
                 )
-                plot_name = f"{varm}_{generator}_MiNNLO_{proc}"
+                plot_name = f"corr2D_{generator}_MiNNLO_{proc}{suffix}"
                 plot_tools.save_pdf_and_png(outdir, plot_name)
                 output_tools.write_index_and_log(
                     outdir, plot_name, args=args, analysis_meta_info=meta_dict
                 )
+
+                for varm, varn in zip(iminnloh.axes.name, inumh.axes.name):
+                    fig = plot_tools.makePlotWithRatioToRef(
+                        [
+                            iminnloh.project(varm),
+                            inumh.project(varn),
+                        ],
+                        [
+                            "MiNNLO",
+                            generator.replace("_", " ").replace("FineBins ", ""),
+                        ],
+                        colors=["orange", "mediumpurple"],
+                        linestyles=[
+                            "solid",
+                            "dashed",
+                        ],
+                        xlabel=xlabel[varm].format(final_state=final_state),
+                        ylabel="Events/bin",
+                        rlabel="x/MiNNLO",
+                        legtext_size=24,
+                        nlegcols=1,
+                        rrange=[0.8, 1.2],
+                        yscale=1.1,
+                        xlim=None,
+                        binwnorm=1.0,
+                        baseline=True,
+                        extra_text=extra_text,
+                        extra_text_loc=(0.5, 0.7) if varm == "qT" else (0.1, 0.2),
+                    )
+                    plot_name = f"{varm}_{generator}_MiNNLO_{proc}{suffix}"
+                    plot_tools.save_pdf_and_png(outdir, plot_name)
+                    output_tools.write_index_and_log(
+                        outdir, plot_name, args=args, analysis_meta_info=meta_dict
+                    )
         if output_tools.is_eosuser_path(args.plotdir) and args.eoscp:
             output_tools.copy_to_eos(outdir, args.plotdir)
 

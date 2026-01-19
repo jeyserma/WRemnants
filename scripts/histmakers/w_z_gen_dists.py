@@ -213,7 +213,10 @@ def build_graph(df, dataset):
         [4.0, 13000.0], name="massVgen", underflow=True, overflow=False
     )
     axis_massZgen = hist.axis.Variable(
-        [0, 20, 30, 40, 50, 60, 70, 80, 90, 100, 110, 120, 13000], name="massVgen"
+        [0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 110, 120, 13000],
+        name="massVgen",
+        underflow=False,
+        overflow=False,
     )
 
     theoryAgnostic_axes, _ = differential.get_theoryAgnostic_axes(

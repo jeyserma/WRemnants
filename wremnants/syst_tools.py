@@ -1899,9 +1899,15 @@ def add_theory_corr_hists(
                     0, 1, name="chargeVgenNP", underflow=False, overflow=False
                 )
 
+            axis_absYVgen = hist.axis.Variable(
+                common.absYWgen_binning_corr if isW else common.absYZgen_binning_corr,
+                name="absYVgenNP",
+                underflow=False,
+            )
+
             # since the last column might be an additional weight, the extra columns and axes have to go at the appropriate place
             nax = len(axes)
-            axes_FlavDepNP = [*axes, theory_tools.axis_absYVgen, axis_chargegen]
+            axes_FlavDepNP = [*axes, axis_absYVgen, axis_chargegen]
             cols_FlavDepNP = cols[:nax] + ["absYVgen", "chargeVgen"] + cols[nax:]
             name = Datagroups.histName(base_name, syst=tensor_name)
             add_syst_hist(

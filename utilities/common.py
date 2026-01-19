@@ -49,8 +49,21 @@ xsec_GGtoMuMu = 5.619
 # BSM heavy neutrino samples, just a dummy number
 xsec_WtoNMu = 100
 
+## eras
+eras_run2 = ["2016PreVFP", "2016PostVFP", "2017", "2018"]
+
+supported_eras = eras_run2 + [
+    "2016PostVFP",
+    "2017G",
+    "2017H",
+    "2023_PUAVE1",
+    "2023_PUAVE2",
+    "2023_PUAVE5",
+    "2023_PUAVE10",
+    "13TeVGen",
+]
+
 ## Samples with sqrt{S} = 13 TeV
-eras_run2 = ["2016PostVFP", "2017", "2018"]
 # central MiNNLO samples with muon decay
 wprocs_mu_minnlo_run2 = [f"Wplusmunu_{e}" for e in eras_run2] + [
     f"Wminusmunu_{e}" for e in eras_run2
@@ -343,13 +356,12 @@ absYWgen_binning_corr = [
     3.0,
     3.25,
     3.5,
-    3.75,
     4.0,
     5.0,
 ]
 # for the Z, used for corrections (based on reco binning)
 ptZgen_binning_corr = [*ptZ_binning, 1300]
-absYZgen_binning_corr = [*yll_20quantiles_binning[10:], 5.0]
+absYZgen_binning_corr = [*yll_20quantiles_binning[10:], 2.75, 3.0, 3.25, 3.5, 4.0, 5.0]
 
 # categorical axes in python bindings always have an overflow bin, so use a regular axis for the charge
 axis_charge = hist.axis.Regular(
