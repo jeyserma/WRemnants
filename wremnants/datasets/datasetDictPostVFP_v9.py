@@ -217,28 +217,28 @@ dataDictV9_PostVFP = {
         "xsec_dn": 3.588e01,
         "group": "PhotonInduced",
     },
-    "WtoNMuMN5V0p001_2016PostVFP": {
+    "WtoNMuMass5_2016PostVFP": {
         "filepaths": [
             "{BASE_PATH}/WtoNMu_MN-5-V-0p001_TuneCP5_13TeV_madgraph-pythia8/"
         ],
         "xsec": common.xsec_WtoNMu,
         "group": "WtoNMu_5",
     },
-    "WtoNMuMN10V0p001_2016PostVFP": {
+    "WtoNMuMass10_2016PostVFP": {
         "filepaths": [
             "{BASE_PATH}/WtoNMu_MN-10-V-0p001_TuneCP5_13TeV_madgraph-pythia8/"
         ],
         "xsec": common.xsec_WtoNMu,
         "group": "WtoNMu_10",
     },
-    "WtoNMuMN30V0p001_2016PostVFP": {
+    "WtoNMuMass30_2016PostVFP": {
         "filepaths": [
             "{BASE_PATH}/WtoNMu_MN-30-V-0p001_TuneCP5_13TeV_madgraph-pythia8/"
         ],
         "xsec": common.xsec_WtoNMu,
         "group": "WtoNMu_30",
     },
-    "WtoNMuMN50V0p001_2016PostVFP": {
+    "WtoNMuMass50_2016PostVFP": {
         "filepaths": [
             "{BASE_PATH}/WtoNMu_MN-50-V-0p001_TuneCP5_13TeV_madgraph-pythia8/"
         ],

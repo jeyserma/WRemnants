@@ -180,7 +180,7 @@ def make_parser(parser=None):
         type=str,
         default=None,
         help="Add BSM as independent process, not propagating the effect into the fakes",
-        choices=["WtoNMu_0", "WtoNMu_5", "WtoNMu_10", "WtoNMu_30", "WtoNMu_50"],
+        choices=["WtoNMuMass5", "WtoNMuMass10", "WtoNMuMass30", "WtoNMuMass50"],
     )
     parser.add_argument(
         "--addBSMMixing",

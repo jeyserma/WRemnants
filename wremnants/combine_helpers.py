@@ -557,10 +557,7 @@ def add_bsm_mixing(
 
     if mixing > 0:
         # load bsm members
-        model, mass = bsm_name.split("_")
-        bsm_member_info = datagroups.get_members_from_results(
-            startswith=[f"{model}_MN-{mass}-"]
-        )
+        bsm_member_info = datagroups.get_members_from_results(startswith=[bsm_name])
         bsm_members = [Datagroup_member(k, v) for k, v in bsm_member_info.items()]
 
         if len(bsm_members) != 1:
@@ -603,22 +600,19 @@ def add_bsm_mixing(
 
 def add_bsm_process(
     datagroups,
-    bsm_process,
+    bsm_name,
 ):
     # add BSM sample as new process
-    model, mass = bsm_process.split("_")
-    bsm_members = datagroups.get_members_from_results(
-        startswith=[f"{model}_MN-{mass}-"]
-    )
+    bsm_members = datagroups.get_members_from_results(startswith=[bsm_name])
     if len(bsm_members) != 1:
         raise NotImplementedError(
             f"Expected exactly 1 BSM member, but got {len(bsm_members)}"
         )
     datagroups.addGroup(
-        bsm_process,
+        bsm_name,
         members=bsm_members,
     )
-    datagroups.unconstrainedProcesses.append(bsm_process)
+    datagroups.unconstrainedProcesses.append(bsm_name)
 
     # Get SM cross section
     xsec = 0
@@ -626,5 +620,5 @@ def add_bsm_process(
         xsec += m.xsec
 
     # scale BSM cross section to SM cross section
-    for m in datagroups.groups[bsm_process].members:
+    for m in datagroups.groups[bsm_name].members:
         m.xsec = xsec

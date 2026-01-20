@@ -88,7 +88,7 @@ vprocs_emu_minnlo = wprocs_emu_minnlo + zprocs_emu_minnlo
 
 # central MiNNLO samples with tau
 wprocs_tau_minnlo_run2 = [f"Wplustaunu_{e}" for e in eras_run2] + [
-    f"Wminusmutau_{e}" for e in eras_run2
+    f"Wminustaunu_{e}" for e in eras_run2
 ]
 zprocs_tau_minnlo_run2 = [f"Ztautau_{e}" for e in eras_run2] + [
     f"Ztautau10to50_{e}" for e in eras_run2
@@ -159,10 +159,10 @@ zprocs_alt = [
 ]
 
 wprocs_bsm = [
-    "WtoNMuMN5V0p001_2016PostVFP",
-    "WtoNMuMN10V0p001_2016PostVFP",
-    "WtoNMuMN30V0p001_2016PostVFP",
-    "WtoNMuMN50V0p001_2016PostVFP",
+    "WtoNMuMass5_2016PostVFP",
+    "WtoNMuMass10_2016PostVFP",
+    "WtoNMuMass30_2016PostVFP",
+    "WtoNMuMass50_2016PostVFP",
 ]
 
 ## Samples with sqrt{S} = 5020GeV
