@@ -557,7 +557,9 @@ def add_bsm_mixing(
 
     if mixing > 0:
         # load bsm members
-        bsm_member_info = datagroups.get_members_from_results(startswith=[bsm_name])
+        bsm_member_info = datagroups.get_members_from_results(
+            startswith=f"{bsm_name}_{datagroups.era}"
+        )
         bsm_members = [Datagroup_member(k, v) for k, v in bsm_member_info.items()]
 
         if len(bsm_members) != 1:
@@ -603,7 +605,9 @@ def add_bsm_process(
     bsm_name,
 ):
     # add BSM sample as new process
-    bsm_members = datagroups.get_members_from_results(startswith=[bsm_name])
+    bsm_members = datagroups.get_members_from_results(
+        startswith=f"{bsm_name}_{datagroups.era}"
+    )
     if len(bsm_members) != 1:
         raise NotImplementedError(
             f"Expected exactly 1 BSM member, but got {len(bsm_members)}"

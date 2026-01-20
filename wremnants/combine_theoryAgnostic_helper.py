@@ -149,6 +149,11 @@ class TheoryAgnosticHelper(object):
 
         result = {}
 
+        # for backwards compatibility, TODO remove when no longer needed
+        scale_hists = {
+            k.replace("uPostVFP", "u_2016PostVFP"): v for k, v in scale_hists.items()
+        }
+
         for g in self.datagroups.procGroups["signal_samples"]:
             if sign != "":
                 if sign is not None:
