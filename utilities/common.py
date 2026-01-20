@@ -163,6 +163,7 @@ wprocs_bsm = [
     "WtoNMuMass10_2016PostVFP",
     "WtoNMuMass30_2016PostVFP",
     "WtoNMuMass50_2016PostVFP",
+    "WtoMuNuSMEFT_2016PostVFP",
 ]
 
 ## Samples with sqrt{S} = 5020GeV
@@ -338,7 +339,7 @@ yll_20quantiles_binning = [
     1.8,
     2.5,
 ]
-# for the W, used for corrections
+# for the W, used for Ai based corrections and uncertainties
 ptWgen_binning_corr = ptV_binning
 absYWgen_binning_corr = [
     0,
@@ -359,7 +360,7 @@ absYWgen_binning_corr = [
     4.0,
     5.0,
 ]
-# for the Z, used for corrections (based on reco binning)
+# for the Z, used for Ai based corrections and uncertainties (based on reco binning)
 ptZgen_binning_corr = [*ptZ_binning, 1300]
 absYZgen_binning_corr = [*yll_20quantiles_binning[10:], 2.75, 3.0, 3.25, 3.5, 4.0, 5.0]
 

@@ -612,6 +612,7 @@ def add_bsm_process(
         raise NotImplementedError(
             f"Expected exactly 1 BSM member, but got {len(bsm_members)}"
         )
+    # since this group is created manually, the BSM is not added to the fakes (which is likely intented thing for BSM)
     datagroups.addGroup(
         bsm_name,
         members=bsm_members,
