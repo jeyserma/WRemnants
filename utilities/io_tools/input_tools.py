@@ -631,10 +631,33 @@ def read_matched_scetlib_hist(
     hnonsing = hh.addHists(-1 * hfo_sing, hfo, flow=False, by_ax_name=False)
 
     if "qT" in hfo.axes.name and zero_nons_bins is not None:
+
+        def translate_slice(ax, s):
+            if not isinstance(s, slice):
+                return s
+            start = (
+                int(ax.index(s.start.imag) + s.start.real)
+                if isinstance(s.start, complex)
+                else s.start
+            )
+            stop = (
+                int(ax.index(s.stop.imag) + s.stop.real + 1)
+                if isinstance(s.stop, complex)
+                else s.stop
+            )
+
+            return slice(start, stop, s.step)
+
         slices = tuple(
-            zero_nons_bins if ax == "qT" else slice(None) for ax in hnonsing.axes.name
+            (
+                translate_slice(hnonsing.axes[ax], zero_nons_bins)
+                if ax == "qT"
+                else slice(None)
+            )
+            for ax in hnonsing.axes.name
         )
-        hnonsing.view()[slices] = np.zeros_like(hnonsing[{"qT": zero_nons_bins}])
+        hnonsing.values(flow=True)[slices] = 0
+        hnonsing.variances(flow=True)[slices] = 0
 
     # variations are driven by resummed result, collect common variations from nonsingular piece
     # if needed

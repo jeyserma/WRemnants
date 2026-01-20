@@ -155,11 +155,6 @@ def read_corr(procName, generator, corrFiles, axes, smooth=None):
 
             fo_func = getattr(input_tools, f"read_matched_scetlib_{fo_generator}_hist")
 
-            if procName[0] == "Z" or "nnlojet" in fo_generator:
-                zero_nons_bins = hist.tag.Slicer()[0:2]
-            else:
-                zero_nons_bins = 0
-
             # TODO: Should probably be more general...
             smooth_args = {}
             if smooth == "fo_sing":
@@ -170,7 +165,7 @@ def read_corr(procName, generator, corrFiles, axes, smooth=None):
                 fo_files[0],
                 axes,
                 charge=charge,
-                zero_nons_bins=zero_nons_bins,
+                zero_nons_bins=slice(0j, 1j),  # set bins qT < 1GeV to 0
                 **smooth_args,
             )
         else:

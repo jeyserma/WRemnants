@@ -47,12 +47,6 @@ parser.add_argument(
     help="Use unfolding binning to produce the gen results",
 )
 parser.add_argument(
-    "--useCorrByHelicityBinning",
-    action="store_true",
-    help="Use finer absY binning to produce the gen results."
-    "Used in particular to produce the smooth PDF corrections.",
-)
-parser.add_argument(
     "--singleLeptonHists",
     action="store_true",
     help="Also store single lepton kinematics",
@@ -98,9 +92,9 @@ parser.add_argument(
     help="Add axis to store info if the event has an outgoing charm quark",
 )
 parser.add_argument(
-    "--finePtVBinning",
+    "--fineBinning",
     action="store_true",
-    help="Use 1 GeV binning for ptVgen (e.g., for theory corrections)",
+    help="Use 0.5 GeV binning for ptVgen and 0.05 in absYVgen (e.g., for theory corrections)",
 )
 parser.add_argument(
     "--centralBosonPDFWeight",
@@ -162,6 +156,22 @@ axis_chargel_gen = hist.axis.Regular(
     overflow=False,
 )
 
+# fine mass bins for studies
+# axis_massWgen = hist.axis.Regular(
+#         120, 0, 120.0, name="massVgen", underflow=True, overflow=True
+#     )
+# axis_massZgen = hist.axis.Variable(
+#     [0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 110, 120, 13000],
+#     name="massVgen",
+#     underflow=False,
+#     overflow=False,
+# )
+
+axis_massWgen = hist.axis.Variable(
+    [4.0, 13000.0], name="massVgen", underflow=True, overflow=False
+)
+axis_massZgen = hist.axis.Regular(1, 60.0, 120.0, name="massVgen")
+
 theory_corrs = [*args.theoryCorr, *args.ewTheoryCorr]
 procsWithTheoryCorr = [d.name for d in datasets if d.name in common.vprocs]
 if len(procsWithTheoryCorr) and len(theory_corrs):
@@ -204,21 +214,6 @@ def build_graph(df, dataset):
     else:
         theory_helpers = {}
 
-    # fine mass bins for studies
-    # axis_massWgen = hist.axis.Regular(
-    #         120, 0, 120.0, name="massVgen", underflow=True, overflow=True
-    #     )
-
-    axis_massWgen = hist.axis.Variable(
-        [4.0, 13000.0], name="massVgen", underflow=True, overflow=False
-    )
-    axis_massZgen = hist.axis.Variable(
-        [0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 110, 120, 13000],
-        name="massVgen",
-        underflow=False,
-        overflow=False,
-    )
-
     theoryAgnostic_axes, _ = differential.get_theoryAgnostic_axes(
         ptV_flow=True, absYV_flow=True, wlike="Z" in dataset.name
     )
@@ -248,20 +243,6 @@ def build_graph(df, dataset):
             name="ptVgen",
             underflow=False,
         )
-
-        axis_massZgen = hist.axis.Regular(1, 60.0, 120.0, name="massVgen")
-    elif args.useCorrByHelicityBinning:
-        axis_absYVgen = hist.axis.Variable(
-            common.absYZgen_binning_corr if isZ else common.absYWgen_binning_corr,
-            name="absYVgen",
-            underflow=False,
-        )
-        axis_ptVgen = hist.axis.Variable(
-            common.ptZgen_binning_corr if isZ else common.ptWgen_binning_corr,
-            name="ptVgen",
-            underflow=False,
-        )
-        axis_massZgen = hist.axis.Regular(1, 60.0, 120.0, name="massVgen")
     elif args.useTheoryAgnosticBinning:
         axis_absYVgen = hist.axis.Variable(
             axis_yV_thag.edges,  # same axis as theory agnostic norms
@@ -274,19 +255,24 @@ def build_graph(df, dataset):
             underflow=False,
         )
     else:
+        if args.fineBinning:
+            edges_ptV = np.append(np.arange(0, 100.5, 0.5), 13000.0)
+            edges_absYV = np.arange(0, 5.05, 0.05)
+        else:
+            edges_ptV = (
+                common.ptZgen_binning_corr if isZ else common.ptWgen_binning_corr
+            )
+            edges_absYV = (
+                common.absYZgen_binning_corr if isZ else common.absYWgen_binning_corr
+            )
+
         axis_absYVgen = hist.axis.Variable(
-            common.absYZgen_binning_corr if isZ else common.absYWgen_binning_corr,
+            edges_absYV,
             name="absYVgen",
             underflow=False,
         )
-        if args.finePtVBinning:
-            edges = range(200)
-            edges = (*edges, 13000.0)
-        else:
-            edges = common.ptZgen_binning_corr if isZ else common.ptWgen_binning_corr
-
         axis_ptVgen = hist.axis.Variable(
-            edges,
+            edges_ptV,
             name="ptVgen",
             underflow=False,
         )
