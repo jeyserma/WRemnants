@@ -25,7 +25,7 @@ dataDictV9_PostVFP = {
         "xsec": common.xsec_DYJetsToLL,
         "group": "Zmumu",
     },
-    "Zmumu10to50_2016PostVFP": {
+    "DYJetsToMuMuMass10to50_2016PostVFP": {
         "filepaths": [
             "{BASE_PATH}/DYJetsToMuMu_M-10to50_H2ErratumFix_TuneCP5_13TeV-powhegMiNNLO-pythia8-photos/NanoV9MCPostVFP_{NANO_PROD_TAG}",
         ],

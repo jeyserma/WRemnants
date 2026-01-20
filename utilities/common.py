@@ -68,9 +68,9 @@ supported_eras = eras_run2 + [
 wprocs_mu_minnlo_run2 = [f"Wplusmunu_{e}" for e in eras_run2] + [
     f"Wminusmunu_{e}" for e in eras_run2
 ]
-zprocs_mu_minnlo_run2 = [f"Zmumu_{e}" for e in eras_run2] + [
-    f"Zmumu10to50_{e}" for e in eras_run2
-]
+zprocs_mu_minnlo_run2 = [
+    f"Zmumu_{e}" for e in eras_run2
+]  # + [f"DYJetsToMuMuMass10to50_{e}" for e in eras_run2]
 
 # central MiNNLO samples with muon or e decay
 wprocs_emu_minnlo_2017H = [

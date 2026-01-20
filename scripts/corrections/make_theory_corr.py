@@ -222,7 +222,7 @@ def main():
     }
 
     if args.proc == "z":
-        eventgen_procs = ["Zmumu", "Zmumu10to50"]
+        eventgen_procs = ["Zmumu"]  # , "DYJetsToMuMuMass10to50"]
         filesByProc = {"Zmumu": args.corrFiles}
     else:
         wpfiles = list(
@@ -420,6 +420,10 @@ def main():
             "absY": "$|y^{{{final_state}}}|$",
         }
 
+        outdir = output_tools.make_plot_dir(
+            *args.plotdir.rsplit("/", 1), eoscp=args.eoscp
+        )
+
         for charge in minnloh.axes["charge"].centers:
             if args.duplicateWminus and charge == 1:
                 continue
@@ -434,62 +438,73 @@ def main():
             for imass, mass_edges in enumerate(minnloh.axes["Q"]):
                 if len(minnloh.axes["Q"].centers) > 1:
                     suffix = f"_{int(mass_edges[0])}to{int(mass_edges[1])}GeV"
-                    extra_text = [
+                    extra_text_base = [
                         f"{int(mass_edges[0])} < Q < {int(mass_edges[1])} GeV"
                     ]
                 else:
                     suffix = ""
-                    extra_text = None
+                    extra_text_base = []
 
-                iminnloh = minnloh[{"Q": imass, "charge": charge}]
-                inumh = numh[{"Q": imass, "charge": charge, "vars": 0}]
-                icorrh = corrh[{"Q": imass, "charge": charge, "vars": 0}]
+                for ivar, var in enumerate(corrh.axes["vars"]):
 
-                fig, ax = plt.subplots(figsize=(6, 6))
-                icorrh.plot(ax=ax, cmin=0.5, cmax=1.5)
+                    if len(corrh.axes["vars"]) > 1:
+                        suffix += f"_{var}"
+                        extra_text = [*extra_text_base, var]
+                    else:
+                        extra_text = extra_text_base
 
-                outdir = output_tools.make_plot_dir(
-                    *args.plotdir.rsplit("/", 1), eoscp=args.eoscp
-                )
-                plot_name = f"corr2D_{generator}_MiNNLO_{proc}{suffix}"
-                plot_tools.save_pdf_and_png(outdir, plot_name)
-                output_tools.write_index_and_log(
-                    outdir, plot_name, args=args, analysis_meta_info=meta_dict
-                )
+                    if "vars" in minnloh.axes.name:
+                        iminnloh = minnloh[{"Q": imass, "charge": charge, "vars": ivar}]
+                    else:
+                        iminnloh = minnloh[{"Q": imass, "charge": charge}]
 
-                for varm, varn in zip(iminnloh.axes.name, inumh.axes.name):
-                    fig = plot_tools.makePlotWithRatioToRef(
-                        [
-                            iminnloh.project(varm),
-                            inumh.project(varn),
-                        ],
-                        [
-                            "MiNNLO",
-                            generator.replace("_", " ").replace("FineBins ", ""),
-                        ],
-                        colors=["orange", "mediumpurple"],
-                        linestyles=[
-                            "solid",
-                            "dashed",
-                        ],
-                        xlabel=xlabel[varm].format(final_state=final_state),
-                        ylabel="Events/bin",
-                        rlabel="x/MiNNLO",
-                        legtext_size=24,
-                        nlegcols=1,
-                        rrange=[0.8, 1.2],
-                        yscale=1.1,
-                        xlim=None,
-                        binwnorm=1.0,
-                        baseline=True,
-                        extra_text=extra_text,
-                        extra_text_loc=(0.5, 0.7) if varm == "qT" else (0.1, 0.2),
-                    )
-                    plot_name = f"{varm}_{generator}_MiNNLO_{proc}{suffix}"
+                    inumh = numh[{"Q": imass, "charge": charge, "vars": ivar}]
+                    icorrh = corrh[{"Q": imass, "charge": charge, "vars": ivar}]
+
+                    fig, ax = plt.subplots(figsize=(6, 6))
+                    icorrh.plot(ax=ax, cmin=0.5, cmax=1.5)
+
+                    plot_name = f"corr2D_{generator}_MiNNLO_{proc}{suffix}"
                     plot_tools.save_pdf_and_png(outdir, plot_name)
                     output_tools.write_index_and_log(
                         outdir, plot_name, args=args, analysis_meta_info=meta_dict
                     )
+
+                    for varm, varn in zip(iminnloh.axes.name, inumh.axes.name):
+                        fig = plot_tools.makePlotWithRatioToRef(
+                            [
+                                iminnloh.project(varm),
+                                inumh.project(varn),
+                            ],
+                            [
+                                "MiNNLO",
+                                generator.replace("_", " ").replace("FineBins ", ""),
+                            ],
+                            colors=["orange", "mediumpurple"],
+                            linestyles=[
+                                "solid",
+                                "dashed",
+                            ],
+                            xlabel=xlabel[varm].format(final_state=final_state),
+                            ylabel="Events/bin",
+                            rlabel="x/MiNNLO",
+                            legtext_size=24,
+                            nlegcols=1,
+                            rrange=[0.8, 1.2],
+                            yscale=1.1,
+                            xlim=None,
+                            binwnorm=1.0,
+                            baseline=True,
+                            extra_text=extra_text,
+                            extra_text_loc=(0.5, 0.7) if varm == "qT" else (0.1, 0.2),
+                        )
+                        plot_name = f"{varm}_{generator}_MiNNLO_{proc}{suffix}"
+                        plot_tools.save_pdf_and_png(outdir, plot_name)
+                        output_tools.write_index_and_log(
+                            outdir, plot_name, args=args, analysis_meta_info=meta_dict
+                        )
+
+                    break  # only plot first variation
         if output_tools.is_eosuser_path(args.plotdir) and args.eoscp:
             output_tools.copy_to_eos(outdir, args.plotdir)
 

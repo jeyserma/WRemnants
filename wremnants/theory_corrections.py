@@ -798,7 +798,7 @@ def make_uncertainty_helper_by_helicity(
     if filename_den is None:
         filename_den = filename
 
-    # load helicity cross sections from file #TODO: include Zmumu10to50
+    # load helicity cross sections from file #TODO: include DYJetsToMuMuMass10to50
     proc_map = {
         "Z": ("Zmumu",),
         "W": ("Wplusmunu", "Wminusmunu"),

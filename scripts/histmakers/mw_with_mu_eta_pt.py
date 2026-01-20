@@ -684,7 +684,11 @@ def build_graph(df, dataset):
     isW = dataset.group in ["Wmunu", "Wtaunu"]
     isBSM = dataset.name.startswith("WtoNMu")
     isWmunu = isBSM or dataset.group in ["Wmunu"]
-    isZ = dataset.group in ["Zmumu", "Ztautau", "DYlowMass"]
+    isZ = dataset.group in [
+        "Zmumu",
+        "Ztautau",
+    ]
+    isZveto = isZ or dataset.group in ["DYlowMass"]
     isWorZ = isW or isZ
     isTop = dataset.group == "Top"
     isQCDMC = dataset.group == "QCD"
@@ -1239,7 +1243,7 @@ def build_graph(df, dataset):
             )
             weight_expr += "*weight_fullMuonSF_withTrackingReco"
 
-            if isZ and not args.noGenMatchMC:
+            if isZveto and not args.noGenMatchMC:
                 if args.scaleDYvetoFraction > 0.0:
                     # weight different from 1 only for events with >=2 gen muons in acceptance but only 1 reco muon
                     df = df.Define(
@@ -2018,7 +2022,7 @@ def build_graph(df, dataset):
                         step=es,
                         storage_type=storage_type,
                     )
-                if isZ and not args.noGenMatchMC and not args.noVetoSF:
+                if isZveto and not args.noGenMatchMC and not args.noVetoSF:
                     df = syst_tools.add_muon_efficiency_veto_unc_hists(
                         results,
                         df,

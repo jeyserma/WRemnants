@@ -57,7 +57,7 @@ dataDictV9_2017 = {
         "group": "Zmumu",
         "das_name": "private",
     },
-    "Zmumu10to50_2017": {
+    "DYJetsToMuMuMass10to50_2017": {
         "filepaths": [
             "{BASE_PATH}/DYJetsToMuMu_M-10to50_H2ErratumFix_TuneCP5_13TeV-powhegMiNNLO-pythia8-photos/NanoV9MC2017_{NANO_PROD_TAG}"
         ],
