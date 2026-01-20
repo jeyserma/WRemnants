@@ -365,8 +365,8 @@ def main():
 
     generator = args.generator
     if args.postfix:
-        generator += args.postfix
-    outfile = f"{args.outpath}/{generator}Corr{args.proc.upper()}.pkl.lz4"
+        generator += f"_{args.postfix}"
+    outfile = f"{args.outpath}/{generator}_Corr{args.proc.upper()}.pkl.lz4"
 
     meta_dict = {}
     for f in [args.minnloFile] + args.corrFiles:
