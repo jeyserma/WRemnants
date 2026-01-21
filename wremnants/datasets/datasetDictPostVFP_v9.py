@@ -222,35 +222,35 @@ dataDictV9_PostVFP = {
             "{BASE_PATH}/WtoNMu_MN-5-V-0p001_TuneCP5_13TeV_madgraph-pythia8/NanoV9MCPostVFP_{NANO_PROD_TAG}",
         ],
         "xsec": common.xsec_WtoNMu,
-        "group": "WtoNMu_5",
+        "group": "WtoNMu",
     },
     "WtoNMuMass10_2016PostVFP": {
         "filepaths": [
             "{BASE_PATH}/WtoNMu_MN-10-V-0p001_TuneCP5_13TeV_madgraph-pythia8/NanoV9MCPostVFP_{NANO_PROD_TAG}",
         ],
         "xsec": common.xsec_WtoNMu,
-        "group": "WtoNMu_10",
+        "group": "WtoNMu",
     },
     "WtoNMuMass30_2016PostVFP": {
         "filepaths": [
             "{BASE_PATH}/WtoNMu_MN-30-V-0p001_TuneCP5_13TeV_madgraph-pythia8/NanoV9MCPostVFP_{NANO_PROD_TAG}",
         ],
         "xsec": common.xsec_WtoNMu,
-        "group": "WtoNMu_30",
+        "group": "WtoNMu",
     },
     "WtoNMuMass50_2016PostVFP": {
         "filepaths": [
             "{BASE_PATH}/WtoNMu_MN-50-V-0p001_TuneCP5_13TeV_madgraph-pythia8/NanoV9MCPostVFP_{NANO_PROD_TAG}",
         ],
         "xsec": common.xsec_WtoNMu,
-        "group": "WtoNMu_50",
+        "group": "WtoNMu",
     },
     "WtoMuNuSMEFT_2016PostVFP": {
         "filepaths": [
             "{BASE_PATH}/WtoMuNu_nuSMEFT_MNu-0p1_Lambda-246_TuneCP5_13TeV_madgraph-pythia8/NanoV9MCPostVFP_{NANO_PROD_TAG}",
         ],
         "xsec": common.xsec_WtoNMu,
-        "group": "WtoNMu_50",
+        "group": "WtoNMu",
     },
 }
 

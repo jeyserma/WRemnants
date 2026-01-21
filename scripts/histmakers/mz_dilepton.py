@@ -115,7 +115,9 @@ parser.add_argument(
 parser = parsing.set_parser_default(
     parser, "aggregateGroups", ["Diboson", "Top", "Wtaunu", "Wmunu"]
 )
-parser = parsing.set_parser_default(parser, "excludeProcs", ["QCD"])
+parser = parsing.set_parser_default(
+    parser, "excludeProcs", ["QCD", "WtoNMu", "DYlowMass"]
+)
 parser = parsing.set_parser_default(
     parser, "pt", common.get_default_ptbins(analysis_label)
 )
@@ -312,7 +314,7 @@ if args.csVarsHist:
         overflow=False,
     )
 
-    quantile_file = f"{common.data_dir}/angularCoefficients/mz_dilepton_scetlib_dyturboCorr_maxFiles_m1_csQuantiles.hdf5"
+    quantile_file = f"{common.data_dir}/angularCoefficients/mz_dilepton_scetlib_dyturbo_CT18Z_N3p0LL_N2LO_Corr_maxFiles_m1_csQuantiles.hdf5"
     quantile_helper_csVars = make_quantile_helper(
         quantile_file,
         ["cosThetaStarll", "phiStarll"],

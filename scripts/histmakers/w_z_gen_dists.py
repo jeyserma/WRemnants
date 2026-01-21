@@ -157,7 +157,7 @@ axis_chargel_gen = hist.axis.Regular(
 )
 
 # fine mass bins for studies
-# axis_massWgen = hist.axis.Regular(
+# axis_massZgen = hist.axis.Regular(
 #         120, 0, 120.0, name="massVgen", underflow=True, overflow=True
 #     )
 # axis_massZgen = hist.axis.Variable(
@@ -167,9 +167,7 @@ axis_chargel_gen = hist.axis.Regular(
 #     overflow=False,
 # )
 
-axis_massWgen = hist.axis.Variable(
-    [4.0, 13000.0], name="massVgen", underflow=True, overflow=False
-)
+axis_massWgen = hist.axis.Variable([4.0, 13000.0], name="massVgen")
 axis_massZgen = hist.axis.Regular(1, 60.0, 120.0, name="massVgen")
 
 theory_corrs = [*args.theoryCorr, *args.ewTheoryCorr]
@@ -296,7 +294,9 @@ def build_graph(df, dataset):
         df, dataset.name, corr_helpers, args, theory_helpers
     )
 
-    if isZ:
+    if isZ or dataset.group in [
+        "DYlowMass",
+    ]:
         nominal_axes = [
             axis_massZgen,
             axis_rapidity,
@@ -881,8 +881,8 @@ def build_graph(df, dataset):
         and "winhac" not in dataset.name
         and "LHEScaleWeight" in df.GetColumnNames()
         and "LHEPdfWeight" in df.GetColumnNames()
+        and not args.onlyMainHistograms
     ):
-
         df = syst_tools.add_theory_hists(
             results,
             df,

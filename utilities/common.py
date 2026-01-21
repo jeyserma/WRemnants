@@ -230,9 +230,8 @@ correlated_variation_base_size = {
     "M": 1e-6,
 }
 
-## 5% quantiles from aMC@NLO used in SMP-18-012
-# ptV_5quantiles_binning = [0.0, 1.971, 2.949, 3.838, 4.733, 5.674, 6.684, 7.781, 8.979, 10.303, 11.777, 13.435, 15.332, 17.525, 20.115, 23.245, 27.173, 32.414, 40.151, 53.858, 13000.0]
-## 10% quantiles from aMC@NLO used in SMP-18-012 with some rounding <== This one worked fine with toys
+## for W used in SMP-18-012
+# 10% quantiles from aMC@NLO used in SMP-18-012 with some rounding <== This one worked fine with toys
 ptV_10quantiles_binning = [
     0.0,
     2.95,
@@ -244,6 +243,30 @@ ptV_10quantiles_binning = [
     20.11,
     27.17,
     40.15,
+    13000.0,
+]
+# 5% quantiles from aMC@NLO used in SMP-18-012
+ptV_20quantiles_binning = [
+    0.0,
+    1.971,
+    2.949,
+    3.838,
+    4.733,
+    5.674,
+    6.684,
+    7.781,
+    8.979,
+    10.303,
+    11.777,
+    13.435,
+    15.332,
+    17.525,
+    20.115,
+    23.245,
+    27.173,
+    32.414,
+    40.151,
+    53.858,
     13000.0,
 ]
 # Integer rounded version of the 5% quantiles h[::hist.rebin(2)] for 10% quantiles
@@ -270,6 +293,7 @@ ptV_binning = [
     54,
     13000,
 ]
+## for Z
 # approximate 2.5% quantiles, used in SMP-25-16, SMP-25-17 for the Z detector level fits
 ptZ_binning = [
     0,
@@ -339,8 +363,54 @@ yll_20quantiles_binning = [
     1.8,
     2.5,
 ]
-# for the W, used for Ai based corrections and uncertainties
-ptWgen_binning_corr = ptV_binning
+
+## for Ai based corrections and uncertainties (e.g. TheoryCorrections/ByHelicity/)
+# for the W, 40 quantiles
+ptWgen_binning_corr = [
+    0,
+    1,
+    2,
+    2.5,
+    3,
+    3.5,
+    4,
+    4.5,
+    5,
+    5.5,
+    6,
+    6.5,
+    7,
+    7.5,
+    8,
+    8.5,
+    9,
+    9.5,
+    10,
+    10.5,
+    11,
+    11.5,
+    12,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18,
+    19,
+    20,
+    22,
+    24,
+    26,
+    28,
+    30,
+    33,
+    37,
+    44,
+    54,
+    75,
+    100,
+    13000,
+]
 absYWgen_binning_corr = [
     0,
     0.25,
@@ -354,15 +424,28 @@ absYWgen_binning_corr = [
     2.25,
     2.5,
     2.75,
-    3.0,
+    3,
     3.25,
     3.5,
-    4.0,
-    5.0,
+    3.75,
+    4,
+    5,
 ]
-# for the Z, used for Ai based corrections and uncertainties (based on reco binning)
-ptZgen_binning_corr = [*ptZ_binning, 1300]
-absYZgen_binning_corr = [*yll_20quantiles_binning[10:], 2.75, 3.0, 3.25, 3.5, 4.0, 5.0]
+# for the Z, based on reco binning, but including additional bins where reco binning is too coarse
+ptZgen_binning_corr = [*ptZ_binning[:-1], 54, 75, 100, 1300]
+absYZgen_binning_corr = [
+    *yll_20quantiles_binning[10:-1],
+    2.0,
+    2.25,
+    2.5,
+    2.75,
+    3,
+    3.25,
+    3.5,
+    3.75,
+    4,
+    5,
+]
 
 # categorical axes in python bindings always have an overflow bin, so use a regular axis for the charge
 axis_charge = hist.axis.Regular(
