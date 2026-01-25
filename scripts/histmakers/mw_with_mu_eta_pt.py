@@ -436,11 +436,14 @@ if args.unfolding:
         unfolding_levels=args.unfoldingLevels,
         poi_as_noi=args.poiAsNoi,
         fitresult=args.fitresult,
+        fitresult_channel="ch0_masked",
         cutsmap=cutsmap,
     )
 
     if args.fitresult:
-        unfolding_corr_helper = unfolding_tools.reweight_to_fitresult(args.fitresult)
+        unfolding_corr_helper = unfolding_tools.reweight_to_fitresult(
+            args.fitresult, channel="ch1_masked"
+        )
 
 theory_helpers_procs = theory_corrections.make_theory_helpers(
     args.pdfs, args.theoryCorr, procs=["Z", "W"]

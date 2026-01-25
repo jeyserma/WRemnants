@@ -242,20 +242,41 @@ def add_xnorm_histograms(
     return df_xnorm
 
 
-def reweight_to_fitresult(
-    filename, result=None, mapping="Select", channel="ch0_masked"
-):
+def reweight_to_fitresult(filename, result=None, mapping=None, channel=None):
     import wums.boostHistHelpers as hh
     from rabbit.io_tools import get_fitresult
 
     fitresult, meta = get_fitresult(filename[0], result, meta=True)
-    results = fitresult["mappings"][mapping]["channels"][channel]
 
+    def get_result(fres):
+        mappings = fres["mappings"]
+        if mapping is None:
+            if len(mappings.keys()) == 1:
+                channels = next(iter(mappings.values()))["channels"]
+            else:
+                raise RuntimeError(
+                    f"Expected exactly 1 mapping but got {[k for k in mappings.keys()]}"
+                )
+        else:
+            channels = mappings[mapping]["channels"]
+
+        if channel is None:
+            if len(channels.keys()) == 1:
+                res = next(iter(channels.values()))
+            else:
+                raise RuntimeError(
+                    f"Expected exactly 1 channel but got {[k for k in channels.keys()]}"
+                )
+        else:
+            res = channels[channel]
+        return res
+
+    results = get_result(fitresult)
     hPostfit = results[f"hist_postfit_inclusive"].get()
 
     if len(filename) == 2:
         fitresult_den, meta_den = get_fitresult(filename[1], result, meta=True)
-        results_den = fitresult_den["mappings"][mapping]["channels"][channel]
+        results_den = get_result(fitresult_den)
         hPrefit = results_den[f"hist_prefit_inclusive"].get()
     else:
         hPrefit = results[f"hist_prefit_inclusive"].get()
