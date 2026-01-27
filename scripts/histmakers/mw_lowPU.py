@@ -57,7 +57,6 @@ datasets = getDatasets(
         )
     ),
     base_path=args.dataPath,
-    extended="msht20an3lo" not in args.pdfs,
     era=args.era,
     nanoVersion="v12",
 )

@@ -216,7 +216,7 @@ def getDatasets(
     oneMCfileEveryN=None,
     checkFileForZombie=False,
     era="2016PostVFP",
-    extended=True,
+    extended=False,
 ):
 
     if maxFiles is None or (isinstance(maxFiles, int) and maxFiles < -1):
@@ -228,7 +228,9 @@ def getDatasets(
 
     module = importlib.import_module(f"wremnants.datasets.datasetDict_{era}")
     if extended:
-        dataDict = getattr(module, "dataDict_extended")
+        dataDict = getattr(module, "dataDict_extended", {})
+        if len(dataDict) == 0:
+            raise ValueError(f"Extended datasets not defined for module '{module}'")
     else:
         dataDict = getattr(module, "dataDict")
 
