@@ -8,7 +8,7 @@ from datetime import datetime
 
 THEORY_PREDS = {
     "scetlib_dyturbo_CT18Z_N3p0LL_N2LO_pdfvars": {"pdf": "ct18z"},
-    "scetlib_dyturbo_LatticeNP_CT18Z_N3p0LL_N2LO_pdfvars": {"pdf": "ct18z"},
+    # "scetlib_dyturbo_LatticeNP_CT18Z_N3p0LL_N2LO_pdfvars": {"pdf": "ct18z"},
 }
 
 
@@ -47,9 +47,13 @@ def main():
 
     for pred in args.preds:
 
-        command = f"python {os.environ['WREM_BASE']}/scripts/histmakers/w_z_gen_dists.py --useCorrByHelicityBinning --theoryCorr {pred} -o {args.outdir} --maxFiles '-1' -j 300 --filterProcs ZmumuPostVFP WplusmunuPostVFP WminusmunuPostVFP --addHelicityAxis --pdf {THEORY_PREDS[pred]['pdf']}"
+        command = f"""
+        python {os.environ['WREM_BASE']}/scripts/histmakers/w_z_gen_dists.py --theoryCorr {pred} \
+        --filterProcs 'Zmumu_2016PostVFP' 'Wplusmunu_2016PostVFP' 'Wminusmunu_2016PostVFP' 'Zmumu_2017' 'Wplusmunu_2017' 'Wminusmunu_2017' 'Zmumu_2018' 'Wplusmunu_2018' 'Wminusmunu_2018' \
+        -o {args.outdir} --addHelicityAxis --pdf {THEORY_PREDS[pred]['pdf']} --maxFiles '-1' -j 300 --aggregateGroups Zmumu Wmunu
+        """
         print(f"Running command: {command}")
-        # os.system(command)
+        os.system(command)
 
         if args.skim:
             skim_command = f"python {os.environ['WREM_BASE']}/utilities/open_narf_h5py.py {args.outdir}/w_z_gen_dists_{pred + "_Corr"}_maxFiles_m1.hdf5 --filterHistsRegex '^(.*pdfvars_Corr.*|nominal_gen_pdf_uncorr)$' --outfile {args.outdir}/w_z_gen_dists_{pred + "_Corr"}_maxFiles_m1_skimmed.hdf5"

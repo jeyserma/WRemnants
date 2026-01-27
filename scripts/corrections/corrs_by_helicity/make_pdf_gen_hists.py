@@ -10,16 +10,16 @@ PDF_SETS = [
     "ct18z",
     "msht20mcrange_renorm",
     "msht20mbrange_renorm",
-    "nnpdf31",
-    "ct18",
-    "nnpdf30",
-    "nnpdf40",
-    "pdf4lhc21",
-    "msht20",
-    "msht20an3lo",
-    "atlasWZj20",
-    "herapdf20",
-    "herapdf20ext",
+    # "nnpdf31",
+    # "ct18",
+    # "nnpdf30",
+    # "nnpdf40",
+    # "pdf4lhc21",
+    # "msht20",
+    # "msht20an3lo",
+    # "atlasWZj20",
+    # "herapdf20",
+    # "herapdf20ext",
 ]
 
 
@@ -55,7 +55,11 @@ def main():
 
     for pdf in args.pdf:
 
-        command = f"python {os.environ['WREM_BASE']}/scripts/histmakers/w_z_gen_dists.py --useCorrByHelicityBinning --pdf {pdf} -o {args.outdir} --maxFiles '-1' -j 300 --filterProcs ZmumuPostVFP WplusmunuPostVFP WminusmunuPostVFP --addHelicityAxis --postfix pdfByHelicity"
+        command = f"""
+        python {os.environ['WREM_BASE']}/scripts/histmakers/w_z_gen_dists.py --pdf {pdf} -o {args.outdir} --maxFiles '-1' -j 300 \
+        --filterProcs 'Zmumu_2016PostVFP' 'Wplusmunu_2016PostVFP' 'Wminusmunu_2016PostVFP' 'Zmumu_2017' 'Wplusmunu_2017' 'Wminusmunu_2017' 'Zmumu_2018' 'Wplusmunu_2018' 'Wminusmunu_2018' \
+        --addHelicityAxis --postfix pdfByHelicity --aggregateGroups Zmumu Wmunu
+        """
         print(f"Running command: {command}")
         os.system(command)
 

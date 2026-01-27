@@ -14,7 +14,11 @@ from wremnants import (
 )
 from wremnants.datasets.datagroups import Datagroups
 from wremnants.datasets.dataset_tools import getDatasets
-from wremnants.histmaker_tools import write_analysis_output
+from wremnants.histmaker_tools import (
+    aggregate_groups,
+    scale_to_data,
+    write_analysis_output,
+)
 from wums import boostHistHelpers as hh
 from wums import logging
 
@@ -104,12 +108,14 @@ parser.add_argument(
 
 parser = parsing.set_parser_default(parser, "filterProcs", common.vprocs)
 parser = parsing.set_parser_default(parser, "era", "13TeVGen")
+parser = parsing.set_parser_default(parser, "aggregateGroups", [])
 args = parser.parse_args()
 
 if not args.theoryCorrections:
     parser = parsing.set_parser_default(parser, "theoryCorr", [])
     parser = parsing.set_parser_default(parser, "ewTheoryCorr", [])
 args = parser.parse_args()
+
 
 logger = logging.setup_logger(__file__, args.verbose, args.noColorLogger)
 
@@ -157,9 +163,6 @@ axis_chargel_gen = hist.axis.Regular(
 )
 
 # fine mass bins for studies
-# axis_massZgen = hist.axis.Regular(
-#         120, 0, 120.0, name="massVgen", underflow=True, overflow=True
-#     )
 # axis_massZgen = hist.axis.Variable(
 #     [0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 110, 120, 13000],
 #     name="massVgen",
@@ -167,7 +170,8 @@ axis_chargel_gen = hist.axis.Regular(
 #     overflow=False,
 # )
 
-axis_massWgen = hist.axis.Variable([4.0, 13000.0], name="massVgen")
+# axis_massWgen = hist.axis.Variable([4.0, 13000.0], name="massVgen")
+axis_massWgen = hist.axis.Regular(120, 0, 120.0, name="massVgen")
 axis_massZgen = hist.axis.Regular(1, 60.0, 120.0, name="massVgen")
 
 theory_corrs = [*args.theoryCorr, *args.ewTheoryCorr]
@@ -942,6 +946,12 @@ def build_graph(df, dataset):
 
 
 resultdict = narf.build_and_run(datasets, build_graph)
+if len(args.aggregateGroups) > 0:
+    if not args.noScaleToData:
+        scale_to_data(
+            resultdict
+        )  # weight to cross section / sum(weights) * lumi with lumi=1 w/o data
+    aggregate_groups(datasets, resultdict, args.aggregateGroups)
 write_analysis_output(
     resultdict, f"{os.path.basename(__file__).replace('py', 'hdf5')}", args
 )

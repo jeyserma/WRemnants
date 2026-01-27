@@ -785,7 +785,7 @@ def make_uncertainty_helper_by_helicity(
     proc,
     nom,
     den,
-    filename=f"{common.data_dir}/angularCoefficients/w_z_gen_dists_maxFiles_m1_alphaSunfoldingBinning_helicity.hdf5",
+    filename,
     filename_den=None,
     central_weights=False,
     var_ax_name="pdfVar",
@@ -801,7 +801,7 @@ def make_uncertainty_helper_by_helicity(
     # load helicity cross sections from file #TODO: include DYJetsToMuMuMass10to50
     proc_map = {
         "Z": ("Zmumu",),
-        "W": ("Wplusmunu", "Wminusmunu"),
+        "W": ("Wmunu",),
     }
 
     def _collect_hist(hist_name, filename):
@@ -815,13 +815,12 @@ def make_uncertainty_helper_by_helicity(
         with h5py.File(filename, "r") as h5file:
             for process in proc_map.get(proc, ()):
                 results = input_tools.load_results_h5py(h5file)
-                process_key = [k for k in results.keys() if k.startswith(process)]
-                if len(process_key) == 0:
+                if process not in results.keys():
                     logger.warning(
                         f"Did not find key for process {process} in {filename}. Not creating histogram of variations by helicities for process {process} and variation {nom}."
                     )
                     return None
-                outputs = results[process_key[0]].get("output", {})
+                outputs = results[process].get("output", {})
                 if hist_key not in outputs:
                     logger.warning(
                         f"Did not find {hist_key} in {filename}. Not creating histogram of variations by helicities for process {process} and variation {nom}."
