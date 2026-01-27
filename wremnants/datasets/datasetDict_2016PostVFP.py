@@ -7,7 +7,7 @@ lumijson = (
     f"{common.data_dir}/Cert_271036-284044_13TeV_Legacy2016_Collisions16_JSON.txt"
 )
 
-dataDictV9_PostVFP = {
+dataDict = {
     "SingleMuon_2016PostVFP": {
         "filepaths": [
             "{BASE_PATH}/SingleMuon/NanoV9Run2016FDataPostVFP_{NANO_PROD_TAG}",
@@ -255,39 +255,39 @@ dataDictV9_PostVFP = {
 }
 
 # extended version with additional samples (but missing some pdf sets)
-dataDictV9_PostVFP_extended = copy.deepcopy(dataDictV9_PostVFP)
+dataDict_extended = copy.deepcopy(dataDict)
 
-dataDictV9_PostVFP_extended["Zmumu_2016PostVFP"]["filepaths"].extend(
+dataDict_extended["Zmumu_2016PostVFP"]["filepaths"].extend(
     [
         "{BASE_PATH}/DYJetsToMuMu_H2ErratumFix_TuneCP5_13TeV-powhegMiNNLO-pythia8-photos/NanoV9MCPostVFP_{NANO_PROD_TAG}",
     ]
 )
 
-dataDictV9_PostVFP_extended["Ztautau_2016PostVFP"]["filepaths"].extend(
+dataDict_extended["Ztautau_2016PostVFP"]["filepaths"].extend(
     [
         "{BASE_PATH}/DYJetsToTauTau_M-50_AtLeastOneEorMuDecay_H2ErratumFix_TuneCP5_13TeV-powhegMiNNLO-pythia8-photos/NanoV9MCPostVFP_{NANO_PROD_TAG}",
     ]
 )
 
-dataDictV9_PostVFP_extended["Wplusmunu_2016PostVFP"]["filepaths"].extend(
+dataDict_extended["Wplusmunu_2016PostVFP"]["filepaths"].extend(
     [
         "{BASE_PATH}/WplusJetsToMuNu_H2ErratumFix_TuneCP5_13TeV-powhegMiNNLO-pythia8-photos/NanoV9MCPostVFP_{NANO_PROD_TAG}",
     ]
 )
 
-dataDictV9_PostVFP_extended["Wminusmunu_2016PostVFP"]["filepaths"].extend(
+dataDict_extended["Wminusmunu_2016PostVFP"]["filepaths"].extend(
     [
         "{BASE_PATH}/WminusJetsToMuNu_H2ErratumFix_TuneCP5_13TeV-powhegMiNNLO-pythia8-photos/NanoV9MCPostVFP_{NANO_PROD_TAG}",
     ]
 )
 
-dataDictV9_PostVFP_extended["Wplustaunu_2016PostVFP"]["filepaths"].extend(
+dataDict_extended["Wplustaunu_2016PostVFP"]["filepaths"].extend(
     [
         "{BASE_PATH}/WplusJetsToTauNu_TauToMu_H2ErratumFix_TuneCP5_13TeV-powhegMiNNLO-pythia8-photos/NanoV9MCPostVFP_{NANO_PROD_TAG}",
     ]
 )
 
-dataDictV9_PostVFP_extended["Wminustaunu_2016PostVFP"]["filepaths"].extend(
+dataDict_extended["Wminustaunu_2016PostVFP"]["filepaths"].extend(
     [
         "{BASE_PATH}/WminusJetsToTauNu_TauToMu_H2ErratumFix_TuneCP5_13TeV-powhegMiNNLO-pythia8-photos/NanoV9MCPostVFP_{NANO_PROD_TAG}",
     ]

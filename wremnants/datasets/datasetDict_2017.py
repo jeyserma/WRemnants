@@ -3,7 +3,7 @@ from utilities import common
 lumicsv = f"{common.data_dir}/bylsoutput_2017.csv"
 lumijson = f"{common.data_dir}/Cert_294927-306462_13TeV_UL2017_Collisions17_HLT_IsoMu24_v_CustomJSON.txt"
 
-dataDictV9_2017 = {
+dataDict = {
     "SingleMuon_2017B": {
         "filepaths": [
             "{BASE_PATH}/SingleMuon/NanoV9Run2017B_{NANO_PROD_TAG}",

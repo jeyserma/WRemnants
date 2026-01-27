@@ -4,7 +4,7 @@ lumijson = f"{common.data_dir}/lowPU/Cert_306896-307082_13TeV_PromptReco_Collisi
 lumicsv_mu = f"{common.data_dir}/lowPU/bylsoutput_HLT_HIMu17_Full.csv"
 lumicsv_el = f"{common.data_dir}/lowPU/bylsoutput_HLT_HIEle20_Full.csv"
 
-dataDict_2017H = {
+dataDict = {
     "HighEGJet_2017H": {
         "filepaths": [
             "{BASE_PATH}/LowPU/NanoAOD_v2/HighEGJet",

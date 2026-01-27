@@ -10,7 +10,7 @@ xsec_DYJetsToLL = 698.3  # +/- 2.133
 xsec_WplusJetsToLNu = 4477  # +/- 17.27
 xsec_WminusJetsToLL = 2940  # +/- 9.153
 
-dataDictV9_2017G = {
+dataDict = {
     "SingleMuon_2017G": {
         "filepaths": [
             "{BASE_PATH}/SingleMuon/Run2017G-UL2017_MiniAODv2_NanoAODv9_GT36-v2",

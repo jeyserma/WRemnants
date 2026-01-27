@@ -116,6 +116,8 @@ vprocs_2017H = wprocs_2017H + zprocs_2017H
 
 # alternative gen samples at sqrt{s} = 13
 wprocs_alt = [
+    "Wplusmunu_MiNNLO",
+    "Wminusmunu_MiNNLO",
     "Wplusmunu_MiNNLO-noqedisr",
     "Wminusmunu_MiNNLO-noqedisr",
     "Wplusmunu_horace-lo-photos",
@@ -138,6 +140,7 @@ wprocs_alt = [
     "WminusCharmToMuNu",
 ]
 zprocs_alt = [
+    "Zmumu_MiNNLO",
     "ZmumuMiNLO",
     "ZmumuNNLOPS",
     "Zmumu_MiNNLO-noqedisr",

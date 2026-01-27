@@ -1,8 +1,20 @@
+import copy
+
 from utilities.common import (
     xsec_DYJetsToLL,
     xsec_WminusJetsToLNu,
     xsec_WplusJetsToLNu,
 )
+from wremnants.datasets.datasetDict_2016PostVFP import dataDict as dataDict_2016PostVFP
+from wremnants.datasets.datasetDict_2016PostVFP import (
+    dataDict as dataDict_2016PostVFP_extended,
+)
+from wremnants.datasets.datasetDict_2017 import dataDict as dataDict_2017
+from wremnants.datasets.datasetDict_2017H import dataDict as dataDict_2017H
+from wremnants.datasets.datasetDict_2018 import dataDict as dataDict_2018
+from wums import logging
+
+logger = logging.child_logger(__name__)
 
 # winhac cross sections from: https://gitlab.cern.ch/cms-wmass/private/issue-tracking/-/issues/34#note_7052239
 xsec_winhac_WplusToMuNu_LO = 10104.50380
@@ -27,7 +39,51 @@ horace_v3 = False
 horace_v4 = False
 horace_v5 = False
 
-dataDict_13TeVGen = {
+
+def merge_samples(
+    source_dict, suffix="MiNNLO", processes=["Zmumu", "Wplusmunu", "Wminusmunu"]
+):
+    # merge samples from different eras
+    res_dict = {}
+    for k, v in source_dict.items():
+        if v["group"] == "Data":
+            continue
+        sample, era = k.split("_")
+        if len(processes) and sample not in processes:
+            continue
+        if suffix:
+            sample = "_".join([sample, suffix])
+        if sample in res_dict.keys():
+            if res_dict[sample].get("xsec", None) != v["xsec"]:
+                logger.warning(
+                    f"Mismatch in cross section between samples {k} with xsec={v["xsec"]} and {sample} with xsec={res_dict[sample].get('xsec', None)}"
+                )
+            if res_dict[sample].get("group", None) != v["group"]:
+                logger.warning(
+                    f"Mismatch in group between samples {k} with group={v['group']} and {sample} with group={res_dict[sample].get("group", None)}"
+                )
+
+            res_dict[sample]["filepaths"] += v["filepaths"]
+        else:
+            res_dict[sample] = copy.deepcopy(v)
+    return res_dict
+
+
+# dict with NanoAOD samples
+dataDict = merge_samples(
+    {**dataDict_2016PostVFP, **dataDict_2017, **dataDict_2017H, **dataDict_2018}
+)
+dataDict_extended = merge_samples(
+    {
+        **dataDict_2016PostVFP_extended,
+        **dataDict_2017,
+        **dataDict_2017H,
+        **dataDict_2018,
+    }
+)
+
+# dict with NanoGen samples
+dataDict_nanoGen = {
     "ZmumuMiNLO": {
         "filepaths": [
             "{BASE_PATH}/DYJetsToMuMu_TuneCP5_13TeV-powheg-NNLOPS-pythia8-photos/RunIISummer15wmLHEGS/221121_114507"
@@ -228,7 +284,7 @@ dataDict_13TeVGen = {
 }
 
 # renesance
-dataDict_13TeVGen.update(
+dataDict_nanoGen.update(
     {
         "Zmumu_renesance-lo": {
             "filepaths": [
@@ -250,7 +306,7 @@ dataDict_13TeVGen.update(
 # NanoLHE
 # The Powheg EW LHE samples have negative weights but "genWeight" is always just 1, so we will use LHEWeight_originalXWGTUP instead. That also gives us the total cross section for each subsample, so we set that to 1 in this dict.
 # TODO copy these samples to central area when they are complete
-dataDict_13TeVGen.update(
+dataDict_nanoGen.update(
     {
         "Zmumu_powheg-weak-low": {
             "filepaths": ["{BASE_PATH}/svn4049/46mll80"],
@@ -271,7 +327,7 @@ dataDict_13TeVGen.update(
 )
 
 if horace_v1:
-    dataDict_13TeVGen.update(
+    dataDict_nanoGen.update(
         {
             "Zmumu_horace-v1-alpha-old-fsr-off-isr-pythia": {
                 "filepaths": [
@@ -326,7 +382,7 @@ if horace_v1:
     )
 
 if horace_v2:
-    dataDict_13TeVGen.update(
+    dataDict_nanoGen.update(
         {
             "Zmumu_horace-v2-lo-photos": {
                 "filepaths": [
@@ -353,7 +409,7 @@ if horace_v2:
     )
 
 if horace_v3:
-    dataDict_13TeVGen.update(
+    dataDict_nanoGen.update(
         {
             "Zmumu_horace-v3-lo-photos": {
                 "filepaths": [
@@ -422,7 +478,7 @@ if horace_v3:
     )
 
 if horace_v5:
-    dataDict_13TeVGen.update(
+    dataDict_nanoGen.update(
         {
             "Zmumu_horace-v5-alpha-fsr-off-isr-off": {
                 "filepaths": [

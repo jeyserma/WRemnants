@@ -1,3 +1,4 @@
+import importlib
 import os
 import random
 
@@ -5,18 +6,6 @@ import ROOT
 import XRootD.client
 
 import narf
-from wremnants.datasets.datasetDict13TeVGen import dataDict_13TeVGen
-from wremnants.datasets.datasetDict2017_v9 import dataDictV9_2017
-from wremnants.datasets.datasetDict2017G_v9 import dataDictV9_2017G
-from wremnants.datasets.datasetDict2017H import dataDict_2017H
-from wremnants.datasets.datasetDict2018_v9 import dataDictV9_2018
-from wremnants.datasets.datasetDict_lowPU2023 import dataDictLowPU2023
-
-# set the debug level for logging incase of full printout
-from wremnants.datasets.datasetDictPostVFP_v9 import (
-    dataDictV9_PostVFP,
-    dataDictV9_PostVFP_extended,
-)
 from wums import logging
 
 logger = logging.child_logger(__name__)
@@ -237,40 +226,15 @@ def getDatasets(
         base_path = getDataPath()
     logger.info(f"Loading samples from {base_path}.")
 
-    # TODO avoid use of nested if statements with e.g. a unified dict
-    if era == "2016PostVFP":
-        dataDict = dataDictV9_PostVFP
-        if extended:
-            dataDict = dataDictV9_PostVFP_extended
-        logger.info("Using NanoAOD V9 for 2016PostVFP")
-    elif era == "2017":
-        dataDict = dataDictV9_2017
-        logger.info("Using NanoAOD V9 for 2017")
-    elif era == "2017G":
-        dataDict = dataDictV9_2017G
-        logger.info("Using NanoAOD V9 for 2017G")
-    elif era == "2017H":
-        dataDict = dataDict_2017H
-        logger.info("Using NanoAOD V9 for 2017H")
-    elif era == "2018":
-        dataDict = dataDictV9_2018
-        logger.info("Using NanoAOD V9 for 2018")
-    elif era == "13TeVGen":
-        dataDict = dataDictV9_PostVFP_extended if extended else dataDictV9_PostVFP
-        dataDict.update(
-            {
-                **dataDict_13TeVGen,
-                **{k: v for k, v in dataDictV9_2017.items() if v["group"] != "Data"},
-                **{k: v for k, v in dataDict_2017H.items() if v["group"] != "Data"},
-                **{k: v for k, v in dataDictV9_2018.items() if v["group"] != "Data"},
-            }
-        )
-        logger.info("Using NanoAOD V9 for all eras")
-    elif "2023_PUAVE" in era:
-        dataDict = dataDictLowPU2023
-        logger.info("Using NanoAOD V9 for 2018")
+    module = importlib.import_module(f"wremnants.datasets.datasetDict_{era}")
+    if extended:
+        dataDict = getattr(module, "dataDict_extended")
     else:
-        raise ValueError(f"Unsupported era {era}")
+        dataDict = getattr(module, "dataDict")
+
+    dataDict_NanoGen = getattr(module, "dataDict_nanoGen", {})
+    if dataDict_NanoGen:
+        dataDict.update(dataDict_NanoGen)
 
     narf_datasets = []
     for sample, info in dataDict.items():
@@ -279,7 +243,7 @@ def getDatasets(
         if excl not in [None, []] and (info["group"] in excl or sample in excl):
             continue
 
-        if sample in dataDict_13TeVGen:
+        if sample in dataDict_NanoGen:
             base_path_sample = base_path.replace("NanoAOD", "NanoGen")
         else:
             base_path_sample = base_path
