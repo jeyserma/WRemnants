@@ -8,13 +8,13 @@ from datetime import datetime
 
 THEORY_PREDS = {
     "scetlib_dyturbo_CT18Z_N3p0LL_N2LO_pdfas": {"pdf": "ct18z"},
-    # "scetlib_dyturbo_MSHT20_N3p0LL_N2LO_pdfas": {"pdf": "msht20"},
-    # "scetlib_dyturbo_CT18Z_N3p1LL_N2LO_pdfas": {"pdf": "ct18z"},
-    # "scetlib_dyturbo_CT18Z_N4p0LL_N2LO_pdfas": {"pdf": "ct18z"},
-    # "scetlib_nnlojet_CT18Z_N3p1LL_N3LO_pdfas": {"pdf": "ct18z"},
-    # "scetlib_nnlojet_CT18Z_N4p0LL_N3LO_pdfas": {"pdf": "ct18z"},
-    # "scetlib_dyturbo_LatticeNP_CT18Z_N3p0LL_N2LO_pdfas": {"pdf": "ct18z"},
-    # "scetlib_nnlojet_MSHT20an3lo_N4p0LL_N3LO_pdfas": {"pdf": "msht20an3lo"},
+    "scetlib_dyturbo_MSHT20_N3p0LL_N2LO_pdfas": {"pdf": "msht20"},
+    "scetlib_dyturbo_CT18Z_N3p1LL_N2LO_pdfas": {"pdf": "ct18z"},
+    "scetlib_dyturbo_CT18Z_N4p0LL_N2LO_pdfas": {"pdf": "ct18z"},
+    "scetlib_nnlojet_CT18Z_N3p1LL_N3LO_pdfas": {"pdf": "ct18z"},
+    "scetlib_nnlojet_CT18Z_N4p0LL_N3LO_pdfas": {"pdf": "ct18z"},
+    "scetlib_dyturbo_LatticeNP_CT18Z_N3p0LL_N2LO_pdfas": {"pdf": "ct18z"},
+    "scetlib_nnlojet_MSHT20an3lo_N4p0LL_N3LO_pdfas": {"pdf": "msht20an3lo"},
 }
 
 
@@ -57,8 +57,8 @@ def main():
 
         command = f"""
             python {os.environ['WREM_BASE']}/scripts/histmakers/w_z_gen_dists.py --theoryCorr {pred} \
-            --filterProcs 'Zmumu_2016PostVFP' 'Wplusmunu_2016PostVFP' 'Wminusmunu_2016PostVFP' 'Zmumu_2017' 'Wplusmunu_2017' 'Wminusmunu_2017' 'Zmumu_2018' 'Wplusmunu_2018' 'Wminusmunu_2018' \
-            -o {args.outdir} --maxFiles -1 -j 300 --addHelicityAxis --pdf {pdf} --aggregateGroups Zmumu Wmunu
+            --filterProcs 'Zmumu_MiNNLO' 'Wplusmunu_MiNNLO' 'Wminusmunu_MiNNLO' --aggregateGroups Zmumu Wmunu \
+            -o {args.outdir} --maxFiles -1 -j 300 --addHelicityAxis --pdf {pdf}
             """
         print(f"Running command: {command}")
         os.system(command)

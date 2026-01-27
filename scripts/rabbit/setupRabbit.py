@@ -1402,9 +1402,6 @@ def setup(
     else:
         datagroups.addNominalHistograms(
             real_data=args.realData,
-            # exclude_bin_by_bin_stat=(
-            #     "signal_samples" if args.correlateSignalMCstat else None
-            # ),
             bin_by_bin_stat_scale=(
                 args.binByBinStatScaleForMW
                 if wmass

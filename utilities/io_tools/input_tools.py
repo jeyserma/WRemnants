@@ -648,13 +648,10 @@ def read_matched_scetlib_hist(
 
             return slice(start, stop, s.step)
 
+        qt_slice = translate_slice(hnonsing.axes[ax], zero_nons_bins)
+        logger.info(f"Zeroing bins with slices {qt_slice}")
         slices = tuple(
-            (
-                translate_slice(hnonsing.axes[ax], zero_nons_bins)
-                if ax == "qT"
-                else slice(None)
-            )
-            for ax in hnonsing.axes.name
+            qt_slice if ax == "qT" else slice(None) for ax in hnonsing.axes.name
         )
         hnonsing.values(flow=True)[slices] = 0
         hnonsing.variances(flow=True)[slices] = 0

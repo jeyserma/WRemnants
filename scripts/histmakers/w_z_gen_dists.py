@@ -96,9 +96,9 @@ parser.add_argument(
     help="Add axis to store info if the event has an outgoing charm quark",
 )
 parser.add_argument(
-    "--fineBinning",
+    "--finePtVBinning",
     action="store_true",
-    help="Use 0.5 GeV binning for ptVgen and 0.05 in absYVgen (e.g., for theory corrections)",
+    help="Use 0.5 GeV binning for ptVgen (e.g., for theory corrections)",
 )
 parser.add_argument(
     "--centralBosonPDFWeight",
@@ -171,8 +171,8 @@ axis_chargel_gen = hist.axis.Regular(
 # )
 
 # axis_massWgen = hist.axis.Variable([4.0, 13000.0], name="massVgen")
-axis_massWgen = hist.axis.Regular(120, 0, 120.0, name="massVgen")
-axis_massZgen = hist.axis.Regular(1, 60.0, 120.0, name="massVgen")
+axis_massWgen = hist.axis.Variable([0, 75, 80, 85, 120.0, 13000], name="massVgen")
+axis_massZgen = hist.axis.Variable([60.0, 120.0, 13000], name="massVgen")
 
 theory_corrs = [*args.theoryCorr, *args.ewTheoryCorr]
 procsWithTheoryCorr = [d.name for d in datasets if d.name in common.vprocs]
@@ -257,16 +257,15 @@ def build_graph(df, dataset):
             underflow=False,
         )
     else:
-        if args.fineBinning:
+        if args.finePtVBinning:
             edges_ptV = np.append(np.arange(0, 100.5, 0.5), 13000.0)
-            edges_absYV = np.arange(0, 5.05, 0.05)
         else:
             edges_ptV = (
                 common.ptZgen_binning_corr if isZ else common.ptWgen_binning_corr
             )
-            edges_absYV = (
-                common.absYZgen_binning_corr if isZ else common.absYWgen_binning_corr
-            )
+        edges_absYV = (
+            common.absYZgen_binning_corr if isZ else common.absYWgen_binning_corr
+        )
 
         axis_absYVgen = hist.axis.Variable(
             edges_absYV,

@@ -44,6 +44,12 @@ def parse_args():
         help="Generator used to produce correction hist",
     )
     parser.add_argument(
+        "--qtCutoff",
+        type=float,
+        default=1.0,
+        help="Upper limit for zeroing bins in the fixed order program (GeV)",
+    )
+    parser.add_argument(
         "--outpath",
         type=str,
         default=f"{common.data_dir}/TheoryCorrections",
@@ -127,7 +133,7 @@ def parse_args():
     return args
 
 
-def read_corr(procName, generator, corrFiles, axes, smooth=None):
+def read_corr(procName, generator, corrFiles, axes, qt_cutoff=1.0, smooth=None):
     logger = logging.child_logger("read_corr")
     charge = 0 if procName[0] == "Z" else (1 if "Wplus" in procName else -1)
     corr_file = corrFiles[0]
@@ -165,7 +171,9 @@ def read_corr(procName, generator, corrFiles, axes, smooth=None):
                 fo_files[0],
                 axes,
                 charge=charge,
-                zero_nons_bins=slice(0j, 1j),  # set bins qT < 1GeV to 0
+                zero_nons_bins=slice(
+                    0j, complex(0, qt_cutoff)
+                ),  # set bins with qT < qtCutoff GeV to 0
                 **smooth_args,
             )
         else:
@@ -279,7 +287,14 @@ def main():
 
     numh = hh.sumHists(
         [
-            read_corr(procName, args.generator, corr_file, args.axes, args.smooth)
+            read_corr(
+                procName,
+                args.generator,
+                corr_file,
+                args.axes,
+                qt_cutoff=args.qtCutoff,
+                smooth=args.smooth,
+            )
             for procName, corr_file in filesByProc.items()
         ]
     )
