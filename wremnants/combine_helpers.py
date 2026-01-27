@@ -427,6 +427,7 @@ def add_noi_unfolding_variations(
     process="signal_samples",
     scalemap=None,
     fitresult=None,
+    constrained=False,
 ):
 
     poi_axes_syst = [f"_{n}" for n in poi_axes] if datagroups.xnorm else poi_axes[:]
@@ -440,7 +441,7 @@ def add_noi_unfolding_variations(
         passToFakes=passSystToFakes,
         systAxes=poi_axes_syst,
         processes=[process],
-        noConstraint=True,
+        noConstraint=not constrained,
         noi=True,
         mirror=True,
         scale=(

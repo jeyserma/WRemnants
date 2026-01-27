@@ -127,6 +127,12 @@ def make_subparsers(parser):
             action="store_true",
             help="Simultaneously unfold W and Z and correlate Z background in W channel",
         )
+        parser.add_argument(
+            "--constrainNOIs",
+            action="store_true",
+            help="Constrain NOI variation",
+        )
+
         parser = parsing.set_parser_default(parser, "massVariation", 10)
 
     return parser
@@ -1554,6 +1560,7 @@ def setup(
                 scale_norm=args.scaleNormXsecHistYields,
                 gen_level=args.unfoldingLevel,
                 fitresult=unfolding_scalemap,
+                constrained=args.constrainNOIs,
             )
 
     if args.muRmuFPolVar and not isTheoryAgnosticPolVar:
