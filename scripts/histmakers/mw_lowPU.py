@@ -51,9 +51,9 @@ datasets = getDatasets(
     filt=args.filterProcs,
     excl=list(
         set(
-            args.excludeProcs + [f"HighEGJet{args.era}"]
-            if flavor == "e"
-            else [f"SingleMuon{args.era}"]
+            args.excludeProcs + [f"HighEGJet_{args.era}"]
+            if flavor == "mu"
+            else [f"SingleMuon_{args.era}"]
         )
     ),
     base_path=args.dataPath,
