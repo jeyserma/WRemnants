@@ -242,7 +242,7 @@ def build_graph(df, dataset):
 
                 unfolding_tools.add_xnorm_histograms(
                     results,
-                    df,
+                    df_xnorm,
                     args,
                     dataset.name,
                     corr_helpers,

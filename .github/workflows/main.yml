@@ -710,13 +710,20 @@ jobs:
           scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run.sh rabbit_fit.py 
           $RABBIT_DIR/Combination_WMass_lowPUZMass_lowPU_ptll/Combination.hdf5 -t -1 -o $RABBIT_DIR/Combination_WMass_lowPUZMass_lowPU_ptll/
           --doImpacts --globalImpacts
-          --saveHists --computeHistErrors --computeHistCov
+          --saveHists --computeHistErrors --computeHistCov -m Project ch0_masked ptVGen -m Project ch1_masked ptVGen -m Select ch2_masked -m Select ch3_masked
 
-      - name: lowpu rabbit unfolded xsec plot
+      - name: lowpu rabbit unfolded xsec plots W
         run: >-
           scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run.sh rabbit_plot_hists.py --config utilities/styles/styles.py
           $RABBIT_DIR/Combination_WMass_lowPUZMass_lowPU_ptll/fitresults.hdf5 -o $WEB_DIR/$PLOT_DIR/lowPU
-          --rrange 0.0 2.0 --unfoldedXsec --noUncertainty --chisq none --legCols 1 --noSciy --titlePos 0 --title CMS --subtitle Preliminary
+          --rrange 0.0 2.0 --unfoldedXsec --noUncertainty --chisq none --legCols 1 --noSciy --titlePos 0 --title CMS --subtitle Preliminary -m Project
+
+      - name: lowpu rabbit unfolded xsec plots Z
+        run: >-
+          scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run.sh rabbit_plot_hists.py --config utilities/styles/styles.py
+          $RABBIT_DIR/Combination_WMass_lowPUZMass_lowPU_ptll/fitresults.hdf5 -o $WEB_DIR/$PLOT_DIR/lowPU
+          --rrange 0.0 2.0 --unfoldedXsec --noUncertainty --chisq none --legCols 1 --noSciy --titlePos 0 --title CMS --subtitle Preliminary -m Select
+
 
   wlike:
     # The type of runner that the job will run on

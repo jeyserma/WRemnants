@@ -558,7 +558,7 @@ def build_graph(df, dataset):
         ]
         cols = [*cols, "run"]
 
-    if args.unfolding and dataset.name == "Zmumu_2016PostVFP":
+    if args.unfolding and dataset.group == "Zmumu":
         df = unfolder_z.add_gen_histograms(
             args, df, results, dataset, corr_helpers, theory_helpers=theory_helpers
         )
@@ -997,7 +997,7 @@ def build_graph(df, dataset):
     )
     results.append(hNValidPixelHitsNonTrig)
 
-    if args.unfolding and args.poiAsNoi and dataset.name == "Zmumu_2016PostVFP":
+    if args.unfolding and args.poiAsNoi and dataset.group == "Zmumu":
         unfolder_z.add_poi_as_noi_histograms(
             df,
             results,

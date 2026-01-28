@@ -18,9 +18,7 @@ def add_out_of_acceptance(datasets, group, newGroupName=None):
         if dataset.group == group:
             ds = deepcopy(dataset)
 
-            if newGroupName is None:
-                ds.group = ds.group + "OOA"
-            else:
+            if newGroupName is not None:
                 ds.group = newGroupName
             ds.out_of_acceptance = True
 

@@ -132,7 +132,7 @@ if args.unfolding:
     )
 
     if not args.poiAsNoi:
-        datasets = unfolding_tools.add_out_of_acceptance(datasets, group="Zmumu")
+        datasets = unfolding_tools.add_out_of_acceptance(datasets, group=base_group)
 
 
 theory_corrs = [*args.theoryCorr, *args.ewTheoryCorr]
